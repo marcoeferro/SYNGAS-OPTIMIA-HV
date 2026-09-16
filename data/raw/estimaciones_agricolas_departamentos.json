@@ -1,0 +1,2158 @@
+[
+  {
+    "id": "22-126",
+    "dpto": "1 DE MAYO - CHACO"
+  },
+  {
+    "id": "22-36",
+    "dpto": "12 DE OCTUBRE - CHACO"
+  },
+  {
+    "id": "22-39",
+    "dpto": "2 DE ABRIL - CHACO"
+  },
+  {
+    "id": "22-168",
+    "dpto": "25 DE MAYO - CHACO"
+  },
+  {
+    "id": "54-119",
+    "dpto": "25 de Mayo - MISIONES"
+  },
+  {
+    "id": "62-91",
+    "dpto": "25 DE MAYO - RIO NEGRO"
+  },
+  {
+    "id": "6-854",
+    "dpto": "25 DE MAYO - BUENOS AIRES"
+  },
+  {
+    "id": "70-126",
+    "dpto": "25 DE MAYO - SAN JUAN"
+  },
+  {
+    "id": "70-63",
+    "dpto": "9 DE JULIO - SAN JUAN"
+  },
+  {
+    "id": "62-49",
+    "dpto": "9 DE JULIO - RIO NEGRO"
+  },
+  {
+    "id": "6-588",
+    "dpto": "9 DE JULIO - BUENOS AIRES"
+  },
+  {
+    "id": "82-77",
+    "dpto": "9 DE JULIO - SANTA FE"
+  },
+  {
+    "id": "22-105",
+    "dpto": "9 DE JULIO - CHACO"
+  },
+  {
+    "id": "6-7",
+    "dpto": "ADOLFO ALSINA - BUENOS AIRES"
+  },
+  {
+    "id": "62-7",
+    "dpto": "ADOLFO ALSINA - RIO NEGRO"
+  },
+  {
+    "id": "6-14",
+    "dpto": "ADOLFO GONZALES CHAVES - BUENOS AIRES"
+  },
+  {
+    "id": "86-7",
+    "dpto": "AGUIRRE - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "70-7",
+    "dpto": "ALBARDON - SAN JUAN"
+  },
+  {
+    "id": "86-14",
+    "dpto": "ALBERDI - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-21",
+    "dpto": "ALBERTI - BUENOS AIRES"
+  },
+  {
+    "id": "6-28",
+    "dpto": "ALMIRANTE BROWN - BUENOS AIRES"
+  },
+  {
+    "id": "22-7",
+    "dpto": "ALMIRANTE BROWN - CHACO"
+  },
+  {
+    "id": "58-7",
+    "dpto": "ALUMINE - NEUQUEN"
+  },
+  {
+    "id": "10-7",
+    "dpto": "AMBATO - CATAMARCA"
+  },
+  {
+    "id": "10-14",
+    "dpto": "ANCASTI - CATAMARCA"
+  },
+  {
+    "id": "10-21",
+    "dpto": "ANDALGALA - CATAMARCA"
+  },
+  {
+    "id": "58-14",
+    "dpto": "ANELO - NEUQUEN"
+  },
+  {
+    "id": "70-14",
+    "dpto": "ANGACO - SAN JUAN"
+  },
+  {
+    "id": "66-7",
+    "dpto": "ANTA - SALTA"
+  },
+  {
+    "id": "94-28",
+    "dpto": "ANTARTIDA ARGENTINA - TIERRA DEL FUEGO"
+  },
+  {
+    "id": "10-28",
+    "dpto": "ANTOFAGASTA DE LA SIERRA - CATAMARCA"
+  },
+  {
+    "id": "54-7",
+    "dpto": "APOSTOLES - MISIONES"
+  },
+  {
+    "id": "46-7",
+    "dpto": "ARAUCO - LA RIOJA"
+  },
+  {
+    "id": "6-77",
+    "dpto": "ARRECIFES - BUENOS AIRES"
+  },
+  {
+    "id": "86-21",
+    "dpto": "ATAMISQUI - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "42-7",
+    "dpto": "ATREUCO - LA PAMPA"
+  },
+  {
+    "id": "6-35",
+    "dpto": "AVELLANEDA - BUENOS AIRES"
+  },
+  {
+    "id": "86-28",
+    "dpto": "AVELLANEDA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "62-14",
+    "dpto": "AVELLANEDA - RIO NEGRO"
+  },
+  {
+    "id": "74-7",
+    "dpto": "AYACUCHO - SAN LUIS"
+  },
+  {
+    "id": "6-42",
+    "dpto": "AYACUCHO - BUENOS AIRES"
+  },
+  {
+    "id": "6-49",
+    "dpto": "AZUL - BUENOS AIRES"
+  },
+  {
+    "id": "6-56",
+    "dpto": "BAHIA BLANCA - BUENOS AIRES"
+  },
+  {
+    "id": "6-63",
+    "dpto": "BALCARCE - BUENOS AIRES"
+  },
+  {
+    "id": "86-35",
+    "dpto": "BANDA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-70",
+    "dpto": "BARADERO - BUENOS AIRES"
+  },
+  {
+    "id": "62-21",
+    "dpto": "BARILOCHE - RIO NEGRO"
+  },
+  {
+    "id": "10-35",
+    "dpto": "BELEN - CATAMARCA"
+  },
+  {
+    "id": "74-14",
+    "dpto": "BELGRANO - SAN LUIS"
+  },
+  {
+    "id": "82-7",
+    "dpto": "BELGRANO - SANTA FE"
+  },
+  {
+    "id": "86-42",
+    "dpto": "BELGRANO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "18-7",
+    "dpto": "BELLA VISTA - CORRIENTES"
+  },
+  {
+    "id": "6-84",
+    "dpto": "BENITO JUAREZ - BUENOS AIRES"
+  },
+  {
+    "id": "6-91",
+    "dpto": "BERAZATEGUI - BUENOS AIRES"
+  },
+  {
+    "id": "6-98",
+    "dpto": "BERISSO - BUENOS AIRES"
+  },
+  {
+    "id": "22-14",
+    "dpto": "BERMEJO - CHACO"
+  },
+  {
+    "id": "34-7",
+    "dpto": "BERMEJO - FORMOSA"
+  },
+  {
+    "id": "18-14",
+    "dpto": "BERON DE ASTRADA - CORRIENTES"
+  },
+  {
+    "id": "26-7",
+    "dpto": "BIEDMA - CHUBUT"
+  },
+  {
+    "id": "6-105",
+    "dpto": "BOLIVAR - BUENOS AIRES"
+  },
+  {
+    "id": "6-112",
+    "dpto": "BRAGADO - BUENOS AIRES"
+  },
+  {
+    "id": "6-119",
+    "dpto": "BRANDSEN - BUENOS AIRES"
+  },
+  {
+    "id": "90-7",
+    "dpto": "BURRUYACU - TUCUMAN"
+  },
+  {
+    "id": "66-14",
+    "dpto": "CACHI - SALTA"
+  },
+  {
+    "id": "66-21",
+    "dpto": "CAFAYATE - SALTA"
+  },
+  {
+    "id": "54-14",
+    "dpto": "CAINGUAS - MISIONES"
+  },
+  {
+    "id": "14-7",
+    "dpto": "CALAMUCHITA - CORDOBA"
+  },
+  {
+    "id": "42-14",
+    "dpto": "CALEU CALEU - LA PAMPA"
+  },
+  {
+    "id": "70-21",
+    "dpto": "CALINGASTA - SAN JUAN"
+  },
+  {
+    "id": "6-126",
+    "dpto": "CAMPANA - BUENOS AIRES"
+  },
+  {
+    "id": "54-21",
+    "dpto": "CANDELARIA - MISIONES"
+  },
+  {
+    "id": "6-134",
+    "dpto": "CANUELAS - BUENOS AIRES"
+  },
+  {
+    "id": "10-42",
+    "dpto": "CAPAYAN - CATAMARCA"
+  },
+  {
+    "id": "10-49",
+    "dpto": "CAPITAL - CATAMARCA"
+  },
+  {
+    "id": "14-14",
+    "dpto": "CAPITAL - CORDOBA"
+  },
+  {
+    "id": "18-21",
+    "dpto": "CAPITAL - CORRIENTES"
+  },
+  {
+    "id": "54-28",
+    "dpto": "CAPITAL - MISIONES"
+  },
+  {
+    "id": "46-14",
+    "dpto": "CAPITAL - LA RIOJA"
+  },
+  {
+    "id": "42-21",
+    "dpto": "CAPITAL - LA PAMPA"
+  },
+  {
+    "id": "50-7",
+    "dpto": "CAPITAL - MENDOZA"
+  },
+  {
+    "id": "70-28",
+    "dpto": "CAPITAL - SAN JUAN"
+  },
+  {
+    "id": "66-28",
+    "dpto": "CAPITAL - SALTA"
+  },
+  {
+    "id": "90-84",
+    "dpto": "CAPITAL - TUCUMAN"
+  },
+  {
+    "id": "86-49",
+    "dpto": "CAPITAL - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-140",
+    "dpto": "CAPITAN SARMIENTO - BUENOS AIRES"
+  },
+  {
+    "id": "6-147",
+    "dpto": "CARLOS CASARES - BUENOS AIRES"
+  },
+  {
+    "id": "6-154",
+    "dpto": "CARLOS TEJEDOR - BUENOS AIRES"
+  },
+  {
+    "id": "6-161",
+    "dpto": "CARMEN DE ARECO - BUENOS AIRES"
+  },
+  {
+    "id": "82-14",
+    "dpto": "CASEROS - SANTA FE"
+  },
+  {
+    "id": "82-21",
+    "dpto": "CASTELLANOS - SANTA FE"
+  },
+  {
+    "id": "6-168",
+    "dpto": "CASTELLI - BUENOS AIRES"
+  },
+  {
+    "id": "46-21",
+    "dpto": "CASTRO BARROS - LA RIOJA"
+  },
+  {
+    "id": "58-21",
+    "dpto": "CATAN LIL - NEUQUEN"
+  },
+  {
+    "id": "42-28",
+    "dpto": "CATRILO - LA PAMPA"
+  },
+  {
+    "id": "70-35",
+    "dpto": "CAUCETE - SAN JUAN"
+  },
+  {
+    "id": "66-35",
+    "dpto": "CERRILLOS - SALTA"
+  },
+  {
+    "id": "74-28",
+    "dpto": "CHACABUCO - SAN LUIS"
+  },
+  {
+    "id": "6-210",
+    "dpto": "CHACABUCO - BUENOS AIRES"
+  },
+  {
+    "id": "22-28",
+    "dpto": "CHACABUCO - CHACO"
+  },
+  {
+    "id": "42-49",
+    "dpto": "CHALILEO - LA PAMPA"
+  },
+  {
+    "id": "46-35",
+    "dpto": "CHAMICAL - LA RIOJA"
+  },
+  {
+    "id": "42-56",
+    "dpto": "CHAPALEUFU - LA PAMPA"
+  },
+  {
+    "id": "6-217",
+    "dpto": "CHASCOMUS - BUENOS AIRES"
+  },
+  {
+    "id": "6-218",
+    "dpto": "CHASCOMUS - BUENOS AIRES"
+  },
+  {
+    "id": "42-63",
+    "dpto": "CHICAL CO - LA PAMPA"
+  },
+  {
+    "id": "90-21",
+    "dpto": "CHICLIGASTA - TUCUMAN"
+  },
+  {
+    "id": "66-42",
+    "dpto": "CHICOANA - SALTA"
+  },
+  {
+    "id": "46-42",
+    "dpto": "CHILECITO - LA RIOJA"
+  },
+  {
+    "id": "70-42",
+    "dpto": "CHIMBAS - SAN JUAN"
+  },
+  {
+    "id": "6-224",
+    "dpto": "CHIVILCOY - BUENOS AIRES"
+  },
+  {
+    "id": "58-42",
+    "dpto": "CHOS  MALAL - NEUQUEN"
+  },
+  {
+    "id": "86-63",
+    "dpto": "CHOYA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "2-1",
+    "dpto": "CIUDAD AUTONOMA DE BUENOS AIRES - CABA"
+  },
+  {
+    "id": "38-7",
+    "dpto": "COCHINOCA - JUJUY"
+  },
+  {
+    "id": "58-28",
+    "dpto": "COLLON CURA - NEUQUEN"
+  },
+  {
+    "id": "6-175",
+    "dpto": "COLON - BUENOS AIRES"
+  },
+  {
+    "id": "14-21",
+    "dpto": "COLON - CORDOBA"
+  },
+  {
+    "id": "30-8",
+    "dpto": "COLON - ENTRE RIOS"
+  },
+  {
+    "id": "22-21",
+    "dpto": "COMANDANTE FERNANDEZ - CHACO"
+  },
+  {
+    "id": "18-28",
+    "dpto": "CONCEPCION - CORRIENTES"
+  },
+  {
+    "id": "54-35",
+    "dpto": "CONCEPCION - MISIONES"
+  },
+  {
+    "id": "30-15",
+    "dpto": "CONCORDIA - ENTRE RIOS"
+  },
+  {
+    "id": "62-28",
+    "dpto": "CONESA - RIO NEGRO"
+  },
+  {
+    "id": "58-35",
+    "dpto": "CONFLUENCIA - NEUQUEN"
+  },
+  {
+    "id": "42-35",
+    "dpto": "CONHELO - LA PAMPA"
+  },
+  {
+    "id": "82-28",
+    "dpto": "CONSTITUCION - SANTA FE"
+  },
+  {
+    "id": "86-56",
+    "dpto": "COPO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-182",
+    "dpto": "CORONEL DE MARINA L ROSALES - BUENOS AIRES"
+  },
+  {
+    "id": "6-189",
+    "dpto": "CORONEL DORREGO - BUENOS AIRES"
+  },
+  {
+    "id": "46-28",
+    "dpto": "CORONEL FELIPE VARELA - LA RIOJA"
+  },
+  {
+    "id": "6-196",
+    "dpto": "CORONEL PRINGLES - BUENOS AIRES"
+  },
+  {
+    "id": "74-21",
+    "dpto": "CORONEL PRINGLES - SAN LUIS"
+  },
+  {
+    "id": "6-203",
+    "dpto": "CORONEL SUAREZ - BUENOS AIRES"
+  },
+  {
+    "id": "78-7",
+    "dpto": "CORPEN AIKE - SANTA CRUZ"
+  },
+  {
+    "id": "90-14",
+    "dpto": "CRUZ ALTA - TUCUMAN"
+  },
+  {
+    "id": "14-28",
+    "dpto": "CRUZ DEL EJE - CORDOBA"
+  },
+  {
+    "id": "42-42",
+    "dpto": "CURACO - LA PAMPA"
+  },
+  {
+    "id": "18-35",
+    "dpto": "CURUZU CUATIA - CORRIENTES"
+  },
+  {
+    "id": "26-14",
+    "dpto": "CUSHAMEN - CHUBUT"
+  },
+  {
+    "id": "6-231",
+    "dpto": "DAIREAUX - BUENOS AIRES"
+  },
+  {
+    "id": "78-14",
+    "dpto": "DESEADO - SANTA CRUZ"
+  },
+  {
+    "id": "30-21",
+    "dpto": "DIAMANTE - ENTRE RIOS"
+  },
+  {
+    "id": "6-238",
+    "dpto": "DOLORES - BUENOS AIRES"
+  },
+  {
+    "id": "38-21",
+    "dpto": "DR. MANUEL BELGRANO - JUJUY"
+  },
+  {
+    "id": "10-56",
+    "dpto": "EL ALTO - CATAMARCA"
+  },
+  {
+    "id": "38-14",
+    "dpto": "EL CARMEN - JUJUY"
+  },
+  {
+    "id": "62-35",
+    "dpto": "EL CUY - RIO NEGRO"
+  },
+  {
+    "id": "54-42",
+    "dpto": "ELDORADO - MISIONES"
+  },
+  {
+    "id": "18-42",
+    "dpto": "EMPEDRADO - CORRIENTES"
+  },
+  {
+    "id": "6-245",
+    "dpto": "ENSENADA - BUENOS AIRES"
+  },
+  {
+    "id": "26-21",
+    "dpto": "ESCALANTE - CHUBUT"
+  },
+  {
+    "id": "6-252",
+    "dpto": "ESCOBAR - BUENOS AIRES"
+  },
+  {
+    "id": "18-49",
+    "dpto": "ESQUINA - CORRIENTES"
+  },
+  {
+    "id": "6-260",
+    "dpto": "ESTEBAN ECHEVERRIA - BUENOS AIRES"
+  },
+  {
+    "id": "6-266",
+    "dpto": "EXALTACION DE LA CRUZ - BUENOS AIRES"
+  },
+  {
+    "id": "6-270",
+    "dpto": "EZEIZA - BUENOS AIRES"
+  },
+  {
+    "id": "90-28",
+    "dpto": "FAMAILLA - TUCUMAN"
+  },
+  {
+    "id": "46-49",
+    "dpto": "FAMATINA - LA RIOJA"
+  },
+  {
+    "id": "30-28",
+    "dpto": "FEDERACION - ENTRE RIOS"
+  },
+  {
+    "id": "30-35",
+    "dpto": "FEDERAL - ENTRE RIOS"
+  },
+  {
+    "id": "30-42",
+    "dpto": "FELICIANO - ENTRE RIOS"
+  },
+  {
+    "id": "86-70",
+    "dpto": "FIGUEROA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-274",
+    "dpto": "FLORENCIO VARELA - BUENOS AIRES"
+  },
+  {
+    "id": "6-277",
+    "dpto": "FLORENTINO AMEGHINO - BUENOS AIRES"
+  },
+  {
+    "id": "26-28",
+    "dpto": "FLORENTINO AMEGHINO - CHUBUT"
+  },
+  {
+    "id": "34-14",
+    "dpto": "FORMOSA - FORMOSA"
+  },
+  {
+    "id": "22-43",
+    "dpto": "FRAY JUSTO SANTA MARIA DE ORO - CHACO"
+  },
+  {
+    "id": "10-63",
+    "dpto": "FRAY MAMERTO ESQUIU - CATAMARCA"
+  },
+  {
+    "id": "26-35",
+    "dpto": "FUTALEUFU - CHUBUT"
+  },
+  {
+    "id": "26-42",
+    "dpto": "GAIMAN - CHUBUT"
+  },
+  {
+    "id": "82-35",
+    "dpto": "GARAY - SANTA FE"
+  },
+  {
+    "id": "26-49",
+    "dpto": "GASTRE - CHUBUT"
+  },
+  {
+    "id": "6-280",
+    "dpto": "GENERAL ALVARADO - BUENOS AIRES"
+  },
+  {
+    "id": "6-287",
+    "dpto": "GENERAL ALVEAR - BUENOS AIRES"
+  },
+  {
+    "id": "50-14",
+    "dpto": "GENERAL ALVEAR - MENDOZA"
+  },
+  {
+    "id": "18-56",
+    "dpto": "GENERAL ALVEAR - CORRIENTES"
+  },
+  {
+    "id": "46-56",
+    "dpto": "GENERAL ANGEL V. PENALOZA - LA RIOJA"
+  },
+  {
+    "id": "6-294",
+    "dpto": "GENERAL ARENALES - BUENOS AIRES"
+  },
+  {
+    "id": "6-301",
+    "dpto": "GENERAL BELGRANO - BUENOS AIRES"
+  },
+  {
+    "id": "46-63",
+    "dpto": "GENERAL BELGRANO - LA RIOJA"
+  },
+  {
+    "id": "22-49",
+    "dpto": "GENERAL BELGRANO - CHACO"
+  },
+  {
+    "id": "22-56",
+    "dpto": "GENERAL DONOVAN - CHACO"
+  },
+  {
+    "id": "22-63",
+    "dpto": "GENERAL GUEMES - CHACO"
+  },
+  {
+    "id": "66-49",
+    "dpto": "GENERAL GUEMES - SALTA"
+  },
+  {
+    "id": "6-308",
+    "dpto": "GENERAL GUIDO - BUENOS AIRES"
+  },
+  {
+    "id": "66-56",
+    "dpto": "GENERAL JOSE DE SAN MARTIN - SALTA"
+  },
+  {
+    "id": "46-70",
+    "dpto": "GENERAL JUAN F. QUIROGA - LA RIOJA"
+  },
+  {
+    "id": "6-315",
+    "dpto": "GENERAL JUAN MADARIAGA - BUENOS AIRES"
+  },
+  {
+    "id": "6-322",
+    "dpto": "GENERAL LA MADRID - BUENOS AIRES"
+  },
+  {
+    "id": "46-77",
+    "dpto": "GENERAL LAMADRID - LA RIOJA"
+  },
+  {
+    "id": "6-329",
+    "dpto": "GENERAL LAS HERAS - BUENOS AIRES"
+  },
+  {
+    "id": "6-336",
+    "dpto": "GENERAL LAVALLE - BUENOS AIRES"
+  },
+  {
+    "id": "82-42",
+    "dpto": "GENERAL LOPEZ - SANTA FE"
+  },
+  {
+    "id": "54-49",
+    "dpto": "GENERAL MANUEL BELGRANO - MISIONES"
+  },
+  {
+    "id": "82-49",
+    "dpto": "GENERAL OBLIGADO - SANTA FE"
+  },
+  {
+    "id": "46-84",
+    "dpto": "GENERAL OCAMPO - LA RIOJA"
+  },
+  {
+    "id": "6-343",
+    "dpto": "GENERAL PAZ - BUENOS AIRES"
+  },
+  {
+    "id": "18-63",
+    "dpto": "GENERAL PAZ - CORRIENTES"
+  },
+  {
+    "id": "74-35",
+    "dpto": "GENERAL PEDERNERA - SAN LUIS"
+  },
+  {
+    "id": "6-351",
+    "dpto": "GENERAL PINTO - BUENOS AIRES"
+  },
+  {
+    "id": "6-357",
+    "dpto": "GENERAL PUEYRREDON - BUENOS AIRES"
+  },
+  {
+    "id": "14-35",
+    "dpto": "GENERAL ROCA - CORDOBA"
+  },
+  {
+    "id": "62-42",
+    "dpto": "GENERAL ROCA - RIO NEGRO"
+  },
+  {
+    "id": "6-364",
+    "dpto": "GENERAL RODRIGUEZ - BUENOS AIRES"
+  },
+  {
+    "id": "6-371",
+    "dpto": "GENERAL SAN MARTIN - BUENOS AIRES"
+  },
+  {
+    "id": "46-91",
+    "dpto": "GENERAL SAN MARTIN - LA RIOJA"
+  },
+  {
+    "id": "14-42",
+    "dpto": "GENERAL SAN MARTIN - CORDOBA"
+  },
+  {
+    "id": "86-77",
+    "dpto": "GENERAL TABOADA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-385",
+    "dpto": "GENERAL VIAMONTE - BUENOS AIRES"
+  },
+  {
+    "id": "6-392",
+    "dpto": "GENERAL VILLEGAS - BUENOS AIRES"
+  },
+  {
+    "id": "74-42",
+    "dpto": "GOBERNADOR DUPUY - SAN LUIS"
+  },
+  {
+    "id": "50-21",
+    "dpto": "GODOY CRUZ - MENDOZA"
+  },
+  {
+    "id": "18-70",
+    "dpto": "GOYA - CORRIENTES"
+  },
+  {
+    "id": "90-35",
+    "dpto": "GRANEROS - TUCUMAN"
+  },
+  {
+    "id": "66-63",
+    "dpto": "GUACHIPAS - SALTA"
+  },
+  {
+    "id": "30-49",
+    "dpto": "GUALEGUAY - ENTRE RIOS"
+  },
+  {
+    "id": "30-56",
+    "dpto": "GUALEGUAYCHU - ENTRE RIOS"
+  },
+  {
+    "id": "6-399",
+    "dpto": "GUAMINI - BUENOS AIRES"
+  },
+  {
+    "id": "54-56",
+    "dpto": "GUARANI - MISIONES"
+  },
+  {
+    "id": "86-84",
+    "dpto": "GUASAYAN - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "42-70",
+    "dpto": "GUATRACHE - LA PAMPA"
+  },
+  {
+    "id": "50-28",
+    "dpto": "GUAYMALLEN - MENDOZA"
+  },
+  {
+    "id": "78-21",
+    "dpto": "GUER AIKE - SANTA CRUZ"
+  },
+  {
+    "id": "6-406",
+    "dpto": "HIPOLITO YRIGOYEN - BUENOS AIRES"
+  },
+  {
+    "id": "42-77",
+    "dpto": "HUCAL - LA PAMPA"
+  },
+  {
+    "id": "58-49",
+    "dpto": "HUILICHES - NEUQUEN"
+  },
+  {
+    "id": "38-28",
+    "dpto": "HUMAHUACA - JUJUY"
+  },
+  {
+    "id": "6-408",
+    "dpto": "HURLINGHAM - BUENOS AIRES"
+  },
+  {
+    "id": "70-49",
+    "dpto": "IGLESIA - SAN JUAN"
+  },
+  {
+    "id": "54-63",
+    "dpto": "IGUAZU - MISIONES"
+  },
+  {
+    "id": "46-105",
+    "dpto": "INDEPENDENCIA - LA RIOJA"
+  },
+  {
+    "id": "22-70",
+    "dpto": "INDEPENDENCIA - CHACO"
+  },
+  {
+    "id": "82-56",
+    "dpto": "IRIONDO - SANTA FE"
+  },
+  {
+    "id": "66-70",
+    "dpto": "IRUYA - SALTA"
+  },
+  {
+    "id": "14-49",
+    "dpto": "ISCHILIN - CORDOBA"
+  },
+  {
+    "id": "94-21",
+    "dpto": "ISLAS DEL ATLANTICO SUR - TIERRA DEL FUEGO"
+  },
+  {
+    "id": "30-63",
+    "dpto": "ISLAS DEL IBICUY - ENTRE RIOS"
+  },
+  {
+    "id": "18-77",
+    "dpto": "ITATI - CORRIENTES"
+  },
+  {
+    "id": "18-84",
+    "dpto": "ITUZAINGO - CORRIENTES"
+  },
+  {
+    "id": "6-410",
+    "dpto": "ITUZAINGO - BUENOS AIRES"
+  },
+  {
+    "id": "70-56",
+    "dpto": "JACHAL - SAN JUAN"
+  },
+  {
+    "id": "86-91",
+    "dpto": "JIMENEZ - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-412",
+    "dpto": "JOSE C PAZ - BUENOS AIRES"
+  },
+  {
+    "id": "90-42",
+    "dpto": "JUAN B. ALBERDI - TUCUMAN"
+  },
+  {
+    "id": "86-98",
+    "dpto": "JUAN F. IBARRA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "74-56",
+    "dpto": "JUAN MARTIN DE PUEYRREDON - SAN LUIS"
+  },
+  {
+    "id": "14-56",
+    "dpto": "JUAREZ CELMAN - CORDOBA"
+  },
+  {
+    "id": "6-413",
+    "dpto": "JUNIN - BUENOS AIRES"
+  },
+  {
+    "id": "50-35",
+    "dpto": "JUNIN - MENDOZA"
+  },
+  {
+    "id": "74-49",
+    "dpto": "JUNIN - SAN LUIS"
+  },
+  {
+    "id": "66-77",
+    "dpto": "LA CALDERA - SALTA"
+  },
+  {
+    "id": "66-84",
+    "dpto": "LA CANDELARIA - SALTA"
+  },
+  {
+    "id": "82-63",
+    "dpto": "LA CAPITAL - SANTA FE"
+  },
+  {
+    "id": "90-49",
+    "dpto": "LA COCHA - TUCUMAN"
+  },
+  {
+    "id": "6-420",
+    "dpto": "LA COSTA - BUENOS AIRES"
+  },
+  {
+    "id": "6-427",
+    "dpto": "LA MATANZA - BUENOS AIRES"
+  },
+  {
+    "id": "50-42",
+    "dpto": "LA PAZ - MENDOZA"
+  },
+  {
+    "id": "10-70",
+    "dpto": "LA PAZ - CATAMARCA"
+  },
+  {
+    "id": "30-70",
+    "dpto": "LA PAZ - ENTRE RIOS"
+  },
+  {
+    "id": "6-441",
+    "dpto": "LA PLATA - BUENOS AIRES"
+  },
+  {
+    "id": "66-91",
+    "dpto": "LA POMA - SALTA"
+  },
+  {
+    "id": "66-98",
+    "dpto": "LA VINA - SALTA"
+  },
+  {
+    "id": "58-56",
+    "dpto": "LACAR - NEUQUEN"
+  },
+  {
+    "id": "78-28",
+    "dpto": "LAGO ARGENTINO - SANTA CRUZ"
+  },
+  {
+    "id": "78-35",
+    "dpto": "LAGO BUENOS AIRES - SANTA CRUZ"
+  },
+  {
+    "id": "34-21",
+    "dpto": "LAISHI - FORMOSA"
+  },
+  {
+    "id": "26-56",
+    "dpto": "LANGUINEO - CHUBUT"
+  },
+  {
+    "id": "6-434",
+    "dpto": "LANUS - BUENOS AIRES"
+  },
+  {
+    "id": "6-448",
+    "dpto": "LAPRIDA - BUENOS AIRES"
+  },
+  {
+    "id": "82-70",
+    "dpto": "LAS COLONIAS - SANTA FE"
+  },
+  {
+    "id": "6-455",
+    "dpto": "LAS FLORES - BUENOS AIRES"
+  },
+  {
+    "id": "50-49",
+    "dpto": "LAS HERAS - MENDOZA"
+  },
+  {
+    "id": "50-56",
+    "dpto": "LAVALLE - MENDOZA"
+  },
+  {
+    "id": "18-91",
+    "dpto": "LAVALLE - CORRIENTES"
+  },
+  {
+    "id": "90-56",
+    "dpto": "LEALES - TUCUMAN"
+  },
+  {
+    "id": "6-462",
+    "dpto": "LEANDRO N. ALEM - BUENOS AIRES"
+  },
+  {
+    "id": "54-70",
+    "dpto": "LEANDRO N. ALEM - MISIONES"
+  },
+  {
+    "id": "38-35",
+    "dpto": "LEDESMA - JUJUY"
+  },
+  {
+    "id": "6-466",
+    "dpto": "LEZAMA - BUENOS AIRES"
+  },
+  {
+    "id": "22-77",
+    "dpto": "LIBERTAD - CHACO"
+  },
+  {
+    "id": "22-84",
+    "dpto": "LIBERTADOR GENERAL SAN MARTIN - CHACO"
+  },
+  {
+    "id": "54-77",
+    "dpto": "LIBERTADOR GENERAL SAN MARTIN - MISIONES"
+  },
+  {
+    "id": "74-63",
+    "dpto": "LIBERTADOR GENERAL SAN MARTIN - SAN LUIS"
+  },
+  {
+    "id": "42-84",
+    "dpto": "LIHUEL CALEL - LA PAMPA"
+  },
+  {
+    "id": "42-91",
+    "dpto": "LIMAY MAHUIDA - LA PAMPA"
+  },
+  {
+    "id": "6-469",
+    "dpto": "LINCOLN - BUENOS AIRES"
+  },
+  {
+    "id": "6-476",
+    "dpto": "LOBERIA - BUENOS AIRES"
+  },
+  {
+    "id": "6-483",
+    "dpto": "LOBOS - BUENOS AIRES"
+  },
+  {
+    "id": "6-490",
+    "dpto": "LOMAS DE ZAMORA - BUENOS AIRES"
+  },
+  {
+    "id": "58-63",
+    "dpto": "LONCOPUE - NEUQUEN"
+  },
+  {
+    "id": "86-105",
+    "dpto": "LORETO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "66-105",
+    "dpto": "LOS ANDES - SALTA"
+  },
+  {
+    "id": "58-70",
+    "dpto": "LOS LAGOS - NEUQUEN"
+  },
+  {
+    "id": "42-98",
+    "dpto": "LOVENTUE - LA PAMPA"
+  },
+  {
+    "id": "6-497",
+    "dpto": "LUJAN - BUENOS AIRES"
+  },
+  {
+    "id": "50-63",
+    "dpto": "LUJAN DE CUYO - MENDOZA"
+  },
+  {
+    "id": "90-63",
+    "dpto": "LULES - TUCUMAN"
+  },
+  {
+    "id": "78-42",
+    "dpto": "MAGALLANES - SANTA CRUZ"
+  },
+  {
+    "id": "6-505",
+    "dpto": "MAGDALENA - BUENOS AIRES"
+  },
+  {
+    "id": "6-511",
+    "dpto": "MAIPU - BUENOS AIRES"
+  },
+  {
+    "id": "50-70",
+    "dpto": "MAIPU - MENDOZA"
+  },
+  {
+    "id": "22-91",
+    "dpto": "MAIPU - CHACO"
+  },
+  {
+    "id": "50-77",
+    "dpto": "MALARGUE - MENDOZA"
+  },
+  {
+    "id": "6-515",
+    "dpto": "MALVINAS ARGENTINAS - BUENOS AIRES"
+  },
+  {
+    "id": "6-518",
+    "dpto": "MAR CHIQUITA - BUENOS AIRES"
+  },
+  {
+    "id": "42-105",
+    "dpto": "MARACO - LA PAMPA"
+  },
+  {
+    "id": "14-63",
+    "dpto": "MARCOS JUAREZ - CORDOBA"
+  },
+  {
+    "id": "6-525",
+    "dpto": "MARCOS PAZ - BUENOS AIRES"
+  },
+  {
+    "id": "26-63",
+    "dpto": "MARTIRES - CHUBUT"
+  },
+  {
+    "id": "34-28",
+    "dpto": "MATACOS - FORMOSA"
+  },
+  {
+    "id": "22-98",
+    "dpto": "MAYOR LUIS J. FONTANA - CHACO"
+  },
+  {
+    "id": "18-98",
+    "dpto": "MBURUCUYA - CORRIENTES"
+  },
+  {
+    "id": "18-105",
+    "dpto": "MERCEDES - CORRIENTES"
+  },
+  {
+    "id": "6-532",
+    "dpto": "MERCEDES - BUENOS AIRES"
+  },
+  {
+    "id": "6-539",
+    "dpto": "MERLO - BUENOS AIRES"
+  },
+  {
+    "id": "66-112",
+    "dpto": "METAN - SALTA"
+  },
+  {
+    "id": "14-70",
+    "dpto": "MINAS - CORDOBA"
+  },
+  {
+    "id": "58-77",
+    "dpto": "MINAS - NEUQUEN"
+  },
+  {
+    "id": "86-112",
+    "dpto": "MITRE - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "66-119",
+    "dpto": "MOLINOS - SALTA"
+  },
+  {
+    "id": "6-547",
+    "dpto": "MONTE - BUENOS AIRES"
+  },
+  {
+    "id": "18-112",
+    "dpto": "MONTE CASEROS - CORRIENTES"
+  },
+  {
+    "id": "6-553",
+    "dpto": "MONTE HERMOSO - BUENOS AIRES"
+  },
+  {
+    "id": "54-84",
+    "dpto": "MONTECARLO - MISIONES"
+  },
+  {
+    "id": "90-70",
+    "dpto": "MONTEROS - TUCUMAN"
+  },
+  {
+    "id": "86-119",
+    "dpto": "MORENO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-560",
+    "dpto": "MORENO - BUENOS AIRES"
+  },
+  {
+    "id": "6-568",
+    "dpto": "MORON - BUENOS AIRES"
+  },
+  {
+    "id": "6-574",
+    "dpto": "NAVARRO - BUENOS AIRES"
+  },
+  {
+    "id": "6-581",
+    "dpto": "NECOCHEA - BUENOS AIRES"
+  },
+  {
+    "id": "30-77",
+    "dpto": "NOGOYA - ENTRE RIOS"
+  },
+  {
+    "id": "58-84",
+    "dpto": "NORQUIN - NEUQUEN"
+  },
+  {
+    "id": "62-56",
+    "dpto": "NORQUINCO - RIO NEGRO"
+  },
+  {
+    "id": "22-112",
+    "dpto": "O'HIGGINS - CHACO"
+  },
+  {
+    "id": "54-91",
+    "dpto": "OBERA - MISIONES"
+  },
+  {
+    "id": "86-126",
+    "dpto": "OJO DE AGUA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-595",
+    "dpto": "OLAVARRIA - BUENOS AIRES"
+  },
+  {
+    "id": "66-126",
+    "dpto": "ORAN - SALTA"
+  },
+  {
+    "id": "10-77",
+    "dpto": "PACLIN - CATAMARCA"
+  },
+  {
+    "id": "38-42",
+    "dpto": "PALPALA - JUJUY"
+  },
+  {
+    "id": "30-84",
+    "dpto": "PARANA - ENTRE RIOS"
+  },
+  {
+    "id": "26-70",
+    "dpto": "PASO DE INDIOS - CHUBUT"
+  },
+  {
+    "id": "18-119",
+    "dpto": "PASO DE LOS LIBRES - CORRIENTES"
+  },
+  {
+    "id": "6-602",
+    "dpto": "PATAGONES - BUENOS AIRES"
+  },
+  {
+    "id": "34-35",
+    "dpto": "PATINO - FORMOSA"
+  },
+  {
+    "id": "6-609",
+    "dpto": "PEHUAJO - BUENOS AIRES"
+  },
+  {
+    "id": "58-91",
+    "dpto": "PEHUENCHES - NEUQUEN"
+  },
+  {
+    "id": "6-616",
+    "dpto": "PELLEGRINI - BUENOS AIRES"
+  },
+  {
+    "id": "86-133",
+    "dpto": "PELLEGRINI - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-623",
+    "dpto": "PERGAMINO - BUENOS AIRES"
+  },
+  {
+    "id": "62-63",
+    "dpto": "PICHI MAHUIDA - RIO NEGRO"
+  },
+  {
+    "id": "58-98",
+    "dpto": "PICUN LEUFU - NEUQUEN"
+  },
+  {
+    "id": "58-105",
+    "dpto": "PICUNCHES - NEUQUEN"
+  },
+  {
+    "id": "6-630",
+    "dpto": "PILA - BUENOS AIRES"
+  },
+  {
+    "id": "34-42",
+    "dpto": "PILAGAS - FORMOSA"
+  },
+  {
+    "id": "6-638",
+    "dpto": "PILAR - BUENOS AIRES"
+  },
+  {
+    "id": "62-70",
+    "dpto": "PILCANIYEU - RIO NEGRO"
+  },
+  {
+    "id": "34-49",
+    "dpto": "PILCOMAYO - FORMOSA"
+  },
+  {
+    "id": "6-644",
+    "dpto": "PINAMAR - BUENOS AIRES"
+  },
+  {
+    "id": "34-56",
+    "dpto": "PIRANE - FORMOSA"
+  },
+  {
+    "id": "14-77",
+    "dpto": "POCHO - CORDOBA"
+  },
+  {
+    "id": "70-70",
+    "dpto": "POCITO - SAN JUAN"
+  },
+  {
+    "id": "10-84",
+    "dpto": "POMAN - CATAMARCA"
+  },
+  {
+    "id": "22-119",
+    "dpto": "PRESIDENCIA DE LA PLAZA - CHACO"
+  },
+  {
+    "id": "6-648",
+    "dpto": "PRESIDENTE PERON - BUENOS AIRES"
+  },
+  {
+    "id": "14-84",
+    "dpto": "PRESIDENTE ROQUE SAENZ PENA - CORDOBA"
+  },
+  {
+    "id": "6-651",
+    "dpto": "PUAN - BUENOS AIRES"
+  },
+  {
+    "id": "42-112",
+    "dpto": "PUELEN - LA PAMPA"
+  },
+  {
+    "id": "14-91",
+    "dpto": "PUNILLA - CORDOBA"
+  },
+  {
+    "id": "6-655",
+    "dpto": "PUNTA INDIO - BUENOS AIRES"
+  },
+  {
+    "id": "86-140",
+    "dpto": "QUEBRACHOS - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "42-119",
+    "dpto": "QUEMU QUEMU - LA PAMPA"
+  },
+  {
+    "id": "6-658",
+    "dpto": "QUILMES - BUENOS AIRES"
+  },
+  {
+    "id": "22-133",
+    "dpto": "QUITILIPI - CHACO"
+  },
+  {
+    "id": "6-665",
+    "dpto": "RAMALLO - BUENOS AIRES"
+  },
+  {
+    "id": "34-63",
+    "dpto": "RAMON LISTA - FORMOSA"
+  },
+  {
+    "id": "42-126",
+    "dpto": "RANCUL - LA PAMPA"
+  },
+  {
+    "id": "6-672",
+    "dpto": "RAUCH - BUENOS AIRES"
+  },
+  {
+    "id": "70-77",
+    "dpto": "RAWSON - SAN JUAN"
+  },
+  {
+    "id": "26-77",
+    "dpto": "RAWSON - CHUBUT"
+  },
+  {
+    "id": "42-133",
+    "dpto": "REALICO - LA PAMPA"
+  },
+  {
+    "id": "38-49",
+    "dpto": "RINCONADA - JUJUY"
+  },
+  {
+    "id": "78-49",
+    "dpto": "RIO CHICO - SANTA CRUZ"
+  },
+  {
+    "id": "90-77",
+    "dpto": "RIO CHICO - TUCUMAN"
+  },
+  {
+    "id": "14-98",
+    "dpto": "RIO CUARTO - CORDOBA"
+  },
+  {
+    "id": "94-7",
+    "dpto": "RIO GRANDE - TIERRA DEL FUEGO"
+  },
+  {
+    "id": "86-147",
+    "dpto": "RIO HONDO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "14-105",
+    "dpto": "RIO PRIMERO - CORDOBA"
+  },
+  {
+    "id": "14-112",
+    "dpto": "RIO SECO - CORDOBA"
+  },
+  {
+    "id": "14-119",
+    "dpto": "RIO SEGUNDO - CORDOBA"
+  },
+  {
+    "id": "26-84",
+    "dpto": "RIO SENGUER - CHUBUT"
+  },
+  {
+    "id": "50-84",
+    "dpto": "RIVADAVIA - MENDOZA"
+  },
+  {
+    "id": "86-154",
+    "dpto": "RIVADAVIA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "70-84",
+    "dpto": "RIVADAVIA - SAN JUAN"
+  },
+  {
+    "id": "6-679",
+    "dpto": "RIVADAVIA - BUENOS AIRES"
+  },
+  {
+    "id": "66-133",
+    "dpto": "RIVADAVIA - SALTA"
+  },
+  {
+    "id": "86-161",
+    "dpto": "ROBLES - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-686",
+    "dpto": "ROJAS - BUENOS AIRES"
+  },
+  {
+    "id": "6-693",
+    "dpto": "ROQUE PEREZ - BUENOS AIRES"
+  },
+  {
+    "id": "82-84",
+    "dpto": "ROSARIO - SANTA FE"
+  },
+  {
+    "id": "66-140",
+    "dpto": "ROSARIO DE LA FRONTERA - SALTA"
+  },
+  {
+    "id": "66-147",
+    "dpto": "ROSARIO DE LERMA - SALTA"
+  },
+  {
+    "id": "46-112",
+    "dpto": "ROSARIO VERA PENALOZA - LA RIOJA"
+  },
+  {
+    "id": "6-700",
+    "dpto": "SAAVEDRA - BUENOS AIRES"
+  },
+  {
+    "id": "18-126",
+    "dpto": "SALADAS - CORRIENTES"
+  },
+  {
+    "id": "6-707",
+    "dpto": "SALADILLO - BUENOS AIRES"
+  },
+  {
+    "id": "86-168",
+    "dpto": "SALAVINA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "6-721",
+    "dpto": "SALLIQUELO - BUENOS AIRES"
+  },
+  {
+    "id": "6-714",
+    "dpto": "SALTO - BUENOS AIRES"
+  },
+  {
+    "id": "14-126",
+    "dpto": "SAN ALBERTO - CORDOBA"
+  },
+  {
+    "id": "6-728",
+    "dpto": "SAN ANDRES DE GILES - BUENOS AIRES"
+  },
+  {
+    "id": "62-77",
+    "dpto": "SAN ANTONIO - RIO NEGRO"
+  },
+  {
+    "id": "38-56",
+    "dpto": "SAN ANTONIO - JUJUY"
+  },
+  {
+    "id": "6-735",
+    "dpto": "SAN ANTONIO DE ARECO - BUENOS AIRES"
+  },
+  {
+    "id": "46-119",
+    "dpto": "SAN BLAS DE LOS SAUCES - LA RIOJA"
+  },
+  {
+    "id": "50-91",
+    "dpto": "SAN CARLOS - MENDOZA"
+  },
+  {
+    "id": "66-154",
+    "dpto": "SAN CARLOS - SALTA"
+  },
+  {
+    "id": "6-742",
+    "dpto": "SAN CAYETANO - BUENOS AIRES"
+  },
+  {
+    "id": "18-133",
+    "dpto": "SAN COSME - CORRIENTES"
+  },
+  {
+    "id": "82-91",
+    "dpto": "SAN CRISTOBAL - SANTA FE"
+  },
+  {
+    "id": "6-749",
+    "dpto": "SAN FERNANDO - BUENOS AIRES"
+  },
+  {
+    "id": "22-140",
+    "dpto": "SAN FERNANDO - CHACO"
+  },
+  {
+    "id": "54-98",
+    "dpto": "SAN IGNACIO - MISIONES"
+  },
+  {
+    "id": "6-756",
+    "dpto": "SAN ISIDRO - BUENOS AIRES"
+  },
+  {
+    "id": "82-98",
+    "dpto": "SAN JAVIER - SANTA FE"
+  },
+  {
+    "id": "54-105",
+    "dpto": "SAN JAVIER - MISIONES"
+  },
+  {
+    "id": "14-133",
+    "dpto": "SAN JAVIER - CORDOBA"
+  },
+  {
+    "id": "82-105",
+    "dpto": "SAN JERONIMO - SANTA FE"
+  },
+  {
+    "id": "82-112",
+    "dpto": "SAN JUSTO - SANTA FE"
+  },
+  {
+    "id": "14-140",
+    "dpto": "SAN JUSTO - CORDOBA"
+  },
+  {
+    "id": "22-147",
+    "dpto": "SAN LORENZO - CHACO"
+  },
+  {
+    "id": "82-119",
+    "dpto": "SAN LORENZO - SANTA FE"
+  },
+  {
+    "id": "18-140",
+    "dpto": "SAN LUIS DEL PALMAR - CORRIENTES"
+  },
+  {
+    "id": "18-147",
+    "dpto": "SAN MARTIN - CORRIENTES"
+  },
+  {
+    "id": "50-98",
+    "dpto": "SAN MARTIN - MENDOZA"
+  },
+  {
+    "id": "82-126",
+    "dpto": "SAN MARTIN - SANTA FE"
+  },
+  {
+    "id": "86-175",
+    "dpto": "SAN MARTIN - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "70-91",
+    "dpto": "SAN MARTIN - SAN JUAN"
+  },
+  {
+    "id": "6-760",
+    "dpto": "SAN MIGUEL - BUENOS AIRES"
+  },
+  {
+    "id": "18-154",
+    "dpto": "SAN MIGUEL - CORRIENTES"
+  },
+  {
+    "id": "6-763",
+    "dpto": "SAN NICOLAS - BUENOS AIRES"
+  },
+  {
+    "id": "6-770",
+    "dpto": "SAN PEDRO - BUENOS AIRES"
+  },
+  {
+    "id": "38-63",
+    "dpto": "SAN PEDRO - JUJUY"
+  },
+  {
+    "id": "54-112",
+    "dpto": "SAN PEDRO - MISIONES"
+  },
+  {
+    "id": "50-105",
+    "dpto": "SAN RAFAEL - MENDOZA"
+  },
+  {
+    "id": "18-161",
+    "dpto": "SAN ROQUE - CORRIENTES"
+  },
+  {
+    "id": "30-88",
+    "dpto": "SAN SALVADOR - ENTRE RIOS"
+  },
+  {
+    "id": "6-778",
+    "dpto": "SAN VICENTE - BUENOS AIRES"
+  },
+  {
+    "id": "46-126",
+    "dpto": "SANAGASTA - LA RIOJA"
+  },
+  {
+    "id": "38-70",
+    "dpto": "SANTA BARBARA - JUJUY"
+  },
+  {
+    "id": "38-77",
+    "dpto": "SANTA CATALINA - JUJUY"
+  },
+  {
+    "id": "70-98",
+    "dpto": "SANTA LUCIA - SAN JUAN"
+  },
+  {
+    "id": "14-147",
+    "dpto": "SANTA MARIA - CORDOBA"
+  },
+  {
+    "id": "10-91",
+    "dpto": "SANTA MARIA - CATAMARCA"
+  },
+  {
+    "id": "10-98",
+    "dpto": "SANTA ROSA - CATAMARCA"
+  },
+  {
+    "id": "50-112",
+    "dpto": "SANTA ROSA - MENDOZA"
+  },
+  {
+    "id": "66-161",
+    "dpto": "SANTA VICTORIA - SALTA"
+  },
+  {
+    "id": "18-168",
+    "dpto": "SANTO TOME - CORRIENTES"
+  },
+  {
+    "id": "22-154",
+    "dpto": "SARGENTO CABRAL - CHACO"
+  },
+  {
+    "id": "26-91",
+    "dpto": "SARMIENTO - CHUBUT"
+  },
+  {
+    "id": "70-105",
+    "dpto": "SARMIENTO - SAN JUAN"
+  },
+  {
+    "id": "86-182",
+    "dpto": "SARMIENTO - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "18-175",
+    "dpto": "SAUCE - CORRIENTES"
+  },
+  {
+    "id": "86-189",
+    "dpto": "SILIPICA - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "90-91",
+    "dpto": "SIMOCA - TUCUMAN"
+  },
+  {
+    "id": "86-0",
+    "dpto": "SIN DEFINIR - SANTIAGO DEL ESTERO"
+  },
+  {
+    "id": "94-0",
+    "dpto": "SIN DEFINIR - TIERRA DEL FUEGO"
+  },
+  {
+    "id": "90-0",
+    "dpto": "SIN DEFINIR - TUCUMAN"
+  },
+  {
+    "id": "82-0",
+    "dpto": "SIN DEFINIR - SANTA FE"
+  },
+  {
+    "id": "78-0",
+    "dpto": "SIN DEFINIR - SANTA CRUZ"
+  },
+  {
+    "id": "70-0",
+    "dpto": "SIN DEFINIR - SAN JUAN"
+  },
+  {
+    "id": "74-0",
+    "dpto": "SIN DEFINIR - SAN LUIS"
+  },
+  {
+    "id": "66-0",
+    "dpto": "SIN DEFINIR - SALTA"
+  },
+  {
+    "id": "54-0",
+    "dpto": "SIN DEFINIR - MISIONES"
+  },
+  {
+    "id": "6-0",
+    "dpto": "SIN DEFINIR - BUENOS AIRES"
+  },
+  {
+    "id": "2-0",
+    "dpto": "SIN DEFINIR - CABA"
+  },
+  {
+    "id": "18-0",
+    "dpto": "SIN DEFINIR - CORRIENTES"
+  },
+  {
+    "id": "22-0",
+    "dpto": "SIN DEFINIR - CHACO"
+  },
+  {
+    "id": "10-0",
+    "dpto": "SIN DEFINIR - CATAMARCA"
+  },
+  {
+    "id": "14-0",
+    "dpto": "SIN DEFINIR - CORDOBA"
+  },
+  {
+    "id": "26-0",
+    "dpto": "SIN DEFINIR - CHUBUT"
+  },
+  {
+    "id": "38-0",
+    "dpto": "SIN DEFINIR - JUJUY"
+  },
+  {
+    "id": "30-0",
+    "dpto": "SIN DEFINIR - ENTRE RIOS"
+  },
+  {
+    "id": "34-0",
+    "dpto": "SIN DEFINIR - FORMOSA"
+  },
+  {
+    "id": "50-0",
+    "dpto": "SIN DEFINIR - MENDOZA"
+  },
+  {
+    "id": "58-0",
+    "dpto": "SIN DEFINIR - NEUQUEN"
+  },
+  {
+    "id": "42-0",
+    "dpto": "SIN DEFINIR - LA PAMPA"
+  },
+  {
+    "id": "46-0",
+    "dpto": "SIN DEFINIR - LA RIOJA"
+  },
+  {
+    "id": "62-0",
+    "dpto": "SIN DEFINIR - RIO NEGRO"
+  },
+  {
+    "id": "14-154",
+    "dpto": "SOBREMONTE - CORDOBA"
+  },
+  {
+    "id": "6-784",
+    "dpto": "SUIPACHA - BUENOS AIRES"
+  },
+  {
+    "id": "38-84",
+    "dpto": "SUSQUES - JUJUY"
+  },
+  {
+    "id": "90-98",
+    "dpto": "TAFI DEL VALLE - TUCUMAN"
+  },
+  {
+    "id": "90-105",
+    "dpto": "TAFI VIEJO - TUCUMAN"
+  },
+  {
+    "id": "30-91",
+    "dpto": "TALA - ENTRE RIOS"
+  },
+  {
+    "id": "6-791",
+    "dpto": "TANDIL - BUENOS AIRES"
+  },
+  {
+    "id": "6-798",
+    "dpto": "TAPALQUE - BUENOS AIRES"
+  },
+  {
+    "id": "22-161",
+    "dpto": "TAPENAGA - CHACO"
+  },
+  {
+    "id": "26-98",
+    "dpto": "TEHUELCHES - CHUBUT"
+  },
+  {
+    "id": "26-105",
+    "dpto": "TELSEN - CHUBUT"
+  },
+  {
+    "id": "14-161",
+    "dpto": "TERCERO ARRIBA - CORDOBA"
+  },
+  {
+    "id": "6-805",
+    "dpto": "TIGRE - BUENOS AIRES"
+  },
+  {
+    "id": "38-94",
+    "dpto": "TILCARA - JUJUY"
+  },
+  {
+    "id": "10-105",
+    "dpto": "TINOGASTA - CATAMARCA"
+  },
+  {
+    "id": "42-140",
+    "dpto": "TOAY - LA PAMPA"
+  },
+  {
+    "id": "6-812",
+    "dpto": "TORDILLO - BUENOS AIRES"
+  },
+  {
+    "id": "6-819",
+    "dpto": "TORNQUIST - BUENOS AIRES"
+  },
+  {
+    "id": "14-168",
+    "dpto": "TOTORAL - CORDOBA"
+  },
+  {
+    "id": "90-112",
+    "dpto": "TRANCAS - TUCUMAN"
+  },
+  {
+    "id": "42-147",
+    "dpto": "TRENEL - LA PAMPA"
+  },
+  {
+    "id": "6-826",
+    "dpto": "TRENQUE LAUQUEN - BUENOS AIRES"
+  },
+  {
+    "id": "6-833",
+    "dpto": "TRES ARROYOS - BUENOS AIRES"
+  },
+  {
+    "id": "6-840",
+    "dpto": "TRES DE FEBRERO - BUENOS AIRES"
+  },
+  {
+    "id": "6-847",
+    "dpto": "TRES LOMAS - BUENOS AIRES"
+  },
+  {
+    "id": "14-175",
+    "dpto": "TULUMBA - CORDOBA"
+  },
+  {
+    "id": "38-98",
+    "dpto": "TUMBAYA - JUJUY"
+  },
+  {
+    "id": "50-119",
+    "dpto": "TUNUYAN - MENDOZA"
+  },
+  {
+    "id": "50-126",
+    "dpto": "TUPUNGATO - MENDOZA"
+  },
+  {
+    "id": "70-112",
+    "dpto": "ULLUM - SAN JUAN"
+  },
+  {
+    "id": "14-182",
+    "dpto": "UNION - CORDOBA"
+  },
+  {
+    "id": "30-98",
+    "dpto": "URUGUAY - ENTRE RIOS"
+  },
+  {
+    "id": "94-14",
+    "dpto": "USHUAIA - TIERRA DEL FUEGO"
+  },
+  {
+    "id": "42-154",
+    "dpto": "UTRACAN - LA PAMPA"
+  },
+  {
+    "id": "62-84",
+    "dpto": "VALCHETA - RIO NEGRO"
+  },
+  {
+    "id": "70-119",
+    "dpto": "VALLE FERTIL - SAN JUAN"
+  },
+  {
+    "id": "38-105",
+    "dpto": "VALLE GRANDE - JUJUY"
+  },
+  {
+    "id": "10-112",
+    "dpto": "VALLE VIEJO - CATAMARCA"
+  },
+  {
+    "id": "82-133",
+    "dpto": "VERA - SANTA FE"
+  },
+  {
+    "id": "6-861",
+    "dpto": "VICENTE LOPEZ - BUENOS AIRES"
+  },
+  {
+    "id": "30-105",
+    "dpto": "VICTORIA - ENTRE RIOS"
+  },
+  {
+    "id": "6-868",
+    "dpto": "VILLA GESELL - BUENOS AIRES"
+  },
+  {
+    "id": "30-113",
+    "dpto": "VILLAGUAY - ENTRE RIOS"
+  },
+  {
+    "id": "6-875",
+    "dpto": "VILLARINO - BUENOS AIRES"
+  },
+  {
+    "id": "46-98",
+    "dpto": "VINCHINA - LA RIOJA"
+  },
+  {
+    "id": "38-112",
+    "dpto": "YAVI - JUJUY"
+  },
+  {
+    "id": "90-119",
+    "dpto": "YERBA BUENA - TUCUMAN"
+  },
+  {
+    "id": "58-112",
+    "dpto": "ZAPALA - NEUQUEN"
+  },
+  {
+    "id": "6-882",
+    "dpto": "ZARATE - BUENOS AIRES"
+  },
+  {
+    "id": "70-133",
+    "dpto": "ZONDA - SAN JUAN"
+  }
+]
