@@ -1,0 +1,19 @@
+# =============================================================
+# Rutas del proyecto. Todas relativas a la raíz del repo.
+# Modificar acá impacta todo el pipeline sin tocar código.
+# =============================================================
+
+data:
+  raw:       "data/raw"
+  reference: "data/reference"
+  interim:   "data/interim"
+  processed: "data/processed"
+  audit:     "data/audit"
+
+outputs:
+  figures: "outputs/figures"
+  tables:  "outputs/tables"
+  reports: "outputs/reports"
+
+logs:
+  dir: "logs"
