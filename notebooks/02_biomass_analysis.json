@@ -1,0 +1,103 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "eb0a23f8",
+   "metadata": {},
+   "source": [
+    "# Fase 4 — Análisis de Biomasa Residual\n",
+    "\n",
+    "Este notebook **lee los artefactos curados** generados por el pipeline ETL. No ejecuta lógica de negocio, solo visualización y análisis.\n",
+    "\n",
+    "Prerequisito: haber ejecutado `make etl`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "553e433b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sys\n",
+    "sys.path.insert(0, \"..\")\n",
+    "\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "\n",
+    "df = pd.read_parquet(\"../data/processed/biomasa_validos.parquet\")\n",
+    "df.info()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d047b3bb",
+   "metadata": {},
+   "source": [
+    "## Residuo por provincia"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "93bcfbbf",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df_by_prov = (\n",
+    "    df.groupby(\"Provincia\", as_index=False)[\"Residuo de Biomasa (Tn)\"]\n",
+    "    .sum().sort_values(\"Residuo de Biomasa (Tn)\", ascending=False)\n",
+    ")\n",
+    "\n",
+    "plt.figure(figsize=(14, 7))\n",
+    "sns.barplot(data=df_by_prov, x=\"Provincia\", y=\"Residuo de Biomasa (Tn)\", order=df_by_prov[\"Provincia\"])\n",
+    "plt.xticks(rotation=45, ha=\"right\")\n",
+    "plt.title(\"Residuo de biomasa total por provincia\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "662024e1",
+   "metadata": {},
+   "source": [
+    "## Residuo por cultivo"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7714cb1c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df_by_cultivo = (\n",
+    "    df.groupby(\"Cultivo\", as_index=False)[\"Residuo de Biomasa (Tn)\"]\n",
+    "    .sum().sort_values(\"Residuo de Biomasa (Tn)\", ascending=False)\n",
+    ")\n",
+    "\n",
+    "plt.figure(figsize=(14, 7))\n",
+    "sns.barplot(data=df_by_cultivo, x=\"Cultivo\", y=\"Residuo de Biomasa (Tn)\", order=df_by_cultivo[\"Cultivo\"])\n",
+    "plt.xticks(rotation=45, ha=\"right\")\n",
+    "plt.title(\"Residuo de biomasa total por cultivo\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": ".venv",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.13.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
