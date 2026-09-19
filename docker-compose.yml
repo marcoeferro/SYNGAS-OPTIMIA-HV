@@ -1,0 +1,56 @@
+# =============================================================
+# Orquestación de servicios del proyecto Biomasa Residual
+# =============================================================
+# Servicios:
+#   - etl_pipeline:  Ejecuta el pipeline ETL (job one-shot).
+#   - dashboard:     Shaper (imagen oficial) sirviendo los Parquet.
+# =============================================================
+
+services:
+  # -----------------------------------------------------------
+  # Pipeline ETL (se ejecuta bajo demanda)
+  # -----------------------------------------------------------
+  etl_pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: etl-biomasa:latest
+    container_name: biomasa_etl
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    profiles:
+      - etl
+    restart: "no"
+
+  # -----------------------------------------------------------
+  # Dashboard Shaper (imagen oficial de Taleshape)
+  # -----------------------------------------------------------
+  dashboard:
+    image: taleshape/shaper:latest
+    container_name: biomasa_shaper
+    ports:
+      - "${SHAPER_PORT:-5454}:5454"
+    volumes:
+      # Datos procesados (Parquet) — solo lectura
+      - ./data/processed:/data/processed:ro
+      # Datos de auditoría — solo lectura
+      - ./data/audit:/data/audit:ro
+      # Volumen persistente de Shaper (metadatos internos)
+      - shaper_data:/data/shaper
+      # SQL de inicialización: crea las vistas sobre los Parquet
+      - ./shaper/init.sql:/var/lib/shaper/init.sql:ro
+      # Dashboards (archivos .dashboard.sql)
+      - ./shaper/dashboards:/var/lib/shaper/dashboards:ro
+    environment:
+      - SHAPER_ADDR=0.0.0.0:5454
+      - SHAPER_LOG_LEVEL=${LOG_LEVEL:-info}
+      - SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
+    restart: unless-stopped
+
+volumes:
+  shaper_data:
+    driver: local
