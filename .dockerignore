@@ -1,0 +1,36 @@
+# --- Entornos virtuales ---
+.venv
+venv
+env
+
+# --- Datos generados (se regeneran dentro del contenedor) ---
+data/interim
+data/processed
+data/audit
+outputs/
+
+# --- Notebooks (no son necesarios para la imagen final) ---
+notebooks/
+
+# --- Archivos de sistema y editores ---
+.git
+.gitignore
+.vscode
+.idea
+
+# --- Python cache ---
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# --- Docker ---
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# --- Documentación ---
+docs/
+README.md
