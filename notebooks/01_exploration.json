@@ -1,0 +1,86 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "88cc8f1b",
+   "metadata": {},
+   "source": [
+    "# Fase 1 — Exploración\n",
+    "\n",
+    "Objetivo: caracterizar la estructura, dominios y calidad de las fuentes primarias. Se lee directamente de `data/raw/` sin aplicar transformaciones.\n",
+    "\n",
+    "**Hallazgos esperados**: H1 cobertura geográfica, H2 inconsistencia léxica, H3 agregados/componentes, H4 nomenclatura de departamentos, H5 columnas marginales, H6 tipos incorrectos, H7 cultivos sin IC."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ea40068f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sys\n",
+    "sys.path.insert(0, \"..\")\n",
+    "\n",
+    "import pandas as pd\n",
+    "\n",
+    "df_cba = pd.read_csv(\"../data/raw/datos_bolsa_granos_cba.csv\")\n",
+    "df_magyp = pd.read_csv(\"../data/raw/datos_estimaciones.csv\", encoding=\"utf-8-sig\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "dd7aef70",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df_cba.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "547e0e7f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df_magyp.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "15118054",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(sorted(df_cba[\"CULTIVO\"].unique()))\n",
+    "print(sorted(df_magyp[\"Cultivo\"].unique()))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5f290a7c",
+   "metadata": {},
+   "source": [
+    "## Conclusiones\n",
+    "\n",
+    "Completar con hallazgos H1–H7 derivados del diagnóstico."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": ".venv",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.13.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
