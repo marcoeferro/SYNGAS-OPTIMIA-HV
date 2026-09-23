@@ -220,7 +220,7 @@ def run(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict:
     df_biomasa = add_validity_flags(df_biomasa)
 
     impacto = report_exclusion_impact(df_biomasa)
-    logger.info("Impacto de exclusión por falta de IC:\n%s", impacto.to_string())
+    logger.info("Impacto de exclusión (_valido_biomasa=False):\n%s", impacto.to_string())
 
     df_biomasa_validos = df_biomasa[df_biomasa["_valido_biomasa"]].copy()
     df_biomasa_validos = add_density_columns(df_biomasa_validos)
