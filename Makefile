@@ -7,10 +7,10 @@ SHELL := /bin/bash
 PYTHON := python
 PIP := pip
 DOCKER_COMPOSE := docker compose
-SHAPER_PORT ?= 5454
+DASHBOARD_PORT ?= 8501
 
-.PHONY: help install install-dev install-etl install-shaper \
-        etl dashboard shaper-dev \
+.PHONY: help install install-dev install-etl install-dashboard \
+        etl dashboard \
         test test-cov lint format \
         docker-build docker-up docker-down docker-logs docker-shell \
         docker-etl docker-clean \
@@ -23,13 +23,13 @@ help:
 	@echo "Targets disponibles:"
 	@echo ""
 	@echo "  Instalación"
-	@echo "    install-etl         Instala dependencias del pipeline ETL"
+	@echo "    install-etl          Instala dependencias del pipeline ETL"
+	@echo "    install-dashboard    Instala dependencias del dashboard (Streamlit)"
 	@echo "    install-dev          Instala con dependencias de desarrollo"
-	@echo "    install-shaper       Instala el binario de Shaper (pip)"
 	@echo ""
 	@echo "  Ejecución local"
 	@echo "    etl                  Ejecuta el pipeline ETL"
-	@echo "    shaper-dev           Levanta Shaper en modo desarrollo"
+	@echo "    dashboard            Levanta Streamlit en modo desarrollo"
 	@echo ""
 	@echo "  Calidad"
 	@echo "    test                 Corre la suite completa de tests"
@@ -38,10 +38,10 @@ help:
 	@echo "    format               Formatea el código"
 	@echo ""
 	@echo "  Docker"
-	@echo "    docker-build         Construye la imagen del ETL"
-	@echo "    docker-up            Levanta Shaper (dashboard)"
+	@echo "    docker-build         Construye la imagen del ETL/dashboard"
+	@echo "    docker-up            Levanta worker + scheduler + dashboard"
 	@echo "    docker-down          Detiene y elimina contenedores"
-	@echo "    docker-logs          Sigue los logs de Shaper"
+	@echo "    docker-logs          Sigue los logs del dashboard"
 	@echo "    docker-etl           Ejecuta el pipeline ETL como job"
 	@echo "    docker-clean         Elimina imágenes y volúmenes"
 	@echo ""
@@ -57,11 +57,11 @@ help:
 install-etl:
 	$(PIP) install -e ".[etl]"
 
+install-dashboard:
+	$(PIP) install -e ".[dashboard]"
+
 install-dev:
 	$(PIP) install -e ".[dev]"
-
-install-shaper:
-	$(PIP) install shaper-bin
 
 # =============================================================
 # Ejecución local
@@ -69,8 +69,8 @@ install-shaper:
 etl:
 	$(PYTHON) -m etl.pipelines.run_etl --config config/paths.yaml
 
-shaper-dev:
-	shaper dev
+dashboard:
+	streamlit run dashboard/app.py --server.port=$(DASHBOARD_PORT)
 
 # =============================================================
 # Calidad
@@ -82,12 +82,12 @@ test-cov:
 	pytest tests/ -v --cov=etl --cov-report=term-missing --cov-report=html
 
 lint:
-	ruff check etl/ tests/
+	ruff check etl/ tests/ dashboard/
 	mypy etl/ --ignore-missing-imports
 
 format:
-	ruff format etl/ tests/
-	ruff check --fix etl/ tests/
+	ruff format etl/ tests/ dashboard/
+	ruff check --fix etl/ tests/ dashboard/
 
 # =============================================================
 # Docker
@@ -96,8 +96,10 @@ docker-build:
 	$(DOCKER_COMPOSE) build etl_pipeline
 
 docker-up:
-	$(DOCKER_COMPOSE) up -d dashboard
-	@echo "Shaper disponible en http://localhost:$(SHAPER_PORT)"
+	$(DOCKER_COMPOSE) up -d --build
+	@echo "Dashboard:  http://localhost:$(DASHBOARD_PORT)"
+	@echo "Scheduler:  config/schedule.ini (cron ETL)"
+	@echo "Worker ETL: biomasa_etl_worker"
 
 docker-down:
 	$(DOCKER_COMPOSE) down
