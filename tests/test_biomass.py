@@ -60,3 +60,17 @@ def test_add_density_columns(
     out = add_density_columns(validos)
     assert "Residuo de Biomasa (Tn/Ha)" in out.columns
     assert "Produccion (Tn/Ha)" in out.columns
+
+def test_zero_surface_not_valid() -> None:
+    """Superficie <= 0 no debe marcarse como biomasa válida."""
+    df = pd.DataFrame({
+        "Cultivo": ["soja", "trigo"],
+        "Superficie (Ha)": [0.0, 100.0],
+        "Produccion (Tn)": [50.0, 300.0],
+        "Rendimiento (Tn/Ha)": [np.nan, 3.0],
+    })
+    df_ic = pd.DataFrame({"Cultivo": ["soja", "trigo"], "FR": [1.2, 1.8]})
+    out = add_validity_flags(compute_biomass(df, df_ic))
+    assert not bool(out.loc[out["Cultivo"] == "soja", "_valido_biomasa"].iloc[0])
+    assert bool(out.loc[out["Cultivo"] == "trigo", "_valido_biomasa"].iloc[0])
+    assert bool(out.loc[out["Cultivo"] == "soja", "_rendimiento_invalido"].iloc[0])
