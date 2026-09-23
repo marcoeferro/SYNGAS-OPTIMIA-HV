@@ -88,9 +88,11 @@ def add_validity_flags(
 
     Flags generados:
         _tiene_ic:          True si el cultivo tiene FR definido.
-        _rendimiento_invalido: True si la superficie es <= 0 o el
+        _rendimiento_invalido: True si superficie es nula/<=0 o el
                             rendimiento es nulo.
-        _valido_biomasa:    True si el residuo es finito y no nulo.
+        _valido_biomasa:    True si tiene IC, superficie usable (>0) y
+                            residuo finito. Es el criterio de inclusión
+                            en el dataset curado.
 
     Args:
         df: DataFrame con columnas requeridas.
@@ -104,14 +106,15 @@ def add_validity_flags(
     """
     df = df.copy()
     df[FLAG_TIENE_IC] = df[fr_col].notna()
+    # Superficie nula o no positiva, o rendimiento nulo → no usable para densidades
     df[FLAG_REND_INVALIDO] = (
-        df[sup_col].le(0) | df[rend_col].isna()
+        df[sup_col].isna() | df[sup_col].le(0) | df[rend_col].isna()
     )
+    residuo = pd.to_numeric(df[residuo_col], errors="coerce")
+    residuo_ok = residuo.notna() & np.isfinite(residuo.to_numpy(dtype="float64"))
+    # Válido solo si hay IC, superficie usable y residuo finito
     df[FLAG_VALIDO_BIOMASA] = (
-        df[residuo_col].notna()
-        & df[residuo_col].apply(
-            lambda v: np.isfinite(v) if pd.notna(v) else False
-        )
+        df[FLAG_TIENE_IC] & ~df[FLAG_REND_INVALIDO] & residuo_ok
     )
     return df
 
