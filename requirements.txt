@@ -1,9 +1,8 @@
 # =============================================================
 # Dependencias del pipeline ETL Biomasa Residual
 # =============================================================
-# Nota: el dashboard (Shaper) usa la imagen oficial taleshape/shaper,
-# que ya incluye DuckDB. No se declara como dependencia Python aquí.
-# Para desarrollo local de dashboards, instalar shaper-bin por separado.
+# Dashboard (Streamlit) se instala con: pip install -e ".[dashboard]"
+# o vía el grupo opcional en pyproject.toml.
 # =============================================================
 
 # --- Núcleo de datos ---
@@ -11,16 +10,17 @@ pandas>=2.0,<3.0
 numpy>=1.26,<3.0
 pyarrow>=14.0
 
-# --- DuckDB (lectura directa de Parquet para desarrollo local) ---
+# --- DuckDB (lectura directa de Parquet) ---
 duckdb>=1.0
 
 # --- Configuración ---
 PyYAML>=6.0
 
-# --- Visualización (generación de figuras estáticas en notebooks) ---
+# --- Visualización (notebooks + dashboard) ---
 plotly>=5.18
 matplotlib>=3.8
 seaborn>=0.13
+streamlit>=1.32
 
 # --- Excel (ingesta auxiliar) ---
 openpyxl>=3.1
