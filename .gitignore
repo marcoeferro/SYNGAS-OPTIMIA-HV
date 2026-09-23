@@ -37,3 +37,7 @@ Thumbs.db
 # --- Editores ---
 .vscode/
 .idea/
+
+#--- Enviroment Variables ---
+.env
+.env.*
