@@ -7,7 +7,7 @@ sobre DuckDB.
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 [![DuckDB](https://img.shields.io/badge/duckdb-1.0%2B-yellow)](https://duckdb.org/)
-[![Shaper](https://img.shields.io/badge/dashboard-shaper-purple)](https://taleshape.com/shaper/)
+[![Streamlit](https://img.shields.io/badge/dashboard-streamlit-FF4B4B)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -22,7 +22,7 @@ sobre DuckDB.
 - [Instalación](#instalación)
 - [Uso](#uso)
 - [Despliegue con Docker](#despliegue-con-docker)
-- [Dashboard con Shaper](#dashboard-con-shaper)
+- [Dashboard con Streamlit](#dashboard-con-streamlit)
 - [Tests](#tests)
 - [Decisiones metodológicas](#decisiones-metodológicas)
 
@@ -46,9 +46,9 @@ $$
 \text{FR} = \frac{1 - \text{IC}}{\text{IC}}
 $$
 
-Los resultados se exponen mediante **Shaper**, un dashboard SQL-first
-sobre DuckDB que lee directamente los archivos Parquet generados por
-el pipeline.
+Los resultados se exponen mediante un **dashboard Streamlit** multipágina
+que lee directamente los archivos Parquet generados por el pipeline
+(vía DuckDB).
 
 **Fuentes**:
 - Bolsa de Cereales de Córdoba (CBA).
@@ -82,7 +82,7 @@ graph TB
 
     subgraph Serving["Capa de Servicio"]
         D1[DuckDB]
-        D2[Shaper]
+        D2[Streamlit]
     end
 
     subgraph Consumer["Consumidor"]
@@ -157,7 +157,7 @@ proyecto-biomasa/
 │   ├── loaders/
 │   └── pipelines/
 ├── notebooks/                 Análisis exploratorio
-├── shaper/                    Configuración del dashboard
+├── dashboard/                 App Streamlit (Resumen / Exploración / Auditoría)
 │   ├── init.sql               SQL de inicialización (vistas)
 │   └── dashboards/            Archivos .dashboard.sql
 ├── tests/                     Suite de tests
@@ -178,7 +178,7 @@ proyecto-biomasa/
 | Procesamiento | pandas, numpy |
 | Almacenamiento | Parquet (pyarrow) |
 | Motor de consulta | DuckDB |
-| Dashboard | Shaper (SQL-first) |
+| Dashboard | Streamlit + DuckDB |
 | Configuración | PyYAML |
 | Testing | pytest |
 | Linting | ruff, mypy |
@@ -238,15 +238,15 @@ Genera:
 graph LR
     subgraph Host["Host de Despliegue"]
         subgraph Docker["Docker Engine"]
-            subgraph C1["Contenedor: Shaper"]
-                App["Shaper<br/>:5454"]
+            subgraph C1["Contenedor: Streamlit"]
+                App["Streamlit<br/>:8501"]
             end
             subgraph C2["Contenedor: ETL<br/>(job one-shot)"]
                 ETL["run_etl.py"]
             end
         end
         V1[(Volume: data/processed)]
-        V2[(Volume: shaper_data)]
+        V2[(data audit+processed)]
     end
 
     subgraph Externo["Externo"]
@@ -269,9 +269,9 @@ graph LR
 | Comando | Descripción |
 |---------|-------------|
 | `make docker-build` | Construye la imagen del ETL |
-| `make docker-up` | Levanta Shaper en background |
+| `make docker-up` / `docker compose up -d --build` | Levanta worker + scheduler + dashboard |
 | `make docker-down` | Detiene y elimina los contenedores |
-| `make docker-logs` | Sigue los logs de Shaper |
+| `make docker-logs` | Sigue los logs del dashboard |
 | `make docker-etl` | Ejecuta el pipeline ETL como job |
 | `make docker-clean` | Elimina imágenes y volúmenes |
 
@@ -284,29 +284,29 @@ make docker-build
 # 2. Ejecutar el ETL para generar Parquet
 make docker-etl
 
-# 3. Levantar Shaper
+# 3. Levantar dashboard Streamlit
 make docker-up
 ```
 
-Acceder al dashboard en `http://localhost:5454`[reference:3].
+Acceder al dashboard en `http://localhost:8501`[reference:3].
 
 ### Variables de entorno
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `LOG_LEVEL` | `INFO` | Nivel de logging |
-| `SHAPER_PORT` | `5454` | Puerto del dashboard |
+| `DASHBOARD_PORT` | `8501` | Puerto del dashboard Streamlit |
 
 ---
 
-## Dashboard con Shaper
+## Dashboard con Streamlit
 
-Shaper es un dashboard **SQL-first** sobre DuckDB. Los dashboards son
+Dashboard multipágina Streamlit de solo lectura sobre Parquet. Los dashboards son
 archivos `.dashboard.sql` versionables en git[reference:4].
 
 ### Inicialización
 
-El archivo `shaper/init.sql` se ejecuta al arrancar el contenedor y
+El archivo `dashboard/` se ejecuta al arrancar el contenedor y
 crea las vistas sobre los Parquet:
 
 ```sql
@@ -319,8 +319,8 @@ DuckDB lee Parquet directamente sin necesidad de importación previa[reference:5
 ### Desarrollo local de dashboards
 
 ```bash
-make install-shaper    # instala shaper-bin vía pip
-make shaper-dev        # shaper dev (watch mode)
+make install-dashboard    # instala streamlit vía pip
+make dashboard        # shaper dev (watch mode)
 ```
 
 El comando `shaper dev` levanta un preview en el navegador con
@@ -328,12 +328,66 @@ hot-reload de los archivos `.dashboard.sql`[reference:6].
 
 ### Crear un dashboard
 
-1. Crear `shaper/dashboards/mi_dashboard.dashboard.sql`.
+1. Crear `dashboard/pages/mi_dashboard.dashboard.sql`.
 2. Escribir consultas SQL contra las vistas (`biomasa`, `descartados`).
 3. `shaper dev` detecta el archivo y muestra preview.
 4. Commit y deploy vía CI/CD o `shaper` CLI.
 
 ---
+
+
+## Programación del ETL (sin Make, Windows incluido)
+
+El scraper/pipeline corre **dentro de Docker** según el cron definido en:
+
+```text
+config/schedule.ini
+```
+
+Ahí se edita la línea `schedule = ...` (formato cron de 5 campos). Zona horaria: variable `TZ` (por defecto `America/Argentina/Buenos_Aires` en compose / `.env`).
+
+### Arranque del stack (PowerShell + Docker Desktop)
+
+```powershell
+# Primera vez / siempre que cambie el código de la imagen
+.\scripts\Start-Stack.ps1
+
+# O equivalente:
+docker compose up -d --build
+```
+
+Servicios que quedan arriba:
+
+| Servicio | Rol |
+|----------|-----|
+| `etl_worker` | Contenedor permanente del ETL |
+| `scheduler` | Ofelia: dispara el ETL según `config/schedule.ini` |
+| `dashboard` | Streamlit en http://localhost:8501 |
+
+Tras cambiar el cron:
+
+```powershell
+docker compose restart scheduler
+```
+
+### Ejecución manual del ETL (una vez, sin esperar al cron)
+
+```powershell
+.\scripts\Run-Etl.ps1
+# o:
+docker compose --profile etl run --rm etl_pipeline
+```
+
+### Detener todo
+
+```powershell
+.\scripts\Stop-Stack.ps1
+# o:
+docker compose down
+```
+
+No se requiere `make` en Windows.
+
 
 ## Tests
 
