@@ -2,13 +2,43 @@
 # Orquestación de servicios del proyecto Biomasa Residual
 # =============================================================
 # Servicios:
-#   - etl_pipeline:  Ejecuta el pipeline ETL (job one-shot).
-#   - dashboard:     Shaper (imagen oficial) sirviendo los Parquet.
+#   - etl_worker:   Contenedor permanente donde Ofelia ejecuta el ETL.
+#   - etl_pipeline: Job one-shot manual (docker compose --profile etl run ...).
+#   - scheduler:    Ofelia lee config/schedule.ini y dispara el ETL.
+#   - dashboard:    Streamlit sobre los Parquet.
+#
+# Arranque típico (Windows / Linux / macOS, sin Make):
+#   docker compose up -d --build
+#
+# Nota permisos (Windows/Docker Desktop):
+#   Los bind mounts de ./data y ./logs suelen no ser escribibles por
+#   el usuario no-root de la imagen (appuser uid 1000). Por eso
+#   etl_worker y etl_pipeline corren como root dentro del contenedor.
 # =============================================================
 
 services:
   # -----------------------------------------------------------
-  # Pipeline ETL (se ejecuta bajo demanda)
+  # Worker ETL (permanece vivo; el scheduler ejecuta comandos aquí)
+  # -----------------------------------------------------------
+  etl_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: etl-biomasa:latest
+    container_name: biomasa_etl_worker
+    user: "0:0"
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+    restart: unless-stopped
+
+  # -----------------------------------------------------------
+  # Pipeline ETL one-shot (ejecución manual bajo demanda)
   # -----------------------------------------------------------
   etl_pipeline:
     build:
@@ -16,41 +46,58 @@ services:
       dockerfile: Dockerfile
     image: etl-biomasa:latest
     container_name: biomasa_etl
+    user: "0:0"
     volumes:
       - ./data:/app/data
       - ./config:/app/config:ro
       - ./logs:/app/logs
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
     profiles:
       - etl
     restart: "no"
 
   # -----------------------------------------------------------
-  # Dashboard Shaper (imagen oficial de Taleshape)
+  # Scheduler (Ofelia): cron configurado en config/schedule.ini
   # -----------------------------------------------------------
-  dashboard:
-    image: taleshape/shaper:latest
-    container_name: biomasa_shaper
-    ports:
-      - "${SHAPER_PORT:-5454}:5454"
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: biomasa_scheduler
+    depends_on:
+      - etl_worker
     volumes:
-      # Datos procesados (Parquet) — solo lectura
-      - ./data/processed:/data/processed:ro
-      # Datos de auditoría — solo lectura
-      - ./data/audit:/data/audit:ro
-      # Volumen persistente de Shaper (metadatos internos)
-      - shaper_data:/data/shaper
-      # SQL de inicialización: crea las vistas sobre los Parquet
-      - ./shaper/init.sql:/var/lib/shaper/init.sql:ro
-      # Dashboards (archivos .dashboard.sql)
-      - ./shaper/dashboards:/var/lib/shaper/dashboards:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/schedule.ini:/etc/ofelia/config.ini:ro
+    command: ["daemon", "--config=/etc/ofelia/config.ini"]
     environment:
-      - SHAPER_ADDR=0.0.0.0:5454
-      - SHAPER_LOG_LEVEL=${LOG_LEVEL:-info}
-      - SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
     restart: unless-stopped
 
-volumes:
-  shaper_data:
-    driver: local
+  # -----------------------------------------------------------
+  # Dashboard Streamlit
+  # -----------------------------------------------------------
+  dashboard:
+    image: etl-biomasa:latest
+    container_name: biomasa_dashboard
+    depends_on:
+      - etl_worker
+    command:
+      [
+        "streamlit",
+        "run",
+        "dashboard/app.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+        "--browser.gatherUsageStats=false",
+      ]
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    volumes:
+      - ./data:/app/data:ro
+      - ./dashboard:/app/dashboard:ro
+      - ./config:/app/config:ro
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+    restart: unless-stopped
