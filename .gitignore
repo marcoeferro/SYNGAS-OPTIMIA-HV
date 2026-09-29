@@ -41,3 +41,7 @@ Thumbs.db
 #--- Enviroment Variables ---
 .env
 .env.*
+
+#--- Docs ---
+docs/
+.docs/
