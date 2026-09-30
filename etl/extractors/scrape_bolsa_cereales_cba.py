@@ -24,6 +24,10 @@ from typing import Final
 import httpx
 import pandas as pd
 
+from etl.extractors.io_utils import (
+    RAW_STEM_CBA,
+    build_timestamped_filename,
+)
 
 # ====================== CONFIGURACIÓN ======================
 
@@ -32,9 +36,8 @@ SOURCE_URL: Final[str] = (
     "ETb905igM2BInC4LHdYVB4gBRI_aUtJaskzfkAJqzLpB-A?download=1"
 )
 
-OUTPUT_DIRECTORY: Final[Path] = Path("./data")
-OUTPUT_FILENAME: Final[str] = "datos_bolsa_granos_cba.csv"
-OUTPUT_PATH: Final[Path] = OUTPUT_DIRECTORY / OUTPUT_FILENAME
+OUTPUT_DIRECTORY: Final[Path] = Path("./data/raw")
+OUTPUT_STEM: Final[str] = RAW_STEM_CBA
 
 REQUEST_TIMEOUT: Final[float] = 30.0
 FOLLOW_REDIRECTS: Final[bool] = True
@@ -267,26 +270,36 @@ def save_data(
 
 # ====================== EJECUCIÓN ======================
 
-def main() -> None:
-    """Ejecuta el proceso completo de extracción y transformación."""
-    excel_content = download_excel(SOURCE_URL)
+def run_extractor(output_dir: Path | str | None = None) -> Path:
+    """
+    Ejecuta el proceso completo de extracción y transformación CBA.
 
+    Descarga el Excel, transforma las hojas y persiste un CSV con
+    nombre ``YYYYMMDDHHMMSS_datos_bolsa_granos_cba.csv``.
+
+    Args:
+        output_dir: Directorio de salida. Si es None, usa
+            ``OUTPUT_DIRECTORY``.
+
+    Returns:
+        Path absoluto del CSV persistido.
+    """
+    target_dir = Path(output_dir) if output_dir is not None else OUTPUT_DIRECTORY
+    output_path = target_dir / build_timestamped_filename(OUTPUT_STEM)
+
+    excel_content = download_excel(SOURCE_URL)
     dataframes = read_excel_sheets(
         excel_content=excel_content,
         sheet_names=SHEETS,
     )
-
     final_dataframe = transform_dataframes(dataframes)
-
-    save_data(
-        dataframe=final_dataframe,
-        output_path=OUTPUT_PATH,
-    )
+    save_data(dataframe=final_dataframe, output_path=output_path)
 
     print("DataFrame final creado y guardado.")
     print(f"Shape: {final_dataframe.shape}")
-    print(final_dataframe.head())
+    print(f"Archivo: {output_path}")
+    return output_path.resolve()
 
 
 if __name__ == "__main__":
-    main()
+    run_extractor()
