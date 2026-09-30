@@ -58,8 +58,13 @@ def save_processed_artifacts(
     """
     Persiste el conjunto de artefactos del pipeline.
 
+    El dataset de biomasa válida incluye columnas energéticas y
+    financieras PP30 cuando el pipeline las calculó aguas arriba.
+    Copia de auditoría en ``data/audit/biomasa_validos.parquet`` para
+    compatibilidad con el data_loader del dashboard.
+
     Args:
-        df_biomasa: Dataset curado de biomasa válida.
+        df_biomasa: Dataset curado de biomasa válida (+ energía/finanzas).
         df_descartado: Registros descartados en reconciliación.
         df_discrepancias: Discrepancias CBA vs MAGYP.
         processed_dir: Directorio de salida curada.
@@ -72,8 +77,17 @@ def save_processed_artifacts(
     audit_dir = Path(audit_dir)
 
     paths = {
-        "biomasa": save_parquet(df_biomasa, processed_dir / "biomasa_validos.parquet"),
-        "descartados": save_parquet(df_descartado, audit_dir / "descartados_reconciliacion.parquet"),
-        "discrepancias": save_parquet(df_discrepancias, audit_dir / "discrepancias_cba_vs_magyp.parquet"),
+        "biomasa": save_parquet(
+            df_biomasa, processed_dir / "biomasa_validos.parquet"
+        ),
+        "biomasa_audit": save_parquet(
+            df_biomasa, audit_dir / "biomasa_validos.parquet"
+        ),
+        "descartados": save_parquet(
+            df_descartado, audit_dir / "descartados_reconciliacion.parquet"
+        ),
+        "discrepancias": save_parquet(
+            df_discrepancias, audit_dir / "discrepancias_cba_vs_magyp.parquet"
+        ),
     }
     return paths
