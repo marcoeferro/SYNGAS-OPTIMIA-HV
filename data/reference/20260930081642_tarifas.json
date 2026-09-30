@@ -1,0 +1,62 @@
+{
+  "descripcion": "Cuadros tarifarios regionales de Argentina para Generacion Distribuida (Tarifas Comerciales T2/T3)",
+  "ultima_actualizacion": "2026-09",
+  "unidad_moneda": "ARS",
+  "parametros_pp30": {
+    "consumo_especifico_kg_kwh": 1.1,
+    "humedad_pct_default": 12.0,
+    "factor_autoconsumo_default": 0.6,
+    "potencia_nominal_kw": 25.0
+  },
+  "distribuidoras": {
+    "EPEC_CORDOBA": {
+      "provincia": "Córdoba",
+      "tarifa_compra_kwh": 210.0,
+      "tarifa_inyeccion_kwh": 42.0,
+      "cargo_fijo_mensual": 12500.0
+    },
+    "EPE_SANTA_FE": {
+      "provincia": "Santa Fe",
+      "tarifa_compra_kwh": 175.0,
+      "tarifa_inyeccion_kwh": 38.0,
+      "cargo_fijo_mensual": 11200.0
+    },
+    "EDEMSA_MENDOZA": {
+      "provincia": "Mendoza",
+      "tarifa_compra_kwh": 135.0,
+      "tarifa_inyeccion_kwh": 33.0,
+      "cargo_fijo_mensual": 9800.0
+    },
+    "EDENOR_AMBA": {
+      "provincia": "Buenos Aires / AMBA",
+      "tarifa_compra_kwh": 85.0,
+      "tarifa_inyeccion_kwh": 26.5,
+      "cargo_fijo_mensual": 8500.0
+    }
+  },
+  "provincia_a_distribuidora": {
+    "cordoba": "EPEC_CORDOBA",
+    "santa fe": "EPE_SANTA_FE",
+    "mendoza": "EDEMSA_MENDOZA",
+    "buenos aires": "EDENOR_AMBA"
+  },
+  "cultivos_biomasa": {
+    "maiz": {
+      "pci_kcal_kg": 3900,
+      "consumo_especifico_kg_kwh": 1.1
+    },
+    "trigo": {
+      "pci_kcal_kg": 3800,
+      "consumo_especifico_kg_kwh": 1.1
+    },
+    "soja": {
+      "pci_kcal_kg": 3700,
+      "consumo_especifico_kg_kwh": 1.1
+    },
+    "sorgo": {
+      "pci_kcal_kg": 3850,
+      "consumo_especifico_kg_kwh": 1.1
+    }
+  },
+  "generado_en": "2026-09-30T08:16:42"
+}
