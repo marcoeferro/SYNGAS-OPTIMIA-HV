@@ -31,6 +31,11 @@ import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
 
+from etl.extractors.io_utils import (
+    RAW_STEM_MAGYP,
+    build_timestamped_filename,
+)
+
 # ====================== CONFIGURACIÓN ======================
 
 BASE_URL: Final[str] = "https://datosestimaciones.magyp.gob.ar"
@@ -113,8 +118,7 @@ OUTPUT_ENCODING: Final[str] = "utf-8-sig"
 # ====================== ARCHIVOS ======================
 
 OUTPUT_DIRECTORY: Final[Path] = Path("./data/raw")
-OUTPUT_FILENAME: Final[str] = "datos_estimaciones.csv"
-OUTPUT_PATH: Final[Path] = OUTPUT_DIRECTORY / OUTPUT_FILENAME
+OUTPUT_STEM: Final[str] = RAW_STEM_MAGYP
 
 PROVINCIAS_CACHE_PATH: Final[Path] = (
     OUTPUT_DIRECTORY / "estimaciones_agricolas_provincias.json"
@@ -923,31 +927,41 @@ def save_data(
 
 # ====================== EJECUCIÓN ======================
 
-def main() -> None:
-    """Ejecuta el proceso completo de extracción y consolidación."""
+def run_extractor(output_dir: Path | str | None = None) -> Path:
+    """
+    Ejecuta el proceso completo de extracción y consolidación MAGyP.
+
+    Persiste un CSV con nombre
+    ``YYYYMMDDHHMMSS_datos_estimaciones.csv``.
+
+    Args:
+        output_dir: Directorio de salida. Si es None, usa
+            ``OUTPUT_DIRECTORY``.
+
+    Returns:
+        Path absoluto del CSV persistido.
+    """
+    target_dir = Path(output_dir) if output_dir is not None else OUTPUT_DIRECTORY
+    output_path = target_dir / build_timestamped_filename(OUTPUT_STEM)
+
     with httpx.Client(
         headers=HEADERS,
         timeout=HTTP_TIMEOUT,
         follow_redirects=FOLLOW_REDIRECTS,
     ) as client:
-
-        # Una sola petición GET a reportes.php → hasta + crop_ids
         hasta, crop_ids = get_hasta_and_crop_ids(client)
         print(f"Período hasta: {hasta}")
         print(f"Cultivos detectados ({len(crop_ids)}): {crop_ids}")
 
         provincias_response = get_provincias(client)
-
         departamentos_response = get_departamentos(
             client,
             provincias_response,
         )
-
         provincias, departamentos = construir_catalogos(
             provincias_response,
             departamentos_response,
         )
-
         dataframes = descargar_todos_los_datos(
             client=client,
             provincias=provincias,
@@ -957,16 +971,13 @@ def main() -> None:
         )
 
     resultado = combine_dataframes(dataframes)
-
-    save_data(
-        dataframe=resultado,
-        output_path=OUTPUT_PATH,
-    )
+    save_data(dataframe=resultado, output_path=output_path)
 
     print("Datos de MAGyP descargados y guardados.")
     print(f"Shape: {resultado.shape}")
-    print(f"Archivo: {OUTPUT_PATH}")
+    print(f"Archivo: {output_path}")
+    return output_path.resolve()
 
 
 if __name__ == "__main__":
-    main()
+    run_extractor()
