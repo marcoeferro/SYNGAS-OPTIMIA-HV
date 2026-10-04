@@ -778,6 +778,7 @@ def fetch_distribuidora(
     max_downloads: int | None = MAX_DOWNLOADS_PER_SOURCE,
     stop_at_first: bool = True,
     index_cache: dict[str, bytes | None] | None = None,
+    desde: str | None = None,
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     """
     Descarga y procesa los cuadros de una distribuidora.
@@ -807,12 +808,16 @@ def fetch_distribuidora(
         for url in urls:
             if max_downloads is not None and downloads >= max_downloads:
                 break
+            # Documentos anteriores al inicio del historial (los índices de
+            # OCEBA listan cuadros desde 2020): se omiten sin descargarlos.
+            name_vig = vigencia_from_name(url)
+            if desde is not None and name_vig is not None and name_vig < desde:
+                continue
             best = best_by_source.get(fuente)
             if stop_at_first and best is not None:
                 # Se siguen procesando sólo documentos de la misma vigencia
                 # (varios anexos por mes: pleno, con subsidio, ...); los
                 # más antiguos no pueden ganar.
-                name_vig = vigencia_from_name(url)
                 if name_vig is not None and name_vig < vig(best):
                     break
             content = try_download(url, downloader)
@@ -990,6 +995,7 @@ def run_extractor(
             max_downloads=None if historial else MAX_DOWNLOADS_PER_SOURCE,
             stop_at_first=not historial,
             index_cache=index_cache,
+            desde=desde if historial else None,
         )
         parsed_by_code[code] = chosen
         records.extend(history_record(code, p) for p in processed)
