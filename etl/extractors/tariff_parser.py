@@ -110,6 +110,10 @@ INJECTION_CONTEXT: Final[re.Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 INJECTION_CONTEXT_LINES: Final[int] = 8
+# Encabezado de tabla con columnas de baja y media tensión en paralelo.
+BT_MT_HEADER: Final[re.Pattern[str]] = re.compile(
+    r"baja\s+tensi[oó]n\s*\|\s*media\s+tensi[oó]n", re.IGNORECASE
+)
 # Cuadros especiales (régimen subsidiado o de una categoría puntual): si el
 # título del documento los nombra, no se usan como tarifa de compra.
 SPECIAL_DOCUMENT: Final[re.Pattern[str]] = re.compile(
@@ -357,9 +361,7 @@ def find_purchase_candidates(
         nearby = "\n".join(lines[max(0, i - 4): i + 1])
         if EXCLUDE_CONTEXT.search(nearby):
             continue
-        if not injection_document and INJECTION_CONTEXT.search(
-            "\n".join(lines[max(0, i - INJECTION_CONTEXT_LINES): i + 1])
-        ):
+        if not injection_document and _under_injection_header(lines, i):
             continue
         # Un PP30 (25 kW) se conecta en baja tensión.
         if _voltage_level(lines, i) in {"media", "alta"}:
@@ -367,7 +369,12 @@ def find_purchase_candidates(
         score = _category_score(context)
         if score == 0:
             continue
-        values = _plausible(line_kwh_values(line))
+        raw_values = line_kwh_values(line)
+        if _bt_mt_columns(lines, i) and len(raw_values) >= 2 and len(raw_values) % 2 == 0:
+            # Columnas "Baja Tensión | Media Tensión" lado a lado (ECSAPEM):
+            # la primera mitad de los importes es la de baja tensión.
+            raw_values = raw_values[: len(raw_values) // 2]
+        values = _plausible(raw_values)
         if not values:
             continue
         if RESTO.search(_label(lines, i)):
@@ -379,15 +386,35 @@ def find_purchase_candidates(
     return cands
 
 
+def _bt_mt_columns(lines: list[str], i: int) -> bool:
+    """¿Hay arriba un encabezado de columnas "Baja Tensión | Media Tensión"?"""
+    for w in lines[max(0, i - CONTEXT_LINES): i]:
+        m = BT_MT_HEADER.search(w)
+        if m and not KWH_UNIT.search(w[m.end():]):
+            return True
+    return False
+
+
+def _under_injection_header(lines: list[str], i: int) -> bool:
+    """
+    ¿La línea está debajo del encabezado de una tabla de inyección?
+
+    Sólo cuentan como encabezado las líneas sin importes en $/kWh: una fila
+    "Cargo variable por energía inyectada | $/kWh | 107,5" es un renglón
+    más del cuadro y no convierte en inyección a las filas T2 que le siguen
+    (ECSAPEM).
+    """
+    window = lines[max(0, i - INJECTION_CONTEXT_LINES): i]
+    return any(INJECTION_CONTEXT.search(w) and not KWH_UNIT.search(w) for w in window)
+
+
 def find_injection_values(lines: list[str]) -> tuple[list[float], list[str]]:
     """Importes de inyección (usuario-generador) y las líneas usadas."""
     vals: list[float] = []
     used: list[str] = []
     for i, line in enumerate(lines):
         label = _label(lines, i)
-        in_table = INJECTION_CONTEXT.search(
-            "\n".join(lines[max(0, i - INJECTION_CONTEXT_LINES): i])
-        )
+        in_table = _under_injection_header(lines, i)
         if not (INJECTION_LINE.search(label) or in_table) or EXCLUDE_INJECTION.search(label):
             continue
         if not _has_kwh_unit(lines, i):

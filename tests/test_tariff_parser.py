@@ -246,3 +246,32 @@ def test_refsa_unidad_kw_hs() -> None:
         "Período Horas Restantes [$/KW-Hs] 135,2848$\n"
     )
     assert parse_tariff_text(texto)["tarifa_compra_kwh"] == 135.2848
+
+
+# ECSAPEM (Misiones) 2026-05: columnas de baja y media tensión en paralelo
+# y hoja de generación distribuida con filas "energía inyectada".
+ECSAPEM = """\
+T3 | GRANDES DEMANDAS CON CONSUMOS MENORES A 300 KW | Nivel de Tensión de Suministro: | Baja Tensión | Media Tensión
+Nivel de Tensión de Suministro: | Baja Tensión | Media Tensión | UNIDAD | VAD | MEM | TOTAL
+UNIDAD | VAD | MEM | TOTAL | VAD | MEM | TOTAL
+Cargo Variable por Consumo de Energía | Cargo Variable por Consumo de Energía
+Período Horas Punta | $/KWh. | 0 | 109,4238 | 109,423776 | 0 | 99,4512 | 99,451241
+Período Horas Resto | $/KWh. | 0 | 106,0597 | 106,059715 | 0 | 96,3938 | 96,39377
+Período Horas Valle Nocturno | $/KWh. | 0 | 104,4892 | 104,489246 | 0 | 94,9662 | 94,966216
+"""
+
+
+def test_ecsapem_columnas_bt_mt_toma_baja_tension() -> None:
+    out = parse_tariff_text(ECSAPEM)
+    assert out["tarifa_compra_kwh"] == pytest.approx(106.06, abs=0.01)
+
+
+def test_fila_de_inyeccion_no_arrastra_filas_siguientes() -> None:
+    texto = (
+        "T2 | MEDIANAS DEMANDAS | UNIDAD | TOTAL\n"
+        "Cargo variable por energia inyectada | $/KWh | 80,5\n"
+        "Período Horas Resto | $/KWh. | 106,2884\n"
+    )
+    out = parse_tariff_text(texto)
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(80.5)
+    assert out["tarifa_compra_kwh"] == pytest.approx(106.2884)
