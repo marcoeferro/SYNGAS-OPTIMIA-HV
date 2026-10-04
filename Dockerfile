@@ -4,6 +4,8 @@
 # Una sola imagen sirve para:
 #   - etl_worker / etl_pipeline (CMD por defecto = ETL)
 #   - dashboard   (command override en docker-compose)
+#
+# Dependencias: solo pyproject.toml (PEP 621). No hay requirements.txt.
 # =============================================================
 
 # --- Etapa 1: Builder ---
@@ -15,8 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /build/wheels -r requirements.txt
+# Metadatos + código mínimo para resolver deps del paquete
+COPY pyproject.toml README.md ./
+COPY etl/ etl/
+COPY dashboard/ dashboard/
+
+# Rueda el proyecto con el extra de dashboard (misma imagen para ETL y UI)
+RUN pip wheel --no-cache-dir --wheel-dir /build/wheels ".[dashboard]"
 
 # --- Etapa 2: Runtime ---
 FROM python:3.11-slim
@@ -28,14 +35,13 @@ RUN useradd -m -u 1000 appuser \
     && chown -R appuser:appuser /app
 
 COPY --from=builder /build/wheels /wheels
-COPY --from=builder /build/requirements.txt .
 RUN pip install --no-cache /wheels/*
 
 # Código del proyecto (paquete etl + dashboard)
 COPY --chown=appuser:appuser . .
 
-# Instalar el paquete local para que `import etl.*` funcione siempre
-# (no depende solo del cwd / PYTHONPATH)
+# Reinstalar el paquete local editable-like sin deps (ya están en /wheels)
+# para que `import etl.*` y el entrypoint resuelvan siempre
 USER root
 RUN pip install --no-cache-dir --no-deps .
 USER appuser

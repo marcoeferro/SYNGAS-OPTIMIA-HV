@@ -31,6 +31,5 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# --- Documentación ---
+# --- Documentación (README se incluye: lo exige pyproject.toml) ---
 docs/
-README.md

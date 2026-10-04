@@ -164,8 +164,7 @@ proyecto-biomasa/
 ├── Dockerfile                 Imagen del pipeline ETL
 ├── docker-compose.yml         Orquestación (ETL + Shaper)
 ├── Makefile
-├── pyproject.toml
-└── requirements.txt
+└── pyproject.toml
 ```
 
 ---
