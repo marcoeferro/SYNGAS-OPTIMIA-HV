@@ -275,3 +275,44 @@ def test_fila_de_inyeccion_no_arrastra_filas_siguientes() -> None:
     out = parse_tariff_text(texto)
     assert out["tarifa_inyeccion_kwh"] == pytest.approx(80.5)
     assert out["tarifa_compra_kwh"] == pytest.approx(106.2884)
+
+
+# OCEBA (EDEN) 2026-09, anexo 3: la tarifa a distribuidores municipales
+# (mayorista) precede a la de usuarios finales dentro de T3 BT.
+OCEBA_MUNICIPALES = """\
+CUADRO TARIFARIO DE EDEN S.A.
+T3 - GRANDES DEMANDAS
+T3BT - SUMINISTROS EN BAJA TENSIÓN
+SUMINISTROS >= a 50 kW de demanda (Distribuidores Municipales)
+CARGOS VARIABLES
+DISTRIBUIDORES MUNICIPALES(Usuarios finales < a 10 kW T4R.)
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN PICO 117,5969 $/kWh
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 114,9777 $/kWh
+DIST. MUNICIPALES (Usuarios finales Suministros entre 10 y 300kW de Demanda)
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 124,0227 $/kWh
+USUARIOS FINALES Suministros entre 50 y 300kW de Demanda
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN PICO 137,9288 $/kWh
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 135,0549 $/kWh
+USUARIOS FINALES Suministros Mayor o igual a 300 kW de Demanda
+CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 149,5025 $/kWh
+"""
+
+
+def test_oceba_excluye_distribuidores_municipales() -> None:
+    out = parse_tariff_text(OCEBA_MUNICIPALES)
+    assert out["tarifa_compra_kwh"] == pytest.approx(135.0549)
+
+
+def test_pdf_con_decimales_partidos() -> None:
+    """OCEBA 2025-09: el PDF parte los importes ("104,10 37", "9 ,0896")."""
+    texto = OCEBA_MUNICIPALES.replace("135,0549", "104,10 37")
+    assert parse_tariff_text(texto)["tarifa_compra_kwh"] == pytest.approx(104.1037)
+
+
+def test_cantidad_de_kwh_no_es_precio() -> None:
+    """EDEMSA 2025-09: "hasta 800 kWh mes $/kWh" no es una tarifa de 800."""
+    texto = (
+        "T2 - MEDIANAS DEMANDAS - BAJA TENSIÓN\n"
+        "-Baja (de 23 a 14hs.) hasta 800 kWh mes $/kWh\n"
+    )
+    assert parse_tariff_text(texto)["tarifa_compra_kwh"] is None
