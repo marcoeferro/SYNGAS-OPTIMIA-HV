@@ -221,3 +221,28 @@ def test_hoja_de_tarifas_de_inyeccion() -> None:
     assert out["documento_inyeccion"]
     assert out["tarifa_compra_kwh"] is None
     assert out["tarifa_inyeccion_kwh"] == 67.188
+
+
+def test_indice_de_categorias_no_marca_documento_especial() -> None:
+    # EPEN 2026-08: el PDF empieza con el índice de tarifas.
+    texto = (
+        "TARIFA Nº 1 - PEQUEÑAS DEMANDAS RESIDENCIALES - ESTACIONALES Y ELECTRODEPENDIENTES\n"
+        "TARIFA Nº 3 - GRANDES DEMANDAS (CAPACIDADES DE SUMINISTRO IGUALES O SUPERIORES A 50 kW)\n"
+        "Servicio en Baja Tensión\n"
+        "Capacidad de suministro menor a 300 KW\n"
+        "Por consumo de energía en período horas restante 359,733 $/KWh\n"
+    )
+    out = parse_tariff_text(texto)
+    assert not out["documento_especial"]
+    assert out["tarifa_compra_kwh"] == 359.733
+
+
+def test_refsa_unidad_kw_hs() -> None:
+    texto = (
+        "TARIFA 3 - GRANDES DEMANDAS < 300 KW\n"
+        "Grandes Demandas En Baja Tensión <300 Kw\n"
+        "Por Consumo de Energía : Período Horas de Punta [$/KW-Hs] 139,1754$\n"
+        "Período Horas de Valle (Nocturnas) [$/KW-Hs] 133,4738$\n"
+        "Período Horas Restantes [$/KW-Hs] 135,2848$\n"
+    )
+    assert parse_tariff_text(texto)["tarifa_compra_kwh"] == 135.2848

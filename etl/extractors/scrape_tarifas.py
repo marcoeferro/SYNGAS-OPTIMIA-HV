@@ -144,19 +144,10 @@ PARAMETROS_PP30_DEFAULT: Final[dict[str, float]] = {
     "fraccion_recuperable_default": 0.5,
 }
 
-# Valores cargados a mano en versiones anteriores del proyecto, NO
-# verificados contra los cuadros vigentes. Sólo se usan si nunca se pudo
-# extraer un valor real y quedan marcados como ``baseline_manual``.
-BASELINE_MANUAL: Final[dict[str, dict[str, float]]] = {
-    "EPEC": {"tarifa_compra_kwh": 210.0, "tarifa_inyeccion_kwh": 42.0,
-             "cargo_fijo_mensual": 12500.0},
-    "EPE": {"tarifa_compra_kwh": 175.0, "tarifa_inyeccion_kwh": 38.0,
-            "cargo_fijo_mensual": 11200.0},
-    "EDEMSA": {"tarifa_compra_kwh": 135.0, "tarifa_inyeccion_kwh": 33.0,
-               "cargo_fijo_mensual": 9800.0},
-    "EDENOR": {"tarifa_compra_kwh": 85.0, "tarifa_inyeccion_kwh": 26.5,
-               "cargo_fijo_mensual": 8500.0},
-}
+# Los valores cargados a mano en versiones anteriores del proyecto (no
+# verificados) ya no se usan: una distribuidora sin cuadro extraído queda
+# ``sin_dato`` en lugar de usar un número inventado. ``STATUS_BASELINE``
+# se mantiene para reconocer JSON viejos.
 
 
 # ====================== PARSEO ======================
@@ -202,21 +193,31 @@ def vigencia_from_name(url: str) -> str | None:
 
 def vigencia_explicit(text: str) -> str | None:
     """
-    Vigencia declarada en el texto ("vigencia a partir del 1° de junio de
-    2026", "Vigente a partir del 1° de Mayo de 2026", "a partir de los
-    consumos del ... de junio 2026"). Tiene prioridad sobre el nombre del
-    archivo, que a veces indica el mes de publicación y no el de vigencia.
+    Vigencia declarada en el texto.
+
+    Reconoce "vigencia a partir del 1° de junio de 2026", "Vigencia: 01 de
+    Mayo al 31 de Julio de 2026" (se toma el **inicio**: mayo), "a partir
+    del 01/06/26" y "a partir de los consumos del ... de junio 2026". Tiene
+    prioridad sobre el nombre del archivo, que a veces indica el mes de
+    publicación y no el de vigencia.
     """
     head = text[:4000].lower()
-    pattern = (
-        r"(?:vigen\w*|a\s+partir)[^\n]{0,60}?\b("
-        + "|".join(MESES)
-        + r")\b\s*(?:de\s+|del\s+)?(20\d{2})"
-    )
-    for m in re.finditer(pattern, head):
-        ym = _ym(int(m.group(2)), MESES[m.group(1)])
-        if ym:
-            return ym
+    month_re = r"\b(" + "|".join(MESES) + r")\b"
+    for m in re.finditer(r"vigen\w*|a\s+partir", head):
+        window = head[m.end(): m.end() + 120]
+        numeric = re.search(r"\b([0-3]?\d)/([01]?\d)/((?:20)?\d{2})\b", window)
+        month = re.search(month_re, window)
+        if numeric and (month is None or numeric.start() < month.start()):
+            year = int(numeric.group(3))
+            ym = _ym(year if year > 100 else 2000 + year, int(numeric.group(2)))
+            if ym:
+                return ym
+        if month:
+            year = re.search(r"\b(20\d{2})\b", window[month.end():])
+            if year:
+                ym = _ym(int(year.group(1)), MESES[month.group(1)])
+                if ym:
+                    return ym
     return None
 
 
@@ -301,7 +302,7 @@ def merge_distribuidora(
     Combina valores extraídos, previos y baseline con trazabilidad por campo.
 
     Prioridad por campo: valor extraído en esta corrida (si pasa la
-    validación) → valor previo → baseline manual → ``None``.
+    validación) → valor extraído en una corrida previa → ``None``.
 
     Args:
         code: Código de distribuidora.
@@ -314,7 +315,6 @@ def merge_distribuidora(
         Bloque de distribuidora para el JSON de referencia.
     """
     info = DISTRIBUIDORAS[code]
-    baseline = BASELINE_MANUAL.get(code, {})
     block: dict[str, Any] = {
         "nombre": info["nombre"],
         "jurisdiccion": info["jurisdiccion"],
@@ -328,15 +328,17 @@ def merge_distribuidora(
         if new is not None and field not in rejected:
             block[field] = new
             estado[field] = STATUS_PARSED
-        elif previous is not None and previous.get(field) is not None:
+        elif (
+            previous is not None
+            and previous.get(field) is not None
+            and _is_parsed_status(
+                prev_estado.get(field, previous.get("parse_status", STATUS_BASELINE))
+            )
+        ):
+            # Valor extraído en una corrida anterior: se conserva como fallback.
+            # Los valores ``baseline_manual`` de JSON viejos no se heredan.
             block[field] = previous[field]
-            prev = prev_estado.get(field, previous.get("parse_status", STATUS_BASELINE))
-            # Un valor heredado conserva su origen: baseline sigue siendo
-            # baseline; un valor extraído antes pasa a ser fallback.
-            estado[field] = STATUS_BASELINE if prev == STATUS_BASELINE else STATUS_FALLBACK
-        elif baseline.get(field) is not None:
-            block[field] = baseline[field]
-            estado[field] = STATUS_BASELINE
+            estado[field] = STATUS_FALLBACK
         else:
             block[field] = None
             estado[field] = STATUS_MISSING
@@ -759,6 +761,7 @@ def history_record(code: str, parsed: dict[str, Any]) -> dict[str, Any]:
         "tarifa_inyeccion_kwh": parsed.get("tarifa_inyeccion_kwh"),
         "cargo_fijo_mensual": parsed.get("cargo_fijo_mensual"),
         "seccion_compra": parsed.get("seccion_compra"),
+        "puntaje_compra": parsed.get("puntaje_compra"),
         "n_valores_compra": len(parsed.get("valores_compra_detectados", [])),
         "n_valores_inyeccion": len(parsed.get("valores_inyeccion_detectados", [])),
         "fuente_tipo": parsed.get("fuente_tipo"),
@@ -896,7 +899,9 @@ def build_reference_payload(
     registro ``etl/reference/distribuidoras.py`` (fuente de verdad).
 
     Args:
-        parsed_by_code: Código → documento vigente elegido (o None).
+        parsed_by_code: Código → documento vigente elegido (o None). Las
+            distribuidoras ausentes (corrida con ``--solo``) conservan el
+            bloque del JSON previo.
         previous: JSON previo o None.
         ts: Timestamp de la corrida.
 
@@ -923,6 +928,10 @@ def build_reference_payload(
     }
     prev_dist = (previous or {}).get("distribuidoras", {})
     for code in DISTRIBUIDORAS:
+        if code not in parsed_by_code and code in prev_dist:
+            # No procesada en esta corrida (``--solo``): se conserva tal cual.
+            payload["distribuidoras"][code] = prev_dist[code]
+            continue
         payload["distribuidoras"][code] = merge_distribuidora(
             code, parsed_by_code.get(code), prev_dist.get(code), fecha
         )

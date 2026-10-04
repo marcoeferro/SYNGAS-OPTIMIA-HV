@@ -352,3 +352,31 @@ def test_vigencia_carpetas_oceba() -> None:
     base = "https://oceba.gba.gov.ar/nueva_web/adjuntos/"
     assert st.vigencia_from_name(base + "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf") == "2025-05"
     assert st.vigencia_from_name(base + "ct202609/IF-2026-27723597-GDEBA-GMOCEBA.pdf") == "2026-09"
+
+
+def test_serie_elige_cuadro_pleno_por_mes() -> None:
+    import pandas as pd
+
+    from etl.loaders.tariff_history import latest_by_distribuidora, tariff_series
+
+    h = pd.DataFrame({
+        "distribuidora": ["EDEN"] * 3 + ["EPEC"],
+        "vigencia": ["2026-09", "2026-09", "2026-08", None],
+        "tarifa_compra_kwh": [47.4, 114.98, 110.0, 99.0],
+        "puntaje_compra": [4, 4, 4, 4],
+        "fecha_extraccion": ["x"] * 4,
+    })
+    serie = tariff_series(h)
+    assert serie.loc["2026-09", "EDEN"] == 114.98
+    assert "EPEC" not in serie.columns          # sin vigencia: fuera de la serie
+    assert latest_by_distribuidora(h)["tarifa_compra_kwh"].tolist() == [114.98]
+
+
+@pytest.mark.parametrize(("texto", "esperado"), [
+    ("Vigencia: 01 de Mayo al 31 de Julio de 2026", "2026-05"),            # EDEMSA
+    ("vigencia a partir del 1° de junio de 2026", "2026-06"),              # EDENOR
+    ("a partir del 01/06/26 con demanda de Potencia < 10 KW", "2026-06"),  # REFSA
+    ("Vigencia: | a partir del 01 de Octubre de 2025 | 2025-10-01", "2025-10"),  # EJESA
+])
+def test_vigencia_explicita(texto: str, esperado: str) -> None:
+    assert st.vigencia_explicit(texto) == esperado

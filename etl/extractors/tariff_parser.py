@@ -51,7 +51,8 @@ CONTEXT_LINES: Final[int] = 15
 AR_NUMBER: Final[str] = r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+,\d+|\d+"
 EN_NUMBER: Final[str] = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+|\d+"
 KWH_UNIT: Final[re.Pattern[str]] = re.compile(
-    r"\$\s*/\s*kwh|\[\s*\$\s*/\s*kwh|\bpor\s+(?:cada\s+)?kwh|\$\s*kwh",
+    r"\$\s*/\s*kwh|\[\s*\$\s*/\s*kwh|\bpor\s+(?:cada\s+)?kwh|\$\s*kwh|"
+    r"\$\s*/\s*kw\s*-\s*hs?\b",  # REFSA: "[$/KW-Hs]"
     re.IGNORECASE,
 )
 OTHER_UNIT: Final[re.Pattern[str]] = re.compile(
@@ -441,8 +442,13 @@ def parse_tariff_text(text: str) -> dict[str, Any]:
         "lineas_compra": [],
         "lineas_inyeccion": [],
     }
+    # Título: primeras líneas sin celdas, sin el nombre de hoja y sin los
+    # encabezados de categoría ("TARIFA Nº 1 - ... ELECTRODEPENDIENTES" en
+    # un índice no hace especial al documento).
     title = "\n".join(
-        ln for ln in lines[:TITLE_LINES] if "|" not in ln and not ln.startswith("# HOJA")
+        ln for ln in lines[:TITLE_LINES]
+        if "|" not in ln and not ln.startswith("# HOJA")
+        and not re.match(r"\s*TARIFA\b", ln, re.IGNORECASE)
     )
     injection_document = bool(INJECTION_CONTEXT.search(title)) and bool(
         re.search(r"kwh", title, re.IGNORECASE)
