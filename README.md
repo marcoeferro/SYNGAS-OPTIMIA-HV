@@ -34,17 +34,26 @@ Este proyecto implementa un pipeline ETL que integra dos fuentes oficiales
 de datos agrícolas de Argentina y calcula la **biomasa residual** generada
 por los principales cultivos extensivos a nivel departamental.
 
-La biomasa residual se estima como:
+La biomasa residual (en materia seca) se estima como:
 
 $$
-\text{Biomasa Residual} = \text{Producción} \times \text{FR}
+\text{Biomasa Residual} = \text{Producción} \times \text{MS} \times \text{FR}
 $$
+
+donde MS es la fracción de materia seca del producto cosechado (la
+producción se informa a humedad comercial o en fresco),
 
 donde el factor de residuo se deriva del índice de cosecha:
 
 $$
 \text{FR} = \frac{1 - \text{IC}}{\text{IC}}
 $$
+
+El residuo **recuperable** (50 % por defecto) se convierte a energía con
+un gasificador APL PP30 y se valoriza bajo balance neto (Ley 27.424). Los
+resultados energéticos y económicos se expresan **por año**, como
+promedio de las últimas 5 campañas completas. Ver
+[`REPORTE_CAMBIOS.md`](REPORTE_CAMBIOS.md) para el detalle metodológico.
 
 Los resultados se exponen mediante un **dashboard Streamlit** multipágina
 que lee directamente los archivos Parquet generados por el pipeline
@@ -219,12 +228,20 @@ make docker-up
 # Local
 make etl
 
+# Sin descargar fuentes ni tarifas (usa lo último en disco)
+python -m etl.pipelines.run_etl --skip-extract --skip-tarifas
+
 # Con Docker (job one-shot)
 make docker-etl
 ```
 
 Genera:
-- `data/processed/biomasa_validos.parquet` — dataset curado.
+- `data/processed/biomasa_validos.parquet` — dataset curado por campaña
+  (biomasa, residuo recuperable, kWh, ARS).
+- `data/processed/potencial_energetico_anual.parquet` — potencial
+  energético y económico anual (período de referencia).
+- `data/reference/YYYYMMDDHHMMSS_tarifas.json` — tarifas extraídas de los
+  cuadros tarifarios, con origen por campo (`estado_campos`).
 - `data/audit/descartados_reconciliacion.parquet` — auditoría.
 - `data/audit/discrepancias_cba_vs_magyp.parquet` — discrepancias.
 

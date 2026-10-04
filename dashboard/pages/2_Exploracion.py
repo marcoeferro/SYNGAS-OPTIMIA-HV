@@ -6,7 +6,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from dashboard.data_loader import filter_biomasa, format_tn, load_biomasa
+from dashboard.data_loader import (
+    default_campaigns,
+    filter_biomasa,
+    format_tn,
+    load_biomasa,
+)
 
 st.set_page_config(page_title="Exploración | Biomasa", page_icon="🔍", layout="wide")
 st.title("Exploración")
@@ -29,7 +34,7 @@ with st.sidebar:
     sel_cult = st.multiselect("Cultivo", cultivos, default=[])
 
     campanas = sorted(df["Campaña"].dropna().unique().tolist())
-    default_camp = campanas[-10:] if len(campanas) >= 10 else campanas
+    default_camp = default_campaigns(df, 10)
     sel_camp = st.multiselect("Campaña", campanas, default=default_camp)
 
 filtered = filter_biomasa(
