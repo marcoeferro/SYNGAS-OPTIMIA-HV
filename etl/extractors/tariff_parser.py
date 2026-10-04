@@ -74,7 +74,7 @@ CATEGORY_SCORES: Final[list[tuple[re.Pattern[str], int]]] = [
     (re.compile(
         r"grandes?\s+(?:demandas?|consumos?|usuarios?)|\bT\s*-?\s*3\b|"
         r"tarifa\s*n?\s*[º°o]?\s*\.?\s*3\b|\bgudi|baja\s+tensi[oó]n|"
-        r">\s*50\s*kw|<\s*300\s*kw", re.IGNORECASE), 3),
+        r">\s*50\s*kw|<\s*300\s*kw|entre\s+\d+\s+y\s+300\s*kw", re.IGNORECASE), 3),
     (re.compile(
         r"medianas?\s+demandas?|\bT\s*-?\s*2\b|tarifa\s*n?\s*[º°o]?\s*\.?\s*2\b|"
         r">\s*10\s*kw", re.IGNORECASE), 2),
@@ -97,6 +97,16 @@ BIG_USER: Final[re.Pattern[str]] = re.compile(
 MIN_SCORE: Final[int] = 2
 EXCLUDE_CONTEXT: Final[re.Pattern[str]] = re.compile(
     r"peaje|alumbrado\s+p[uú]blico|otros\s+distribuidores", re.IGNORECASE
+)
+# Bloques de OCEBA: "DIST(RIBUIDORES). MUNICIPALES (...)" es la tarifa
+# mayorista a cooperativas; "USUARIOS FINALES (...)" la de usuarios finales.
+MUNICIPAL_BLOCK: Final[re.Pattern[str]] = re.compile(
+    r"dist(?:ribuidores|\.)?\s*municipales", re.IGNORECASE
+)
+END_USER_BLOCK: Final[re.Pattern[str]] = re.compile(r"usuarios\s+finales", re.IGNORECASE)
+# Cantidades de energía ("hasta 800 kWh mes"): el número no es un precio.
+KWH_QUANTITY: Final[re.Pattern[str]] = re.compile(
+    r"\d[\d.,]*\s*kwh?\b(?!\s*/)", re.IGNORECASE
 )
 INJECTION_LINE: Final[re.Pattern[str]] = re.compile(
     r"inyect|inyecci|ingresada\s+a\s+la\s+red|entregada\s+a\s+la\s+red",
@@ -182,6 +192,11 @@ def _plausible(
 
 
 def _numbers(text: str) -> list[float]:
+    if not _EN_FORMAT:
+        # PDFs que separan la parte entera de la coma ("9 ,0896" en OCEBA).
+        text = re.sub(r"(\d)\s+,(\d)", r"\1,\2", text)
+        # ... y los decimales justo antes de la unidad ("104,10 37 $/kWh").
+        text = re.sub(r"(\d,\d+) (\d{1,3})(?=\s*(?:\$|$))", r"\1\2", text)
     out = []
     for tok in re.findall(EN_NUMBER if _EN_FORMAT else AR_NUMBER, text):
         v = parse_ar_number(tok)
@@ -220,7 +235,7 @@ def line_kwh_values(line: str, prefer_resto: bool = True) -> list[float]:
             after = _numbers(tail[: stop.start()] if stop else tail)
             if after:
                 return after
-            before = _numbers(text[: m[0].start()])
+            before = _numbers(KWH_QUANTITY.sub(" ", text[: m[0].start()]))
             return before[-1:]
         return _numbers(text)
 
@@ -361,6 +376,8 @@ def find_purchase_candidates(
         nearby = "\n".join(lines[max(0, i - 4): i + 1])
         if EXCLUDE_CONTEXT.search(nearby):
             continue
+        if _in_municipal_block(lines, i):
+            continue
         if not injection_document and _under_injection_header(lines, i):
             continue
         # Un PP30 (25 kW) se conecta en baja tensión.
@@ -384,6 +401,16 @@ def find_purchase_candidates(
             score -= 2
         cands.append(Candidate(i, score, values, line.strip()))
     return cands
+
+
+def _in_municipal_block(lines: list[str], i: int) -> bool:
+    """¿El encabezado de bloque más cercano es el de distribuidores municipales?"""
+    for w in reversed(lines[max(0, i - CONTEXT_LINES): i]):
+        if MUNICIPAL_BLOCK.search(w):
+            return True
+        if END_USER_BLOCK.search(w):
+            return False
+    return False
 
 
 def _bt_mt_columns(lines: list[str], i: int) -> bool:

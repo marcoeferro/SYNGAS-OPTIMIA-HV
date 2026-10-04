@@ -398,3 +398,65 @@ El parser por secciones "T2/T3" fallaba con los cuadros reales: cada distribuido
 - Líneas sin etiqueta (`$/kWh 92,94`) toman el concepto de las líneas previas. Así, en EDELAR el precio de inyección no se confunde con la compra.
 - Tablas cuyo encabezado es "Tarifa de inyección" (APE) no se usan como compra.
 - Las líneas usadas quedan registradas (`lineas_compra`, `lineas_inyeccion`) para auditar.
+- **Bloques de distribuidores municipales (OCEBA)**: en los cuadros de EDEN, EDEA y EDES, el bloque T3 BT trae primero la tarifa **mayorista** que la distribuidora cobra a las cooperativas ("DISTRIBUIDORES MUNICIPALES (...)") y después la de **usuarios finales**. El parser tomaba la mayorista: 114,98 $/kWh en lugar de 135,05 para EDEN en 2026-09, una subestimación de ~15 % en la provincia con más energía. Ahora se descarta toda línea cuyo encabezado de bloque más cercano es de distribuidores municipales, y "entre 50 y 300 kW" puntúa como grandes demandas en BT.
+- **Columnas BT/MT en paralelo** (ECSAPEM): con encabezado "Baja Tensión | Media Tensión" se toma la mitad de baja tensión. Antes se promediaban ambas (101,45 en lugar de 106,29).
+- **Filas de inyección**: una fila "Cargo variable por energía inyectada | $/kWh | …" marcaba como inyección las filas T2/T3 que la seguían. Ahora sólo cuentan como encabezado de tabla de inyección las líneas sin importes.
+- **Importes partidos por el PDF** ("104,10 37", "9 ,0896") se reúnen; antes daban 104,10 y 896 $/kWh.
+- **Cantidades de energía** ("hasta 800 kWh mes $/kWh", EDEMSA 2025-09) ya no se leen como precio (daba 800 $/kWh).
+- **Fecha de carpetas OCEBA** `cuadros-tarifarios/AAAA/mes/`: no se reconocía, y el filtro `--desde` descargaba los cuadros de 2020–2024.
+
+Cada corrección se verificó volviendo a parsear los ~1.800 documentos descargados y comparando antes/después: sólo cambiaron los de la distribuidora afectada.
+
+### 10.4 Resultado final por distribuidora (corrida del 2026-10-04)
+
+`data/reference/20261004214915_tarifas.json`. Tarifa de compra en ARS/kWh sin impuestos, categoría de medianas/grandes demandas en BT, banda "Resto".
+
+| Distribuidora | Provincia | Compra | Inyección | Vigencia | Fuente | Estado |
+|---|---|---:|---:|---|---|---|
+| EDENOR | CABA / GBA | 108,37 | — | 2026-06 | Portal nacional (ZIP) | extraído |
+| EDESUR | CABA / GBA | 107,91 | — | 2026-05 | Portal nacional (ZIP) | extraído |
+| EDEN | Buenos Aires | 135,23 | — | 2026-09 | OCEBA | extraído |
+| EDEA | Buenos Aires | 136,44 | — | 2026-09 | OCEBA | extraído |
+| EDES | Buenos Aires | 137,18 | — | 2026-09 | OCEBA | extraído |
+| EDELAP | Buenos Aires (Gran La Plata) | 148,72 | — | 2026-09 | OCEBA | extraído |
+| ECSAPEM | Catamarca | 106,29 | rechazada¹ | 2026-05 | Portal nacional | extraído |
+| SECHEEP | Chaco | 117,50 | 89,99 | 2026-06 | Portal nacional | extraído |
+| DPEC | Corrientes | 109,20 | — | 2026-04 | Portal nacional | extraído |
+| ENERSA | Entre Ríos | 130,84 | 93,55 | 2026-05 | Portal nacional | extraído |
+| REFSA | Formosa | 135,28 | — | 2026-06 | Sitio propio | extraído |
+| EJESA | Jujuy | 113,09 | — | 2025-10 | Portal nacional | valor anterior² |
+| EDELAR | La Rioja | 104,67 | 78,67 | 2026-03 | Portal nacional | extraído |
+| EDEMSA | Mendoza | 106,51 | — | 2026-05 | Portal nacional | extraído |
+| EDESTE | Mendoza (este) | 106,51 | — | 2026-05 | Portal nacional | extraído |
+| EPEN | Neuquén | 359,73 | — | 2026-08 | Sitio propio | extraído³ |
+| EDERSA | Río Negro | 155,26 | rechazada¹ | 2026-09 | Sitio propio | extraído |
+| EDESA | Salta | 266,81 | — | 2026-06 | Portal nacional | extraído³ |
+| EDESAL | San Luis | 110,76 | — | 2026-06 | Portal nacional | extraído |
+| EDESE | Santiago del Estero | 156,66 | — | 2026-09 | Sitio propio | extraído |
+| EPEC | Córdoba | — | — | — | — | sin dato: sitio propio 403 desde fuera de Argentina; archivo del portal nacional roto (404) |
+| EPE | Santa Fe | — | — | — | — | sin dato: los cuadros se bajan de `epe.santafe.gov.ar/institucional-api/` (dominio sin `www`), bloqueado por el proxy |
+| APE | La Pampa | — | — | — | — | sin dato: publica sólo la composición del precio |
+| EMSA | Misiones | — | — | — | — | sin dato: sólo cuadros de MT / ≥ 300 kW por bandas horarias |
+| ESJ | San Juan | — | — | — | — | sin dato: las páginas del portal nacional (`-esj`, `-esj-0`) no enlazan archivos y el EPRE sólo publica un PDF de subsidios |
+| SPSE | Santa Cruz | — | — | — | — | sin dato: el portal nacional no enlaza archivos y `spse.ar` no responde (host omitido por fallas sostenidas) |
+| DPE_TDF | Tierra del Fuego | — | — | — | — | sin dato: el único documento es una resolución escaneada (Res. DPE 559/2025) cuyo texto OCR embebido es ilegible |
+| EDET | Tucumán | — | — | — | — | sin dato: PDFs escaneados (imagen, sin texto) |
+
+¹ La inyección detectada supera la tarifa de compra y la validación la descarta. En EDERSA es una mediana de categorías distintas (residencial 63, excedente 148, general 173); en ECSAPEM corresponde al régimen de generación distribuida (Res. D.P. 169-26), que remunera la energía inyectada por encima del precio T2. Asociar la inyección a la misma categoría que la compra queda pendiente.
+² La página del portal nacional de EJESA (`cuadros-tarifarios-ejesa`) devolvía 404 el día de la corrida. Se conserva el último valor extraído (`fallback_previous`).
+³ Valores altos verificados contra el documento: EPEN (T2 > 10 kW, cuadro de consumos de agosto) y EDESA (T3 > 50 kW).
+
+**Cobertura**: con el período de referencia 2020/21–2024/25 (7,96·10¹⁰ kWh/año), el **53,7 %** de la energía tiene tarifa real y el 0,1 % (Jujuy) usa el valor anterior. Sin tarifa: Córdoba (26,1 %), Santa Fe (14,4 %), La Pampa (5,0 %), Tucumán (0,7 %) y Misiones (0,1 %).
+
+### 10.5 Historial
+
+`data/reference/tarifas_historial.csv` tiene 850 cuadros desde enero de 2025 (`--historial --desde 2025-01`). Las filas se recalcularon con el parser final a partir de los documentos descargados. La serie mensual de cuadros plenos (`tariff_series`) ya no muestra los saltos espurios de las versiones anteriores (EDEMSA 800 $/kWh en 2025-09; EDEN/EDEA/EDES ~33 $/kWh en 2025-09 por la tarifa mayorista).
+
+### 10.6 Fuentes bloqueadas: dominios y carga manual
+
+- **EPE (Santa Fe)**: la página `www.epe.santafe.gov.ar/institucional/grandes-usuarios/` (Astro) no tiene enlaces `<a>`. Los cuadros (`CUT_T2_Septiembre_2026.pdf`, …) vienen en las propiedades serializadas `fileName`/`fileHash` y se descargan con `GET https://epe.santafe.gov.ar/institucional-api/download/<uuid>` y la cabecera `x-api-key`. Esa clave es pública: está en el JavaScript del propio sitio y se puede reemplazar con la variable `EPE_API_KEY`. El extractor ya descubre los cuadros, pero para descargarlos hay que **habilitar `epe.santafe.gov.ar`** (sin `www`) en la lista de dominios.
+- **Carga manual**: para fuentes que bloquean la descarga automática (EPEC, ESJ, SPSE, DPE), se puede dejar el cuadro descargado a mano en `data/reference/cuadros_manuales/<CÓDIGO>/` (PDF, XLSX o ZIP). El extractor lo procesa como cualquier otro documento (`fuente_tipo = "manual"`) y lo registra en el historial. Conviene incluir la fecha en el nombre (`cuadro_2026_09.pdf`) para que la vigencia se reconozca aunque el texto no la declare.
+
+### 10.7 Otros errores encontrados
+
+- `notebooks/main.ipynb` en `main` tenía **marcadores de conflicto de merge sin resolver** (`<<<<<<< HEAD` en un `execution_count`, del merge `f0c74a1`). El archivo no era JSON válido y Jupyter no lo abría. Se resolvió y el notebook se reejecutó completo sin errores.

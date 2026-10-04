@@ -245,6 +245,11 @@ Genera:
 - `data/reference/tarifas_historial.csv` — historial de cuadros tarifarios
   procesados (vigencia, valores, documento, SHA-256). Backfill desde 2025:
   `python -m etl.extractors.scrape_tarifas --historial --desde 2025-01`.
+- `data/reference/cuadros_manuales/<CÓDIGO>/` — cuadros descargados a mano
+  (PDF/XLSX/ZIP) para distribuidoras cuya fuente bloquea la descarga
+  automática (EPEC, ESJ, SPSE, DPE). El extractor los procesa como
+  cualquier otro cuadro. EPE (Santa Fe) requiere habilitar el dominio
+  `epe.santafe.gov.ar` (sin `www`), de donde se bajan sus cuadros.
 - `data/audit/descartados_reconciliacion.parquet` — auditoría.
 - `data/audit/discrepancias_cba_vs_magyp.parquet` — discrepancias.
 
