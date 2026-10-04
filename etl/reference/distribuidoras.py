@@ -50,6 +50,7 @@ def _dist(
     indices: list[str] | None = None,
     urls: list[str] | None = None,
     url_templates: list[str] | None = None,
+    fila_tarifa: tuple[str, int] | None = None,
     nota: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -57,6 +58,10 @@ def _dist(
 
     ``slug`` puede ser una lista: el portal nacional a veces crea una página
     nueva (sufijo ``-0``) y deja la anterior con enlaces vencidos.
+
+    ``fila_tarifa`` fija la fila del cuadro de la que sale la tarifa de
+    compra cuando el contexto no alcanza para reconocer la categoría:
+    (regex de la fila, índice del importe tras la coincidencia).
     """
     slugs = [slug] if isinstance(slug, str) else list(slug or [])
     base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
@@ -68,6 +73,7 @@ def _dist(
         "indices": indices or [],
         "urls": urls or [],
         "url_templates": url_templates or [],
+        "fila_tarifa": fila_tarifa,
         "nota": nota,
     }
 
@@ -176,6 +182,16 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Administración Provincial de Energía de La Pampa",
         "La Pampa",
         "ape",
+        # El cuadro separa costo de compra de energía y VAD. Un PP30 en
+        # autoconsumo (> 4000 kWh/mes, < 50 kW) es T2I industrial; se toma
+        # el precio marginal: compra + VAD del excedente de 4000 kWh.
+        fila_tarifa={
+            "ancla": r"^T2I\b.*mayores\s+a\s+4000",
+            "filas": [
+                (r"^Costo\s+Compra\s+de\s+Energ", 0),
+                (r"^VAD\s+excedente\s+de\s+4000", 0),
+            ],
+        },
         nota="Gran parte de La Pampa se abastece por cooperativas.",
     ),
     "EDELAR": _dist(
@@ -207,6 +223,9 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
             "https://energia.misiones.gob.ar/cuadro-tarifario/",
             "http://www.energiademisiones.com.ar/servicios/cuadrotarifario_240.asp",
         ],
+        # Sin categoría por demanda en BT: un PP30 en autoconsumo es
+        # industrial 3.b (> 4000 kWh/mes), cargo de energía único.
+        fila_tarifa={"ancla": r"^3\.b\b", "filas": [(r"^Energ[ií]a\b", 0)]},
     ),
     "EPEN": _dist(
         "Ente Provincial de Energía del Neuquén",
@@ -260,6 +279,9 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
             "https://www.epe.santafe.gov.ar/institucional/grandes-usuarios/",
             "https://www.epe.santafe.gov.ar/institucional/usuarios",
         ],
+        # Tarifa 2 (grandes demandas > 20 kW), fila "2 B1": baja tensión,
+        # demandas menores a 300 kW; columnas Pico | Resto | Valle.
+        fila_tarifa=(r"^\s*2\s*B1\b.*?menores\s+a\s+300\s*kw", 1),
     ),
     "EDESE": _dist(
         "Empresa Distribuidora de Electricidad de Santiago del Estero S.A.",

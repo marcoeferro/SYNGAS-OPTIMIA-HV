@@ -95,6 +95,8 @@ BIG_USER: Final[re.Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 MIN_SCORE: Final[int] = 2
+# Puntaje de una fila indicada en el registro (gana a cualquier candidata).
+HINT_SCORE: Final[int] = 10
 EXCLUDE_CONTEXT: Final[re.Pattern[str]] = re.compile(
     r"peaje|alumbrado\s+p[uú]blico|otros\s+distribuidores", re.IGNORECASE
 )
@@ -128,7 +130,8 @@ BT_MT_HEADER: Final[re.Pattern[str]] = re.compile(
 # título del documento los nombra, no se usan como tarifa de compra.
 SPECIAL_DOCUMENT: Final[re.Pattern[str]] = re.compile(
     r"clubes\s+de\s+barrio|tarifa\s+social|subsidio\s+del\s+estado|"
-    r"electro\s*-?\s*dependiente|bien\s+p[uú]blico|medidores\s+autoadministrados",
+    r"electro\s*-?\s*dependiente|bien\s+p[uú]blico|medidores\s+autoadministrados|"
+    r"proyecto\s+de\s+cuadro",
     re.IGNORECASE,
 )
 TITLE_LINES: Final[int] = 6
@@ -472,9 +475,56 @@ def find_fixed_charge(lines: list[str], index: int) -> float | None:
     return None
 
 
-def parse_tariff_text(text: str) -> dict[str, Any]:
+RowHint = tuple[str, int] | dict[str, Any]
+
+
+def find_hinted_row(lines: list[str], row_hint: RowHint) -> tuple[float, str] | None:
+    """
+    Tarifa de filas indicadas explícitamente en el registro.
+
+    Para cuadros cuya tabla no permite distinguir la categoría por
+    contexto. Formas de ``row_hint``:
+
+    - ``(regex, índice)``: la primera línea que coincide; se toma el
+      importe ``índice`` entre los que siguen a la coincidencia (EPE: fila
+      "2 B1", índice 1 = banda Resto de Pico | Resto | Valle).
+    - ``{"ancla": regex, "filas": [(regex, índice), ...]}``: se busca cada
+      fila después de la línea ancla (encabezado de la categoría) y se
+      suman los importes (APE: costo de compra de energía + VAD).
+    """
+    if isinstance(row_hint, tuple):
+        start, rows = 0, [row_hint]
+    else:
+        anchor = re.compile(row_hint["ancla"], re.IGNORECASE)
+        start = next((i for i, ln in enumerate(lines) if anchor.search(ln)), None)
+        if start is None:
+            return None
+        rows = list(row_hint["filas"])
+    total, used = 0.0, []
+    for pattern, index in rows:
+        regex = re.compile(pattern, re.IGNORECASE)
+        for line in lines[start:]:
+            m = regex.search(line)
+            if not m:
+                continue
+            values = _numbers(KWH_UNIT.sub(" ", line[m.end():]))
+            if len(values) > index:
+                total += values[index]
+                used.append(line.strip())
+                break
+        else:
+            return None
+    if not PRICE_MIN <= total <= PRICE_MAX:
+        return None
+    return total, " + ".join(used)
+
+
+def parse_tariff_text(text: str, row_hint: RowHint | None = None) -> dict[str, Any]:
     """
     Extrae tarifa de compra, de inyección y cargo fijo de un cuadro.
+
+    Si se indica ``row_hint`` (ver ``find_hinted_row``) la tarifa de compra
+    sale sólo de esa fila: un documento sin ella no aporta compra.
 
     Returns:
         Diccionario con ``tarifa_compra_kwh``, ``tarifa_inyeccion_kwh``,
@@ -520,6 +570,16 @@ def parse_tariff_text(text: str) -> dict[str, Any]:
         return result
     if result["documento_especial"]:
         # Cuadro de un régimen especial: no representa la tarifa plena.
+        return result
+
+    if row_hint is not None:
+        hinted = find_hinted_row(lines, row_hint)
+        if hinted is not None:
+            result["tarifa_compra_kwh"] = round(hinted[0], 5)
+            result["valores_compra_detectados"] = [hinted[0]]
+            result["seccion_compra"] = hinted[1][:200]
+            result["puntaje_compra"] = HINT_SCORE
+            result["lineas_compra"] = [hinted[1][:200]]
         return result
 
     cands = [c for c in find_purchase_candidates(lines) if c.score >= MIN_SCORE]

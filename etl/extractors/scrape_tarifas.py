@@ -226,7 +226,8 @@ def vigencia_explicit(text: str) -> str | None:
 
     Reconoce "vigencia a partir del 1° de junio de 2026", "Vigencia: 01 de
     Mayo al 31 de Julio de 2026" (se toma el **inicio**: mayo), "a partir
-    del 01/06/26" y "a partir de los consumos del ... de junio 2026". Tiene
+    del 01/06/26", "a partir del Período 09/2025" y "a partir de los
+    consumos del ... de junio 2026". Tiene
     prioridad sobre el nombre del archivo, que a veces indica el mes de
     publicación y no el de vigencia.
     """
@@ -236,6 +237,12 @@ def vigencia_explicit(text: str) -> str | None:
         window = head[m.end(): m.end() + 120]
         numeric = re.search(r"\b([0-3]?\d)/([01]?\d)/((?:20)?\d{2})\b", window)
         month = re.search(month_re, window)
+        # "Vigente a partir del Período 09/2025" (EMSA): mes/año sin día.
+        period = re.match(r"\W*(?:del\s+)?per[ií]odo\s+([01]?\d)/(20\d{2})\b", window)
+        if period:
+            ym = _ym(int(period.group(2)), int(period.group(1)))
+            if ym:
+                return ym
         if numeric and (month is None or numeric.start() < month.start()):
             year = int(numeric.group(3))
             ym = _ym(year if year > 100 else 2000 + year, int(numeric.group(2)))
@@ -759,8 +766,9 @@ def process_document(
         return None
     best: dict[str, Any] | None = None
     injection: dict[str, Any] | None = None
+    row_hint = DISTRIBUIDORAS.get(code, {}).get("fila_tarifa")
     for member, text in texts:
-        parsed = parse_tariff_text(text)
+        parsed = parse_tariff_text(text, row_hint)
         # Un ZIP puede traer el precio de inyección en otro archivo
         # ("Tarifas de Inyección de Generación Distribuida").
         if parsed["tarifa_inyeccion_kwh"] is not None and (

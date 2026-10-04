@@ -53,6 +53,30 @@ def test_tarifa_proxy_y_provincia_sin_tarifa() -> None:
     assert pd.isna(out[COL_BENEFICIO].iloc[1])
 
 
+def test_inyeccion_faltante_se_estima_con_ratio_observado() -> None:
+    """Sin precio de inyección el beneficio no puede quedar en NaN."""
+    from etl.transformers.energy_finance import COL_TARIFA_INY, COL_TARIFA_INY_ESTIMADA
+
+    est = {"tarifa_compra_kwh": "extraido", "tarifa_inyeccion_kwh": "extraido"}
+    cfg = {
+        **CFG,
+        "distribuidoras": {
+            "A": {"tarifa_compra_kwh": 100.0, "tarifa_inyeccion_kwh": 70.0,
+                  "estado_campos": est},
+            "B": {"tarifa_compra_kwh": 100.0, "tarifa_inyeccion_kwh": 80.0,
+                  "estado_campos": est},
+            "C": {"tarifa_compra_kwh": 200.0, "tarifa_inyeccion_kwh": None},
+        },
+        "provincia_a_distribuidora": {"cordoba": "A", "salta": "C"},
+    }
+    df = pd.DataFrame({"Provincia": ["cordoba", "salta"],
+                       "Residuo Recuperable (Tn)": [1.0, 1.0]})
+    out = add_energy_finance_columns(df, config=cfg)
+    assert out[COL_TARIFA_INY].tolist() == pytest.approx([70.0, 200.0 * 0.75])
+    assert out[COL_TARIFA_INY_ESTIMADA].tolist() == [False, True]
+    assert out[COL_BENEFICIO].notna().all()
+
+
 # ---------------- Extractor de tarifas ----------------
 
 PDF_TEXT = """CUADRO TARIFARIO
@@ -381,6 +405,7 @@ def test_serie_elige_cuadro_pleno_por_mes() -> None:
     ("vigencia a partir del 1° de junio de 2026", "2026-06"),              # EDENOR
     ("a partir del 01/06/26 con demanda de Potencia < 10 KW", "2026-06"),  # REFSA
     ("Vigencia: | a partir del 01 de Octubre de 2025 | 2025-10-01", "2025-10"),  # EJESA
+    ("Vigente a partir del Período 09/2025 | ANEXO I", "2025-09"),       # EMSA
 ])
 def test_vigencia_explicita(texto: str, esperado: str) -> None:
     assert st.vigencia_explicit(texto) == esperado
