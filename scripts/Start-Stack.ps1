@@ -1,15 +1,18 @@
-# Arranca worker ETL + scheduler (cron) + dashboard.
-# Requisito: Docker Desktop en ejecución.
+﻿# Arranca worker ETL + scheduler (cron) + dashboard.
+# Requisito: Docker Desktop (se inicia automáticamente si está instalado).
 # Uso (desde la raíz del repo, en PowerShell):
 #   .\scripts\Start-Stack.ps1
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
+. (Join-Path $PSScriptRoot "_Common.ps1")
+
+Start-DockerDesktopIfNeeded
 
 Write-Host "Construyendo imagen y levantando servicios..." -ForegroundColor Cyan
 docker compose up -d --build
-if ($LASTEXITCODE -ne 0) { throw "docker compose up falló" }
+if ($LASTEXITCODE -ne 0) { throw "docker compose up falló con código $LASTEXITCODE" }
 
 Write-Host ""
 Write-Host "Stack en ejecución:" -ForegroundColor Green
