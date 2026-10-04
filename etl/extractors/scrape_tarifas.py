@@ -185,7 +185,7 @@ def vigencia_from_name(url: str) -> str | None:
     path = urlparse(url).path.lower()
     name = path.rsplit("/", 1)[-1]
     candidates: list[str] = []
-    for m in re.finditer(r"ct_?(20\d{2})_?(0[1-9]|1[0-2])(?!\d)", path):
+    for m in re.finditer(r"ct_?(20\d{2})_?(0[1-9]|1[0-2])(?:[0-3]\d)?(?!\d)", path):
         candidates.append(_ym(int(m.group(1)), int(m.group(2))) or "")
     for m in re.finditer(r"(20\d{2})[_-](0[1-9]|1[0-2])(?!\d)", path):
         candidates.append(_ym(int(m.group(1)), int(m.group(2))) or "")
@@ -793,11 +793,11 @@ def fetch_distribuidora(
         procesados para el historial).
     """
     cands = candidate_documents(code, now, downloader, raw_dir, months, index_cache)
-    current = now.strftime("%Y-%m")
 
     def vig(p: dict[str, Any]) -> str:
-        # Vigencia desconocida en un cuadro "vigente" ≈ mes de la corrida.
-        return p.get("vigencia") or current
+        # Vigencia desconocida: menor prioridad que cualquier fecha conocida
+        # (un documento sin fecha puede ser viejo, p.ej. un índice histórico).
+        return p.get("vigencia") or ""
 
     processed: list[dict[str, Any]] = []
     best_by_source: dict[str, dict[str, Any]] = {}

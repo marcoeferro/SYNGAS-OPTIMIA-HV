@@ -346,3 +346,9 @@ def test_dead_host_guard_403_sostenido_y_404_no() -> None:
             guarded("https://normal.example/a.pdf")
     assert sum("bloqueado" in c for c in calls) == st.DEAD_HOST_FAILURES
     assert sum("normal" in c for c in calls) == 4
+
+
+def test_vigencia_carpetas_oceba() -> None:
+    base = "https://oceba.gba.gov.ar/nueva_web/adjuntos/"
+    assert st.vigencia_from_name(base + "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf") == "2025-05"
+    assert st.vigencia_from_name(base + "ct202609/IF-2026-27723597-GDEBA-GMOCEBA.pdf") == "2026-09"
