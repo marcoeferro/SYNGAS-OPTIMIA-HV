@@ -109,6 +109,14 @@ INJECTION_CONTEXT: Final[re.Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 INJECTION_CONTEXT_LINES: Final[int] = 8
+# Cuadros especiales (régimen subsidiado o de una categoría puntual): si el
+# título del documento los nombra, no se usan como tarifa de compra.
+SPECIAL_DOCUMENT: Final[re.Pattern[str]] = re.compile(
+    r"clubes\s+de\s+barrio|tarifa\s+social|subsidio\s+del\s+estado|"
+    r"electro\s*-?\s*dependiente|bien\s+p[uú]blico|medidores\s+autoadministrados",
+    re.IGNORECASE,
+)
+TITLE_LINES: Final[int] = 6
 EXCLUDE_INJECTION: Final[re.Pattern[str]] = re.compile(
     r"residencial|residen\.|social|subsid|\bsef\b|943/25|consumo\s+base|"
     r"electro\s*-?\s*dependiente",
@@ -253,8 +261,10 @@ class Candidate:
     line: str
 
 
-def _has_kwh_unit(lines: list[str], i: int) -> bool:
+def _has_kwh_unit(lines: list[str], i: int, assume_kwh: bool = False) -> bool:
     line = lines[i]
+    if assume_kwh and not OTHER_UNIT.search(line):
+        return True
     if KWH_UNIT.search(line) and not MWH_UNIT.search(line):
         return True
     # Fila de banda horaria sin unidad: la unidad está en la(s) línea(s)
@@ -319,17 +329,34 @@ def _label(lines: list[str], i: int) -> str:
     return "\n".join(reversed(prev)) + "\n" + line
 
 
-def find_purchase_candidates(lines: list[str]) -> list[Candidate]:
-    """Lista las líneas candidatas a tarifa de compra con su puntaje."""
+def find_purchase_candidates(
+    lines: list[str], injection_document: bool = False
+) -> list[Candidate]:
+    """
+    Lista las líneas candidatas a tarifa de compra con su puntaje.
+
+    Con ``injection_document`` (planilla cuyo título es "Tarifas de
+    inyección ... $/kWh") se aplica el mismo criterio de categoría para
+    elegir el precio de inyección representativo: la unidad está en el
+    título y no se excluyen las líneas por mencionar inyección.
+    """
     cands: list[Candidate] = []
+    exclude = EXCLUDE_LINE if not injection_document else re.compile(
+        EXCLUDE_LINE.pattern.replace(
+            r"inyect|inyecci|ingresada\s+a\s+la\s+red|generador|", ""
+        ),
+        re.IGNORECASE,
+    )
     for i, line in enumerate(lines):
-        if not _has_kwh_unit(lines, i) or EXCLUDE_LINE.search(_label(lines, i)):
+        if not _has_kwh_unit(lines, i, injection_document) or exclude.search(
+            _label(lines, i)
+        ):
             continue
         context = "\n".join(lines[max(0, i - CONTEXT_LINES): i + 1])
         nearby = "\n".join(lines[max(0, i - 4): i + 1])
         if EXCLUDE_CONTEXT.search(nearby):
             continue
-        if INJECTION_CONTEXT.search(
+        if not injection_document and INJECTION_CONTEXT.search(
             "\n".join(lines[max(0, i - INJECTION_CONTEXT_LINES): i + 1])
         ):
             continue
@@ -414,6 +441,27 @@ def parse_tariff_text(text: str) -> dict[str, Any]:
         "lineas_compra": [],
         "lineas_inyeccion": [],
     }
+    title = "\n".join(
+        ln for ln in lines[:TITLE_LINES] if "|" not in ln and not ln.startswith("# HOJA")
+    )
+    injection_document = bool(INJECTION_CONTEXT.search(title)) and bool(
+        re.search(r"kwh", title, re.IGNORECASE)
+    )
+    result["documento_especial"] = bool(SPECIAL_DOCUMENT.search(title))
+    result["documento_inyeccion"] = injection_document
+    if injection_document:
+        cands = [c for c in find_purchase_candidates(lines, True) if c.score >= MIN_SCORE]
+        if cands:
+            best_score = max(c.score for c in cands)
+            best = next(c for c in cands if c.score == best_score)
+            result["tarifa_inyeccion_kwh"] = round(statistics.median(best.values), 5)
+            result["valores_inyeccion_detectados"] = best.values
+            result["lineas_inyeccion"] = [best.line[:200]]
+        return result
+    if result["documento_especial"]:
+        # Cuadro de un régimen especial: no representa la tarifa plena.
+        return result
+
     cands = [c for c in find_purchase_candidates(lines) if c.score >= MIN_SCORE]
     if cands:
         best_score = max(c.score for c in cands)

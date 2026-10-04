@@ -192,3 +192,32 @@ def test_zip_edenor_elige_cuadro_pleno() -> None:
     assert out["vigencia"] == "2026-06"
     [(_, text)] = document_to_texts(cuadro("x", 1.0), "y.xlsx")
     assert "Cargo Variable Resto" in text
+
+
+def test_cuadro_especial_clubes_de_barrio_no_es_tarifa_de_compra() -> None:
+    texto = (
+        "Cuadro Tarifario\n"
+        "Clubes de Barrio y de Pueblo-Resolución SE N° 742/2022\n"
+        "vigencia a partir de 1° de diciembre de 2025\nEDENOR\n"
+        "Tarifa 3 - BT\nCargo Variable Resto | $/kWh | 32,567\n"
+    )
+    out = parse_tariff_text(texto)
+    assert out["documento_especial"]
+    assert out["tarifa_compra_kwh"] is None
+
+
+def test_hoja_de_tarifas_de_inyeccion() -> None:
+    # EDENOR, anexo "gd" (2025-12): la unidad está sólo en el título.
+    texto = (
+        "Tarifas de Inyección de Generación Distribuida - $/kwh\n"
+        "vigentes a partir del 1° de diciembre 2025\n"
+        "Residencial Nivel 1 | 77,218\n"
+        "General | 67,188\n"
+        "Tarifa 3 - BT <300\n"
+        "Cargo Variable Pico | 69,02\nCargo Variable Resto | 67,188\n"
+        "Tarifa 3 - MT <300\nCargo Variable Resto | 63,853\n"
+    )
+    out = parse_tariff_text(texto)
+    assert out["documento_inyeccion"]
+    assert out["tarifa_compra_kwh"] is None
+    assert out["tarifa_inyeccion_kwh"] == 67.188

@@ -705,8 +705,15 @@ def process_document(
         logger.warning("[tarifas] %s: no se pudo leer %s: %s", code, url, exc)
         return None
     best: dict[str, Any] | None = None
+    injection: dict[str, Any] | None = None
     for member, text in texts:
         parsed = parse_tariff_text(text)
+        # Un ZIP puede traer el precio de inyección en otro archivo
+        # ("Tarifas de Inyección de Generación Distribuida").
+        if parsed["tarifa_inyeccion_kwh"] is not None and (
+            injection is None or parsed.get("documento_inyeccion")
+        ):
+            injection = parsed
         if parsed["tarifa_compra_kwh"] is None:
             continue
         parsed.update({
@@ -728,6 +735,13 @@ def process_document(
             best = parsed
     if best is None:
         logger.debug("[tarifas] %s: %s sin cargos $/kWh reconocibles", code, url)
+        return None
+    if injection is not None and (
+        best["tarifa_inyeccion_kwh"] is None or injection.get("documento_inyeccion")
+    ):
+        best["tarifa_inyeccion_kwh"] = injection["tarifa_inyeccion_kwh"]
+        best["valores_inyeccion_detectados"] = injection["valores_inyeccion_detectados"]
+        best["lineas_inyeccion"] = injection["lineas_inyeccion"]
     return best
 
 
