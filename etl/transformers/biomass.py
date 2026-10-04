@@ -2,8 +2,15 @@
 Cálculo de biomasa residual agrícola.
 
 Modelo:
-    Biomasa Residual = Producción × FR
+    Biomasa Residual (t MS) = Producción × MS × FR
     FR = (1 - IC) / IC
+    Residuo Recuperable (t MS) = Biomasa Residual × fracción_recuperable
+
+El IC se define sobre materia seca; la producción se reporta a humedad
+comercial (granos) o en fresco (papa, ajo). Sin el factor MS el residuo
+quedaba sobreestimado (≈ +15% en granos y ×3–5 en papa/ajo). La
+fracción recuperable descuenta el rastrojo que debe quedar en el lote
+para cobertura de suelo y balance de materia orgánica.
 
 El cálculo se realiza a nivel de registro individual. La agregación
 posterior (por provincia, cultivo, campaña) debe sumar los residuos
@@ -29,6 +36,9 @@ PROD_COL = "Produccion (Tn)"
 SUP_COL = "Superficie (Ha)"
 REND_COL = "Rendimiento (Tn/Ha)"
 FR_COL = "FR"
+MS_COL = "MS"
+RESIDUO_REC_COL = "Residuo Recuperable (Tn)"
+DEFAULT_FRACCION_RECUPERABLE = 0.5
 RESIDUO_COL = "Residuo de Biomasa (Tn)"
 RESIDUO_HA_COL = "Residuo de Biomasa (Tn/Ha)"
 PROD_HA_COL = "Produccion (Tn/Ha)"
@@ -65,12 +75,15 @@ def compute_biomass(
         DataFrame con columna de residuo de biomasa agregada.
     """
     df = df.copy()
+    ic_cols = [cultivo_col, fr_col] + ([MS_COL] if MS_COL in df_ic.columns else [])
     df = df.merge(
-        df_ic[[cultivo_col, fr_col]].drop_duplicates(subset=cultivo_col),
+        df_ic[ic_cols].drop_duplicates(subset=cultivo_col),
         on=cultivo_col,
         how="left",
     )
-    df[residuo_col] = df[prod_col] * df[fr_col]
+    if MS_COL not in df.columns:
+        df[MS_COL] = 1.0
+    df[residuo_col] = df[prod_col] * df[MS_COL] * df[fr_col]
     df[residuo_col] = df[residuo_col].replace([np.inf, -np.inf], np.nan)
     df[REND_COL] = df[REND_COL].replace([np.inf, -np.inf], np.nan)
     return df
@@ -116,6 +129,38 @@ def add_validity_flags(
     df[FLAG_VALIDO_BIOMASA] = (
         df[FLAG_TIENE_IC] & ~df[FLAG_REND_INVALIDO] & residuo_ok
     )
+    return df
+
+
+def add_recoverable_residue(
+    df: pd.DataFrame,
+    fraccion_recuperable: float = DEFAULT_FRACCION_RECUPERABLE,
+    residuo_col: str = RESIDUO_COL,
+    out_col: str = RESIDUO_REC_COL,
+) -> pd.DataFrame:
+    """
+    Calcula el residuo efectivamente recolectable.
+
+    No todo el rastrojo puede retirarse: una parte debe quedar en el
+    lote para proteger el suelo de la erosión y sostener la materia
+    orgánica. Usar el 100% del residuo teórico sobreestima el potencial
+    energético.
+
+    Args:
+        df: DataFrame con la columna de residuo total.
+        fraccion_recuperable: Fracción ∈ (0, 1] retirable del lote.
+        residuo_col: Columna de residuo total (t MS).
+        out_col: Columna de salida.
+
+    Returns:
+        Copia del DataFrame con la columna de residuo recuperable.
+    """
+    if not (0.0 < fraccion_recuperable <= 1.0):
+        raise ValueError(
+            f"fraccion_recuperable debe estar en (0, 1]: {fraccion_recuperable}"
+        )
+    df = df.copy()
+    df[out_col] = df[residuo_col] * fraccion_recuperable
     return df
 
 

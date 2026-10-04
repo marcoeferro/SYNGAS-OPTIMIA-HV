@@ -8,6 +8,7 @@ import streamlit as st
 
 from dashboard.data_loader import (
     aggregate_by_department,
+    default_campaigns,
     aggregate_by_province,
     filter_biomasa,
     format_tn,
@@ -26,7 +27,8 @@ df = load_biomasa()
 with st.sidebar:
     st.header("Filtros")
     campanas = sorted(df["Campaña"].dropna().unique().tolist())
-    default_camp = campanas[-5:] if len(campanas) >= 5 else campanas
+    # Últimas 5 campañas completas: la campaña en curso tiene datos parciales.
+    default_camp = default_campaigns(df, 5)
     sel_campanas = st.multiselect("Campaña", campanas, default=default_camp)
     cultivos = sorted(df["Cultivo"].dropna().unique().tolist())
     sel_cultivos = st.multiselect("Cultivo", cultivos, default=[])
@@ -41,9 +43,15 @@ total_prod = filtered["Produccion (Tn)"].sum()
 total_sup = filtered["Superficie (Ha)"].sum()
 n_dept = filtered[["Provincia", "Departamento"]].drop_duplicates().shape[0]
 
-c1.metric("Biomasa residual", format_tn(total_bio))
-c2.metric("Producción", format_tn(total_prod))
-c3.metric("Superficie", f"{total_sup:,.0f} Ha" if pd.notna(total_sup) else "—")
+# Los totales se expresan como promedio anual: sumar varias campañas no
+# representa ninguna magnitud física.
+n_camp = max(filtered["Campaña"].nunique(), 1)
+c1.metric("Biomasa residual (prom. anual)", format_tn(total_bio / n_camp))
+c2.metric("Producción (prom. anual)", format_tn(total_prod / n_camp))
+c3.metric(
+    "Superficie (prom. anual)",
+    f"{total_sup / n_camp:,.0f} Ha" if pd.notna(total_sup) else "—",
+)
 c4.metric("Deptos. con datos", f"{n_dept:,}")
 
 if filtered.empty:

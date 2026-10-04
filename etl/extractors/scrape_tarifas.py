@@ -1,138 +1,547 @@
 """
-Descarga cuadros tarifarios oficiales y actualiza la referencia PP30.
+Descarga cuadros tarifarios oficiales de todas las distribuidoras del país
+y extrae las tarifas de referencia, con historial de cambios.
 
-Fuentes documentadas (compra T2/T3 e inyección GD / PEE):
+Fuentes (ver ``etl/reference/distribuidoras.py``):
 
-- EPEC (Córdoba): PDFs en
-  https://www.epec.com.ar/docs/cuadro-tarifario/
-- EPE (Santa Fe): sección Usuarios
-  https://www.epe.santafe.gov.ar/institucional/usuarios
-- EDEMSA (Mendoza): EPRE / EDEMSA
-  https://edemsa.com/segmentacion-tarifaria/
-- EDENOR (AMBA): PDFs mensuales
-  https://www.edenor.com/files/YYYY-MM/Cuadro-Tarifario.pdf
+1. **Portal nacional** de la Secretaría de Energía: una página por
+   distribuidora con los cuadros mensuales (PDF/XLSX/ZIP) desde 2025.
+   También se prueban las URLs directas con el patrón
+   ``cuadros_tarifarios_desde_2025/<DIR>/<AAAA>_<MM>_<DIR>.<ext>``.
+2. **Fuente propia** de la distribuidora o de su ente regulador (OCEBA,
+   EPRE, etc.): páginas índice, URLs directas y plantillas por mes.
 
-Limitación conocida: los cuadros son PDF heterogéneos (tablas multi
-página, T1/T2/T3, franjas horarias, segmentación). Este extractor
-descarga los binarios a ``data/raw/tarifas/`` y escribe un JSON de
-referencia consolidado en ``data/reference/`` con el schema que consume
-``energy_finance``. Los valores numéricos del JSON se toman del
-baseline de referencia del proyecto hasta que exista un parser por
-distribuidora; cada corrida versiona el archivo con
-``YYYYMMDDHHMMSS_tarifas.json``.
+Flujo por distribuidora:
+
+    1. Armar la lista de documentos candidatos (más recientes primero).
+    2. Descargar y validar el formato por firma binaria (PDF, XLSX, ZIP);
+       un HTML de error con HTTP 200 se descarta.
+    3. Convertir a texto (``tariff_documents``) y parsear los cargos
+       ``$/kWh`` de la categoría objetivo (T3/T2) y de inyección.
+    4. Determinar la **vigencia** del cuadro (AAAA-MM) por el nombre del
+       archivo o por el texto ("vigencia a partir del 1° de ...").
+    5. Registrar cada documento procesado en el **historial**
+       ``data/reference/tarifas_historial.csv`` (append-only, dedupe por
+       SHA-256).
+    6. Elegir, por distribuidora, el cuadro de vigencia más reciente,
+       validarlo y escribir ``data/reference/AAAAMMDDHHMMSS_tarifas.json``
+       con trazabilidad por campo:
+       ``extraido`` | ``fallback_previous`` | ``baseline_manual`` | ``sin_dato``.
+
+Uso:
+    python -m etl.extractors.scrape_tarifas                # vigentes
+    python -m etl.extractors.scrape_tarifas --historial    # + backfill 2025→hoy
+    python -m etl.extractors.scrape_tarifas --solo EPEC EDESAL
 """
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
-from datetime import datetime, timedelta
+import logging
+import re
+import statistics
+from collections.abc import Callable, Iterator
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Final
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
 from etl.extractors.io_utils import (
     JSON_SUFFIX,
-    PDF_SUFFIX,
     REF_STEM_TARIFAS,
     build_timestamped_filename,
     find_latest_raw,
 )
+from etl.extractors.tariff_documents import (
+    PDF_MAGIC,
+    detect_format,
+    document_to_texts,
+)
+from etl.loaders.tariff_history import append_history
+from etl.reference.distribuidoras import (
+    DEPARTAMENTO_A_DISTRIBUIDORA,
+    DISTRIBUIDORAS,
+    DISTRIBUIDORAS_PROXY,
+    INDEX_KEYWORDS,
+    NATIONAL_EXTENSIONS,
+    NATIONAL_FILES_BASE,
+    NATIONAL_PAGE_BASE,
+    PROVINCIA_A_DISTRIBUIDORA,
+)
+
+logger = logging.getLogger(__name__)
 
 # ====================== CONFIGURACIÓN ======================
 
 RAW_TARIFAS_DIR: Final[Path] = Path("./data/raw/tarifas")
 REFERENCE_DIR: Final[Path] = Path("./data/reference")
 
-REQUEST_TIMEOUT: Final[float] = 60.0
+REQUEST_TIMEOUT: Final[float] = 30.0
 FOLLOW_REDIRECTS: Final[bool] = True
 USER_AGENT: Final[str] = (
     "Mozilla/5.0 (compatible; OPTIMIA-HV-ETL/1.0; +research)"
 )
 HEADERS: Final[dict[str, str]] = {"User-Agent": USER_AGENT}
 
-# URLs de descarga directa conocidas (pueden rotar mensualmente).
-# EDENOR publica bajo /files/YYYY-MM/Cuadro-Tarifario.pdf
-EDENOR_PDF_TEMPLATE: Final[str] = (
-    "https://www.edenor.com/files/{year_month}/Cuadro-Tarifario.pdf"
+# Meses hacia atrás que se prueban con plantillas de URL por fecha.
+MONTHS_BACK: Final[int] = 6
+# Máximo de descargas de documentos por distribuidora y tipo de fuente
+# en una corrida normal (evita martillar portales caídos).
+MAX_DOWNLOADS_PER_SOURCE: Final[int] = 8
+BACKFILL_START: Final[str] = "2025-01"
+
+# Rango plausible de cargos variables de energía (ARS/kWh, sin impuestos).
+# Fuera de este rango el valor se descarta (suele ser un cargo de potencia
+# en $/kW-mes, un porcentaje o un número de resolución mal capturado).
+PRICE_MIN_ARS_KWH: Final[float] = 1.0
+PRICE_MAX_ARS_KWH: Final[float] = 2000.0
+# Variación máxima aceptada respecto de la corrida previa (factor).
+MAX_CHANGE_FACTOR: Final[float] = 4.0
+
+TARIFF_FIELDS: Final[tuple[str, ...]] = (
+    "tarifa_compra_kwh",
+    "tarifa_inyeccion_kwh",
+    "cargo_fijo_mensual",
 )
 
-# Último PDF EPEC indexado públicamente (nombre cambia por publicación).
-EPEC_PDF_CANDIDATES: Final[list[str]] = [
-    "https://www.epec.com.ar/docs/cuadro-tarifario/"
-    "cuadro-tarifario-publicado-290825-aplicacion-010925.pdf",
-    "https://www.epec.com.ar/docs/cuadro-tarifario/"
-    "cuadro-tarifario-publicado-170125-aplicacion-190125.pdf",
-]
+STATUS_PARSED: Final[str] = "extraido"
+STATUS_FALLBACK: Final[str] = "fallback_previous"
+STATUS_BASELINE: Final[str] = "baseline_manual"
+STATUS_MISSING: Final[str] = "sin_dato"
+# Estados de corridas anteriores que equivalen a "extraído".
+_PARSED_ALIASES: Final[frozenset[str]] = frozenset({STATUS_PARSED, "parsed_pdf"})
 
-# Páginas índice (no siempre ofrecen URL estable al PDF vigente).
-EPE_INDEX_URL: Final[str] = (
-    "https://www.epe.santafe.gov.ar/institucional/usuarios"
-)
-EDEMSA_INDEX_URL: Final[str] = "https://edemsa.com/segmentacion-tarifaria/"
-EPEC_INDEX_URL: Final[str] = "https://www.epec.com.ar/docs/cuadro-tarifario/"
+SOURCE_NATIONAL: Final[str] = "nacional"
+SOURCE_OWN: Final[str] = "propia"
 
-# Baseline numérico del proyecto (referencia manual / guías PP30 2026-09).
-# Se reescribe en cada corrida junto con metadatos de descarga.
-BASELINE_TARIFAS: Final[dict[str, Any]] = {
-    "descripcion": (
-        "Cuadros tarifarios regionales de Argentina para Generacion "
-        "Distribuida (Tarifas Comerciales T2/T3)"
-    ),
-    "unidad_moneda": "ARS",
-    "parametros_pp30": {
-        "consumo_especifico_kg_kwh": 1.1,
-        "humedad_pct_default": 12.0,
-        "factor_autoconsumo_default": 0.6,
-        "potencia_nominal_kw": 25.0,
-    },
-    "distribuidoras": {
-        "EPEC_CORDOBA": {
-            "provincia": "Córdoba",
-            "tarifa_compra_kwh": 210.0,
-            "tarifa_inyeccion_kwh": 42.0,
-            "cargo_fijo_mensual": 12500.0,
-            "fuente_url": EPEC_INDEX_URL,
-            "parse_status": "baseline_manual",
-        },
-        "EPE_SANTA_FE": {
-            "provincia": "Santa Fe",
-            "tarifa_compra_kwh": 175.0,
-            "tarifa_inyeccion_kwh": 38.0,
-            "cargo_fijo_mensual": 11200.0,
-            "fuente_url": EPE_INDEX_URL,
-            "parse_status": "baseline_manual",
-        },
-        "EDEMSA_MENDOZA": {
-            "provincia": "Mendoza",
-            "tarifa_compra_kwh": 135.0,
-            "tarifa_inyeccion_kwh": 33.0,
-            "cargo_fijo_mensual": 9800.0,
-            "fuente_url": EDEMSA_INDEX_URL,
-            "parse_status": "baseline_manual",
-        },
-        "EDENOR_AMBA": {
-            "provincia": "Buenos Aires / AMBA",
-            "tarifa_compra_kwh": 85.0,
-            "tarifa_inyeccion_kwh": 26.5,
-            "cargo_fijo_mensual": 8500.0,
-            "fuente_url": "https://www.edenor.com/",
-            "parse_status": "baseline_manual",
-        },
-    },
-    "provincia_a_distribuidora": {
-        "cordoba": "EPEC_CORDOBA",
-        "santa fe": "EPE_SANTA_FE",
-        "mendoza": "EDEMSA_MENDOZA",
-        "buenos aires": "EDENOR_AMBA",
-    },
-    "cultivos_biomasa": {
-        "maiz": {"pci_kcal_kg": 3900, "consumo_especifico_kg_kwh": 1.1},
-        "trigo": {"pci_kcal_kg": 3800, "consumo_especifico_kg_kwh": 1.1},
-        "soja": {"pci_kcal_kg": 3700, "consumo_especifico_kg_kwh": 1.1},
-        "sorgo": {"pci_kcal_kg": 3850, "consumo_especifico_kg_kwh": 1.1},
-    },
+DOC_EXTENSIONS: Final[tuple[str, ...]] = (".pdf", ".xlsx", ".xls", ".zip")
+
+# Códigos usados por versiones anteriores del JSON → códigos actuales.
+LEGACY_CODES: Final[dict[str, str]] = {
+    "EPEC_CORDOBA": "EPEC",
+    "EPE_SANTA_FE": "EPE",
+    "EDEMSA_MENDOZA": "EDEMSA",
+    "EDENOR_AMBA": "EDENOR",
 }
+
+# Patrones de sección por categoría, en orden de preferencia. Un PP30
+# (25 kW) instalado en un establecimiento agroindustrial encuadra en
+# medianas/grandes demandas (T2/T3), no en residencial.
+SECTION_PATTERNS_COMPRA: Final[list[str]] = [
+    r"TARIFA\s*N?\s*[º°o]?\s*\.?\s*3\b",
+    r"\bT\s*3\b",
+    r"GRANDES\s+(?:CONSUMOS|DEMANDAS)",
+    r"TARIFA\s*N?\s*[º°o]?\s*\.?\s*2\b",
+    r"\bT\s*2\b",
+    r"MEDIANAS?\s+DEMANDAS?",
+]
+SECTION_PATTERNS_INYECCION: Final[list[str]] = [
+    r"INYECCI[OÓ]N",
+    r"GENERACI[OÓ]N\s+DISTRIBUIDA",
+    r"USUARIOS?[\s-]+GENERADOR(?:ES)?",
+    r"EXCEDENTES?",
+]
+# Fin de sección: comienzo de otra tarifa/categoría o de la sección de
+# usuario-generador (para no mezclar cargos de compra con inyección).
+SECTION_END_PATTERN: Final[str] = (
+    r"\n\s*(?:TARIFA\s*N?\s*[º°o]?\s*\.?\s*\d|T\s*\d\s*[-–:]|"
+    r"USUARIOS?[\s-]+GENERADOR|GENERACI[OÓ]N\s+DISTRIBUIDA)"
+)
+SECTION_MAX_CHARS: Final[int] = 6000
+
+# Número argentino: 1.234.567,89 | 54,04222 | 1234,5 | 210
+AR_NUMBER_PATTERN: Final[str] = r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+,\d+|\d+"
+KWH_UNIT_PATTERN: Final[str] = r"\$?\s*/\s*kWh|\$\s*kWh|por\s+kWh"
+MONTH_UNIT_PATTERN: Final[str] = r"\$?\s*/\s*mes|por\s+mes|mensual"
+
+MESES: Final[dict[str, int]] = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5,
+    "junio": 6, "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9,
+    "octubre": 10, "noviembre": 11, "diciembre": 12,
+}
+MES_NOMBRE: Final[dict[int, str]] = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre",
+    11: "Noviembre", 12: "Diciembre",
+}
+
+PARAMETROS_PP30_DEFAULT: Final[dict[str, float]] = {
+    "consumo_especifico_kg_kwh": 1.1,
+    "humedad_pct_default": 12.0,
+    "factor_autoconsumo_default": 0.6,
+    "potencia_nominal_kw": 25.0,
+    "disponibilidad": 0.8,
+    "fraccion_recuperable_default": 0.5,
+}
+
+# Valores cargados a mano en versiones anteriores del proyecto, NO
+# verificados contra los cuadros vigentes. Sólo se usan si nunca se pudo
+# extraer un valor real y quedan marcados como ``baseline_manual``.
+BASELINE_MANUAL: Final[dict[str, dict[str, float]]] = {
+    "EPEC": {"tarifa_compra_kwh": 210.0, "tarifa_inyeccion_kwh": 42.0,
+             "cargo_fijo_mensual": 12500.0},
+    "EPE": {"tarifa_compra_kwh": 175.0, "tarifa_inyeccion_kwh": 38.0,
+            "cargo_fijo_mensual": 11200.0},
+    "EDEMSA": {"tarifa_compra_kwh": 135.0, "tarifa_inyeccion_kwh": 33.0,
+               "cargo_fijo_mensual": 9800.0},
+    "EDENOR": {"tarifa_compra_kwh": 85.0, "tarifa_inyeccion_kwh": 26.5,
+               "cargo_fijo_mensual": 8500.0},
+}
+
+
+# ====================== PARSEO NUMÉRICO ======================
+
+def parse_ar_number(token: str) -> float | None:
+    """
+    Convierte un número en formato argentino a float.
+
+    Reglas: si hay coma, la coma es decimal y los puntos son miles
+    (``1.234,56`` → 1234.56). Sin coma, los puntos en grupos de 3 son
+    miles (``12.500`` → 12500); un único punto con != 3 decimales se
+    interpreta como decimal (``54.04`` → 54.04).
+
+    Args:
+        token: Texto numérico.
+
+    Returns:
+        Valor float o None si no es interpretable.
+    """
+    t = token.strip().replace("$", "").replace(" ", "")
+    if not t:
+        return None
+    try:
+        if "," in t:
+            return float(t.replace(".", "").replace(",", "."))
+        if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", t):
+            return float(t.replace(".", ""))
+        return float(t)
+    except ValueError:
+        return None
+
+
+# ====================== PARSEO DE TEXTO ======================
+
+def iter_sections(
+    text: str,
+    patterns: list[str],
+    max_chars: int = SECTION_MAX_CHARS,
+) -> Iterator[tuple[str, str]]:
+    """
+    Itera los bloques de texto cuyo encabezado coincide con los patrones.
+
+    Cada bloque va desde el encabezado hasta el próximo encabezado de
+    tarifa (o ``max_chars``). Se recorren los patrones en orden de
+    preferencia y, dentro de cada uno, todas sus ocurrencias (la primera
+    puede ser un índice o una nota sin importes).
+
+    Args:
+        text: Texto completo del cuadro tarifario.
+        patterns: Regex de encabezado, en orden de preferencia.
+        max_chars: Longitud máxima del bloque.
+
+    Yields:
+        Tuplas (patrón, bloque).
+    """
+    for pat in patterns:
+        for m in re.finditer(pat, text, flags=re.IGNORECASE):
+            rest = text[m.end(): m.end() + max_chars]
+            end = re.search(SECTION_END_PATTERN, rest, flags=re.IGNORECASE)
+            yield pat, text[m.start(): m.end() + (end.start() if end else len(rest))]
+
+
+def extract_unit_values(
+    block: str,
+    unit_pattern: str,
+    vmin: float | None = None,
+    vmax: float | None = None,
+) -> list[float]:
+    """
+    Extrae los valores numéricos asociados a una unidad en un bloque.
+
+    Para cada línea que contiene la unidad toma, en orden de preferencia:
+    los importes que siguen a la unidad (``$/kWh 70,12``), los que la
+    preceden (``70,12 $/kWh``, filas de planilla), el último número de la
+    línea, o el primero de la línea siguiente si la unidad quedó sola.
+
+    Args:
+        block: Texto de la sección.
+        unit_pattern: Regex de la unidad (p.ej. ``$/kWh``).
+        vmin: Mínimo plausible (incl.).
+        vmax: Máximo plausible (incl.).
+
+    Returns:
+        Lista de valores plausibles en orden de aparición.
+    """
+    values: list[float] = []
+    lines = block.splitlines()
+    unit = rf"(?:{unit_pattern})"
+    for i, line in enumerate(lines):
+        if not re.search(unit_pattern, line, flags=re.IGNORECASE):
+            continue
+        # 1) unidad seguida del importe: "Cargo variable $/kWh 70,1234"
+        nums = re.findall(
+            rf"{unit}\s*[:=]?\s*({AR_NUMBER_PATTERN})", line, flags=re.IGNORECASE
+        )
+        # 2) importe seguido de la unidad: "70,1234 $/kWh" (planillas)
+        if not nums:
+            nums = re.findall(
+                rf"({AR_NUMBER_PATTERN})\s*{unit}", line, flags=re.IGNORECASE
+            )
+        # 3) último número de la línea, sin la unidad (evita el "2" de m2)
+        if not nums:
+            cleaned = re.sub(unit_pattern, " ", line, flags=re.IGNORECASE)
+            found = re.findall(AR_NUMBER_PATTERN, cleaned)
+            nums = found[-1:]
+        # 4) unidad en una línea de texto y el importe en la siguiente
+        #    (no aplica a filas de planilla, donde la unidad es encabezado)
+        if not nums and "|" not in line and i + 1 < len(lines):
+            nums = re.findall(AR_NUMBER_PATTERN, lines[i + 1])[-1:]
+        for token in nums:
+            val = parse_ar_number(token)
+            if val is None:
+                continue
+            if vmin is not None and val < vmin:
+                continue
+            if vmax is not None and val > vmax:
+                continue
+            values.append(val)
+    return values
+
+
+def first_section_with_values(
+    text: str,
+    patterns: list[str],
+    unit_pattern: str = KWH_UNIT_PATTERN,
+) -> tuple[str, str, list[float]] | None:
+    """Primer bloque (en orden de preferencia) con valores plausibles $/kWh."""
+    for pat, block in iter_sections(text, patterns):
+        vals = extract_unit_values(
+            block, unit_pattern, PRICE_MIN_ARS_KWH, PRICE_MAX_ARS_KWH
+        )
+        if vals:
+            return pat, block, vals
+    return None
+
+
+def parse_tariff_text(text: str) -> dict[str, Any]:
+    """
+    Extrae tarifa de compra, de inyección y cargo fijo de un cuadro.
+
+    - Compra: mediana de los cargos variables $/kWh de la sección T3/T2
+      (si hay bandas pico/resto/valle o escalones, la mediana representa
+      la banda central).
+    - Inyección: mediana de los $/kWh de la sección de inyección /
+      generación distribuida.
+    - Cargo fijo: primer valor $/mes de la sección de compra.
+
+    Args:
+        text: Texto plano del documento.
+
+    Returns:
+        Diccionario con los valores encontrados (None si no se halló),
+        la sección usada y los valores crudos detectados.
+    """
+    result: dict[str, Any] = {
+        "tarifa_compra_kwh": None,
+        "tarifa_inyeccion_kwh": None,
+        "cargo_fijo_mensual": None,
+        "seccion_compra": None,
+        "valores_compra_detectados": [],
+        "valores_inyeccion_detectados": [],
+    }
+    compra = first_section_with_values(text, SECTION_PATTERNS_COMPRA)
+    if compra is not None:
+        pat, block, vals = compra
+        result["seccion_compra"] = pat
+        result["valores_compra_detectados"] = vals
+        result["tarifa_compra_kwh"] = round(statistics.median(vals), 5)
+        fijos = extract_unit_values(block, MONTH_UNIT_PATTERN, 1.0, None)
+        if fijos:
+            result["cargo_fijo_mensual"] = fijos[0]
+
+    iny = first_section_with_values(text, SECTION_PATTERNS_INYECCION)
+    if iny is not None:
+        _, _, vals = iny
+        result["valores_inyeccion_detectados"] = vals
+        result["tarifa_inyeccion_kwh"] = round(statistics.median(vals), 5)
+    return result
+
+
+# ====================== VIGENCIA ======================
+
+def _ym(year: int, month: int) -> str | None:
+    if 2000 <= year <= 2100 and 1 <= month <= 12:
+        return f"{year:04d}-{month:02d}"
+    return None
+
+
+def vigencia_from_name(url: str) -> str | None:
+    """
+    Vigencia AAAA-MM a partir del nombre/ruta del documento.
+
+    Reconoce ``AAAA_MM`` / ``AAAA-MM`` (portal nacional, EDENOR),
+    ``Mes_AAAA`` (EDESA, EDEA, EDERSA) y ``DDMMAA`` (EPEC: se toma la
+    fecha más alta, la de aplicación). Devuelve None si no hay fecha.
+    """
+    path = urlparse(url).path.lower()
+    name = path.rsplit("/", 1)[-1]
+    candidates: list[str] = []
+    for m in re.finditer(r"(20\d{2})[_-](0[1-9]|1[0-2])(?!\d)", path):
+        candidates.append(_ym(int(m.group(1)), int(m.group(2))) or "")
+    for mes, num in MESES.items():
+        for m in re.finditer(rf"{mes}[\s_-]*(20\d{{2}})", name):
+            candidates.append(_ym(int(m.group(1)), num) or "")
+    for m in re.finditer(r"(?<!\d)([0-3]\d)([01]\d)(\d{2})(?!\d)", name):
+        d, mo, y = int(m.group(1)), int(m.group(2)), 2000 + int(m.group(3))
+        if 1 <= d <= 31:
+            candidates.append(_ym(y, mo) or "")
+    candidates = [c for c in candidates if c]
+    return max(candidates) if candidates else None
+
+
+def vigencia_from_text(text: str) -> str | None:
+    """
+    Vigencia AAAA-MM a partir del texto del cuadro.
+
+    Reconoce "a partir del 1° de septiembre de 2026", "Periodo: OCTUBRE
+    2025", "vigencia: 01/09/2026". Se toma la fecha más alta encontrada en
+    los primeros 3000 caracteres (el encabezado).
+    """
+    head = text[:3000].lower()
+    found: list[str] = []
+    for mes, num in MESES.items():
+        for m in re.finditer(rf"{mes}\s+(?:de\s+|del?\s+)?(20\d{{2}})", head):
+            found.append(_ym(int(m.group(1)), num) or "")
+    for m in re.finditer(r"(?<!\d)([0-3]?\d)/([01]?\d)/(20\d{2})(?!\d)", head):
+        found.append(_ym(int(m.group(3)), int(m.group(2))) or "")
+    found = [f for f in found if f]
+    return max(found) if found else None
+
+
+# ====================== VALIDACIÓN ======================
+
+def _is_parsed_status(status: str | None) -> bool:
+    return status in _PARSED_ALIASES or status == STATUS_FALLBACK
+
+
+def validate_parsed(
+    parsed: dict[str, Any],
+    previous: dict[str, Any] | None,
+) -> dict[str, str]:
+    """
+    Valida los valores extraídos. Devuelve el motivo de rechazo por campo.
+
+    Reglas:
+        - Inyección < compra (la energía inyectada se remunera a precio
+          mayorista, inferior a la tarifa de venta al usuario).
+        - Variación respecto del valor previo **extraído** dentro de
+          [1/MAX_CHANGE_FACTOR, MAX_CHANGE_FACTOR]. No se compara contra
+          valores ``baseline_manual`` (no verificados): un valor real no
+          puede rechazarse por diferir de uno inventado.
+
+    Args:
+        parsed: Salida de ``parse_tariff_text``.
+        previous: Bloque previo de la distribuidora (o None).
+
+    Returns:
+        Diccionario campo → motivo de rechazo (vacío si todo es válido).
+    """
+    rejected: dict[str, str] = {}
+    compra = parsed.get("tarifa_compra_kwh")
+    iny = parsed.get("tarifa_inyeccion_kwh")
+    if compra is not None and iny is not None and iny >= compra:
+        rejected["tarifa_inyeccion_kwh"] = (
+            f"inyección ({iny}) >= compra ({compra})"
+        )
+    if previous:
+        estados = previous.get("estado_campos", {})
+        for field in TARIFF_FIELDS:
+            new = parsed.get(field)
+            old = previous.get(field)
+            if new is None or field in rejected or not old:
+                continue
+            if not _is_parsed_status(estados.get(field)):
+                continue
+            ratio = new / float(old)
+            if not (1.0 / MAX_CHANGE_FACTOR <= ratio <= MAX_CHANGE_FACTOR):
+                rejected[field] = (
+                    f"variación ×{ratio:.2f} respecto del valor previo {old}"
+                )
+    return rejected
+
+
+def merge_distribuidora(
+    code: str,
+    parsed: dict[str, Any] | None,
+    previous: dict[str, Any] | None,
+    fecha: str,
+) -> dict[str, Any]:
+    """
+    Combina valores extraídos, previos y baseline con trazabilidad por campo.
+
+    Prioridad por campo: valor extraído en esta corrida (si pasa la
+    validación) → valor previo → baseline manual → ``None``.
+
+    Args:
+        code: Código de distribuidora.
+        parsed: Documento elegido (``parse_tariff_text`` + metadatos de
+            documento) o None si no se pudo extraer.
+        previous: Bloque de la corrida previa (None si no existe).
+        fecha: Fecha ISO de la corrida.
+
+    Returns:
+        Bloque de distribuidora para el JSON de referencia.
+    """
+    info = DISTRIBUIDORAS[code]
+    baseline = BASELINE_MANUAL.get(code, {})
+    block: dict[str, Any] = {
+        "nombre": info["nombre"],
+        "jurisdiccion": info["jurisdiccion"],
+        "es_proxy": code in DISTRIBUIDORAS_PROXY,
+    }
+    estado: dict[str, str] = {}
+    rejected = validate_parsed(parsed, previous) if parsed else {}
+    prev_estado = (previous or {}).get("estado_campos", {})
+    for field in TARIFF_FIELDS:
+        new = (parsed or {}).get(field)
+        if new is not None and field not in rejected:
+            block[field] = new
+            estado[field] = STATUS_PARSED
+        elif previous is not None and previous.get(field) is not None:
+            block[field] = previous[field]
+            prev = prev_estado.get(field, previous.get("parse_status", STATUS_BASELINE))
+            # Un valor heredado conserva su origen: baseline sigue siendo
+            # baseline; un valor extraído antes pasa a ser fallback.
+            estado[field] = STATUS_BASELINE if prev == STATUS_BASELINE else STATUS_FALLBACK
+        elif baseline.get(field) is not None:
+            block[field] = baseline[field]
+            estado[field] = STATUS_BASELINE
+        else:
+            block[field] = None
+            estado[field] = STATUS_MISSING
+    block["estado_campos"] = estado
+    states = set(estado.values())
+    block["parse_status"] = states.pop() if len(states) == 1 else "mixto"
+    if parsed is not None:
+        for key in ("documento", "fuente_tipo", "vigencia", "sha256", "seccion_compra"):
+            block[key] = parsed.get(key)
+        block["fecha_extraccion"] = fecha
+        block["valores_detectados"] = {
+            "compra": parsed.get("valores_compra_detectados", []),
+            "inyeccion": parsed.get("valores_inyeccion_detectados", []),
+        }
+    elif previous is not None:
+        for key in ("documento", "fuente_tipo", "vigencia", "sha256", "fecha_extraccion"):
+            if key in previous:
+                block[key] = previous[key]
+    if rejected:
+        block["rechazos_validacion"] = rejected
+        logger.warning("[tarifas] %s: valores rechazados %s", code, rejected)
+    return block
 
 
 # ====================== HTTP ======================
@@ -140,12 +549,6 @@ BASELINE_TARIFAS: Final[dict[str, Any]] = {
 def download_bytes(url: str) -> bytes:
     """
     Descarga el contenido binario de una URL.
-
-    Args:
-        url: URL del recurso.
-
-    Returns:
-        Contenido binario.
 
     Raises:
         httpx.HTTPStatusError: Si el servidor responde error HTTP.
@@ -161,40 +564,337 @@ def download_bytes(url: str) -> bytes:
     return response.content
 
 
-def try_download(url: str) -> bytes | None:
-    """
-    Intenta descargar una URL; devuelve None si falla.
-
-    Args:
-        url: URL del recurso.
-
-    Returns:
-        Contenido binario o None.
-    """
+def try_download(
+    url: str,
+    downloader: Callable[[str], bytes] = download_bytes,
+) -> bytes | None:
+    """Intenta descargar una URL; devuelve None si falla o viene vacía."""
     try:
-        content = download_bytes(url)
+        content = downloader(url)
     except (httpx.HTTPError, OSError) as exc:
-        print(f"[tarifas] Falla descarga {url}: {exc}")
+        logger.debug("[tarifas] Falla descarga %s: %s", url, exc)
         return None
     if not content:
-        print(f"[tarifas] Respuesta vacía: {url}")
+        logger.debug("[tarifas] Respuesta vacía: %s", url)
         return None
     return content
+
+
+def with_dead_host_guard(
+    downloader: Callable[[str], bytes],
+) -> Callable[[str], bytes]:
+    """
+    Envuelve un downloader para no reintentar hosts inalcanzables.
+
+    Tras un error de conexión (no un 404) el host se marca como caído y
+    las siguientes URLs de ese host fallan de inmediato. Evita cientos de
+    timeouts cuando un portal está fuera de servicio.
+    """
+    dead: set[str] = set()
+
+    def guarded(url: str) -> bytes:
+        host = urlparse(url).netloc
+        if host in dead:
+            raise httpx.ConnectError(f"host marcado como caído: {host}")
+        try:
+            return downloader(url)
+        except httpx.HTTPStatusError:
+            raise
+        except httpx.RequestError:
+            dead.add(host)
+            logger.warning("[tarifas] Host inalcanzable, se omite en esta corrida: %s", host)
+            raise
+
+    return guarded
+
+
+def is_pdf(content: bytes) -> bool:
+    """True si el binario tiene firma PDF (tolera BOM/espacios iniciales)."""
+    return PDF_MAGIC in content[:1024]
+
+
+# ====================== DESCUBRIMIENTO ======================
+
+def _date_score(url: str) -> str:
+    """Clave de orden temporal (vigencia del nombre o cadena vacía)."""
+    return vigencia_from_name(url) or ""
+
+
+def discover_document_links(
+    html: str,
+    base_url: str,
+    keywords: tuple[str, ...] = (),
+) -> list[str]:
+    """
+    Lista enlaces a documentos tarifarios de una página, recientes primero.
+
+    Args:
+        html: HTML de la página índice.
+        base_url: URL de la página (para resolver enlaces relativos).
+        keywords: Si se indican, al menos una debe aparecer en la URL o en
+            el texto del enlace (para índices compartidos entre varias
+            distribuidoras). Sin keywords se exige "tarif" o "cuadro"
+            salvo en el portal nacional (que sólo enlaza cuadros).
+
+    Returns:
+        URLs absolutas ordenadas por vigencia embebida descendente.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    national = "argentina.gob.ar" in base_url
+    required = keywords or (() if national else ("tarif", "cuadro", "ct_"))
+    links: list[str] = []
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"]).strip()
+        lower = href.lower().split("?")[0]
+        if not lower.endswith(DOC_EXTENSIONS) and "files.php" not in lower:
+            continue
+        haystack = (href + " " + a.get_text(" ", strip=True)).lower()
+        if required and not any(k in haystack for k in required):
+            continue
+        url = urljoin(base_url, href)
+        if url not in links:
+            links.append(url)
+    return sorted(links, key=_date_score, reverse=True)
+
+
+# Alias de compatibilidad con la versión anterior.
+discover_pdf_links = discover_document_links
+
+
+def months_back(now: datetime, n: int = MONTHS_BACK) -> list[tuple[int, int]]:
+    """Lista (año, mes) desde el mes actual hacia atrás, ``n`` meses."""
+    out = []
+    y, m = now.year, now.month
+    for _ in range(n):
+        out.append((y, m))
+        y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+    return out
+
+
+def months_since(start: str, now: datetime) -> list[tuple[int, int]]:
+    """Lista (año, mes) desde ``now`` hasta ``start`` (AAAA-MM), descendente."""
+    sy, sm = (int(x) for x in start.split("-"))
+    n = (now.year - sy) * 12 + (now.month - sm) + 1
+    return months_back(now, max(n, 0))
+
+
+def format_template(template: str, year: int, month: int) -> str:
+    """Formatea una plantilla de URL por mes (ver ``distribuidoras``)."""
+    mes = MES_NOMBRE[month]
+    return template.format(
+        year=f"{year:04d}", month=f"{month:02d}", ym=f"{year:04d}-{month:02d}",
+        mes=mes, mes_upper=mes.upper(), mes_lower=mes.lower(),
+    )
+
+
+def national_file_urls(code: str, months: list[tuple[int, int]]) -> list[str]:
+    """URLs directas del portal nacional para los meses indicados."""
+    d = DISTRIBUIDORAS[code]["dir_nacional"]
+    if not d:
+        return []
+    return [
+        f"{NATIONAL_FILES_BASE}{d}/{y:04d}_{m:02d}_{d}.{ext}"
+        for y, m in months
+        for ext in NATIONAL_EXTENSIONS
+    ]
+
+
+def candidate_documents(
+    code: str,
+    now: datetime,
+    downloader: Callable[[str], bytes] = download_bytes,
+    raw_dir: Path | None = None,
+    months: list[tuple[int, int]] | None = None,
+    index_cache: dict[str, bytes | None] | None = None,
+) -> dict[str, list[str]]:
+    """
+    Resuelve los documentos candidatos de una distribuidora por fuente.
+
+    Args:
+        code: Código de distribuidora.
+        now: Fecha de la corrida.
+        downloader: Función de descarga.
+        raw_dir: Si se indica, se guarda el HTML de cada índice.
+        months: Meses a probar con plantillas (default: últimos 6).
+        index_cache: Caché de índices compartidos (OCEBA, EPRE) por corrida.
+
+    Returns:
+        ``{"nacional": [...], "propia": [...]}`` con URLs recientes primero.
+    """
+    info = DISTRIBUIDORAS[code]
+    months = months or months_back(now)
+    cache = index_cache if index_cache is not None else {}
+
+    def fetch_index(url: str) -> str | None:
+        if url not in cache:
+            cache[url] = try_download(url, downloader)
+            if cache[url] is not None and raw_dir is not None:
+                host = urlparse(url).netloc.replace(".", "_")
+                save_bytes(
+                    cache[url],  # type: ignore[arg-type]
+                    raw_dir / "indices" / build_timestamped_filename(host, ".html", now),
+                )
+        content = cache[url]
+        return content.decode("utf-8", "ignore") if content else None
+
+    national: list[str] = []
+    if info["slug_nacional"]:
+        page = NATIONAL_PAGE_BASE + info["slug_nacional"]
+        html = fetch_index(page)
+        if html:
+            national.extend(discover_document_links(html, page))
+        national.extend(u for u in national_file_urls(code, months) if u not in national)
+
+    own: list[str] = []
+    keywords = INDEX_KEYWORDS.get(code, ())
+    for index in info["indices"]:
+        html = fetch_index(index)
+        if html:
+            own.extend(
+                u for u in discover_document_links(html, index, keywords) if u not in own
+            )
+    own.extend(u for u in info["urls"] if u not in own)
+    for template in info["url_templates"]:
+        for y, m in months:
+            url = format_template(template, y, m)
+            if url not in own:
+                own.append(url)
+    return {SOURCE_NATIONAL: national, SOURCE_OWN: own}
+
+
+# ====================== PROCESAMIENTO DE DOCUMENTOS ======================
+
+def process_document(
+    code: str,
+    url: str,
+    content: bytes,
+    fuente_tipo: str,
+    now: datetime,
+    raw_dir: Path | None = None,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+) -> dict[str, Any] | None:
+    """
+    Convierte, parsea y fecha un documento tarifario.
+
+    Si el documento contiene varios archivos (ZIP), se usa el primero con
+    tarifa de compra reconocible.
+
+    Returns:
+        Diccionario con valores extraídos y metadatos (documento,
+        vigencia, sha256, fuente_tipo) o None si no se reconocen tarifas.
+    """
+    fmt = detect_format(content, url)
+    if fmt is None:
+        logger.debug("[tarifas] %s: %s no es un documento soportado", code, url)
+        return None
+    sha = hashlib.sha256(content).hexdigest()
+    if raw_dir is not None:
+        ext = "pdf" if fmt == "pdf" else fmt
+        save_bytes(content, raw_dir / code.lower() / f"{sha[:16]}.{ext}")
+    try:
+        texts = text_extractor(content, url)
+    except Exception as exc:  # documento corrupto / cifrado
+        logger.warning("[tarifas] %s: no se pudo leer %s: %s", code, url, exc)
+        return None
+    for member, text in texts:
+        parsed = parse_tariff_text(text)
+        if parsed["tarifa_compra_kwh"] is None:
+            continue
+        parsed.update({
+            "documento": member or url,
+            "fuente_tipo": fuente_tipo,
+            "sha256": sha,
+            "vigencia": vigencia_from_name(member or url) or vigencia_from_text(text),
+            "fecha_extraccion": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        return parsed
+    logger.debug("[tarifas] %s: %s sin cargos $/kWh reconocibles", code, url)
+    return None
+
+
+def history_record(code: str, parsed: dict[str, Any]) -> dict[str, Any]:
+    """Fila del historial a partir de un documento procesado."""
+    return {
+        "distribuidora": code,
+        "vigencia": parsed.get("vigencia"),
+        "tarifa_compra_kwh": parsed.get("tarifa_compra_kwh"),
+        "tarifa_inyeccion_kwh": parsed.get("tarifa_inyeccion_kwh"),
+        "cargo_fijo_mensual": parsed.get("cargo_fijo_mensual"),
+        "seccion_compra": parsed.get("seccion_compra"),
+        "n_valores_compra": len(parsed.get("valores_compra_detectados", [])),
+        "n_valores_inyeccion": len(parsed.get("valores_inyeccion_detectados", [])),
+        "fuente_tipo": parsed.get("fuente_tipo"),
+        "documento": parsed.get("documento"),
+        "sha256": parsed.get("sha256"),
+        "fecha_extraccion": parsed.get("fecha_extraccion"),
+    }
+
+
+def fetch_distribuidora(
+    code: str,
+    now: datetime,
+    raw_dir: Path | None = None,
+    downloader: Callable[[str], bytes] = download_bytes,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+    months: list[tuple[int, int]] | None = None,
+    max_downloads: int | None = MAX_DOWNLOADS_PER_SOURCE,
+    stop_at_first: bool = True,
+    index_cache: dict[str, bytes | None] | None = None,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """
+    Descarga y procesa los cuadros de una distribuidora.
+
+    En modo normal (``stop_at_first``) se toma el primer documento válido
+    de cada tipo de fuente y se elige el de vigencia más reciente. En modo
+    historial se procesan todos los candidatos.
+
+    Returns:
+        Tupla (documento vigente elegido o None, lista de documentos
+        procesados para el historial).
+    """
+    cands = candidate_documents(code, now, downloader, raw_dir, months, index_cache)
+    processed: list[dict[str, Any]] = []
+    best_by_source: dict[str, dict[str, Any]] = {}
+    seen_sha: set[str] = set()
+    for fuente, urls in cands.items():
+        downloads = 0
+        for url in urls:
+            if max_downloads is not None and downloads >= max_downloads:
+                break
+            content = try_download(url, downloader)
+            if content is None:
+                continue
+            downloads += 1
+            parsed = process_document(code, url, content, fuente, now, raw_dir, text_extractor)
+            if parsed is None or parsed["sha256"] in seen_sha:
+                continue
+            seen_sha.add(parsed["sha256"])
+            processed.append(parsed)
+            best_by_source.setdefault(fuente, parsed)
+            if stop_at_first:
+                break
+    if not processed:
+        logger.warning("[tarifas] %s: sin cuadro tarifario reconocible", code)
+        return None, []
+    # Vigencia desconocida en una fuente propia "vigente" ≈ mes de la corrida.
+    def key(p: dict[str, Any]) -> str:
+        return p.get("vigencia") or now.strftime("%Y-%m")
+
+    chosen = max(best_by_source.values(), key=key)
+    logger.info(
+        "[tarifas] %s: compra=%s inyección=%s vigencia=%s (%s) %s",
+        code, chosen["tarifa_compra_kwh"], chosen["tarifa_inyeccion_kwh"],
+        chosen.get("vigencia"), chosen["fuente_tipo"], chosen["documento"],
+    )
+    return chosen, processed
 
 
 # ====================== ALMACENAMIENTO ======================
 
 def save_bytes(content: bytes, output_path: Path) -> Path:
-    """
-    Persiste contenido binario creando directorios padre si hace falta.
-
-    Args:
-        content: Bytes a guardar.
-        output_path: Ruta destino.
-
-    Returns:
-        Path absoluto del archivo escrito.
-    """
+    """Persiste contenido binario creando directorios padre."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(content)
@@ -202,16 +902,7 @@ def save_bytes(content: bytes, output_path: Path) -> Path:
 
 
 def save_json(data: dict[str, Any], output_path: Path) -> Path:
-    """
-    Persiste un diccionario como JSON UTF-8 indentado.
-
-    Args:
-        data: Estructura a serializar.
-        output_path: Ruta destino.
-
-    Returns:
-        Path absoluto del archivo escrito.
-    """
+    """Persiste un diccionario como JSON UTF-8 indentado."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as handle:
@@ -220,168 +911,81 @@ def save_json(data: dict[str, Any], output_path: Path) -> Path:
     return output_path.resolve()
 
 
-# ====================== DESCARGA POR DISTRIBUIDORA ======================
-
-def download_edenor_pdf(
-    raw_dir: Path,
-    ts: datetime | None = None,
-) -> Path | None:
+def load_previous_reference(ref_dir: Path) -> dict[str, Any] | None:
     """
-    Descarga el cuadro tarifario mensual de EDENOR si está publicado.
-
-    Prueba el mes corriente y el anterior (``YYYY-MM``).
-
-    Args:
-        raw_dir: Directorio ``data/raw/tarifas``.
-        ts: Timestamp de la corrida.
+    Carga el JSON de tarifas más reciente, migrando códigos antiguos.
 
     Returns:
-        Path del PDF guardado o None si ninguna URL respondió.
+        JSON previo o None si no existe.
     """
-    now = ts or datetime.now()
-    year_months = [
-        now.strftime("%Y-%m"),
-        (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m"),
-    ]
-    # dedupe preserving order
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for ym in year_months:
-        if ym not in seen:
-            seen.add(ym)
-            ordered.append(ym)
-
-    for ym in ordered:
-        url = EDENOR_PDF_TEMPLATE.format(year_month=ym)
-        content = try_download(url)
-        if content is None:
-            continue
-        name = build_timestamped_filename(
-            f"edenor_{ym.replace('-', '')}",
-            suffix=PDF_SUFFIX,
-            ts=now,
-        )
-        path = save_bytes(content, raw_dir / name)
-        print(f"[tarifas] EDENOR PDF: {path} ({len(content)} bytes)")
-        return path
-    return None
-
-
-def download_epec_pdf(
-    raw_dir: Path,
-    ts: datetime | None = None,
-) -> Path | None:
-    """
-    Descarga un PDF candidato de EPEC.
-
-    Args:
-        raw_dir: Directorio ``data/raw/tarifas``.
-        ts: Timestamp de la corrida.
-
-    Returns:
-        Path del PDF guardado o None.
-    """
-    now = ts or datetime.now()
-    for url in EPEC_PDF_CANDIDATES:
-        content = try_download(url)
-        if content is None:
-            continue
-        name = build_timestamped_filename("epec", suffix=PDF_SUFFIX, ts=now)
-        path = save_bytes(content, raw_dir / name)
-        print(f"[tarifas] EPEC PDF: {path} ({len(content)} bytes)")
-        return path
-    return None
-
-
-def record_index_pages(raw_dir: Path, ts: datetime | None = None) -> list[Path]:
-    """
-    Guarda HTML de páginas índice (EPE, EDEMSA, EPEC) para auditoría.
-
-    No parsea tarifas desde el HTML: solo deja evidencia de la corrida
-    y facilita completar parsers después.
-
-    Args:
-        raw_dir: Directorio ``data/raw/tarifas``.
-        ts: Timestamp de la corrida.
-
-    Returns:
-        Lista de paths HTML guardados.
-    """
-    now = ts or datetime.now()
-    saved: list[Path] = []
-    targets = {
-        "epe_index": EPE_INDEX_URL,
-        "edemsa_index": EDEMSA_INDEX_URL,
-        "epec_index": EPEC_INDEX_URL,
-    }
-    for stem, url in targets.items():
-        content = try_download(url)
-        if content is None:
-            continue
-        name = build_timestamped_filename(stem, suffix=".html", ts=now)
-        path = save_bytes(content, raw_dir / name)
-        print(f"[tarifas] Índice {stem}: {path}")
-        saved.append(path)
-    return saved
+    try:
+        previous = find_latest_raw(ref_dir, REF_STEM_TARIFAS, suffix=JSON_SUFFIX)
+    except FileNotFoundError:
+        return None
+    with previous.open(encoding="utf-8") as handle:
+        data = json.load(handle)
+    dist = data.get("distribuidoras", {})
+    data["distribuidoras"] = {LEGACY_CODES.get(k, k): v for k, v in dist.items()}
+    return data
 
 
 # ====================== REFERENCIA CONSOLIDADA ======================
 
 def build_reference_payload(
-    downloads: dict[str, str | None],
+    parsed_by_code: dict[str, dict[str, Any] | None],
+    previous: dict[str, Any] | None,
     ts: datetime | None = None,
 ) -> dict[str, Any]:
     """
-    Construye el JSON de referencia consumido por energy_finance.
+    Construye el JSON de referencia consumido por ``energy_finance``.
+
+    Los parámetros operativos PP30 se heredan del JSON previo (pueden
+    haber sido ajustados a mano). El mapeo geográfico sale siempre del
+    registro ``etl/reference/distribuidoras.py`` (fuente de verdad).
 
     Args:
-        downloads: Mapa distribuidora/código → path o URL descargada.
+        parsed_by_code: Código → documento vigente elegido (o None).
+        previous: JSON previo o None.
         ts: Timestamp de la corrida.
 
     Returns:
         Diccionario listo para serializar.
     """
     now = ts or datetime.now()
-    payload = json.loads(json.dumps(BASELINE_TARIFAS))  # deep copy
+    fecha = now.strftime("%Y-%m-%dT%H:%M:%S")
+    params = dict(PARAMETROS_PP30_DEFAULT)
+    if previous:
+        params.update(previous.get("parametros_pp30", {}))
+    payload: dict[str, Any] = {
+        "descripcion": (
+            "Tarifas de energía eléctrica por distribuidora (categorías "
+            "T2/T3 y usuario-generador, Ley 27.424) extraídas de los "
+            "cuadros tarifarios oficiales."
+        ),
+        "unidad_moneda": "ARS",
+        "unidad_tarifas": "ARS/kWh sin impuestos; cargo fijo en ARS/mes",
+        "parametros_pp30": params,
+        "provincia_a_distribuidora": PROVINCIA_A_DISTRIBUIDORA,
+        "departamento_a_distribuidora": DEPARTAMENTO_A_DISTRIBUIDORA,
+        "distribuidoras": {},
+    }
+    prev_dist = (previous or {}).get("distribuidoras", {})
+    for code in DISTRIBUIDORAS:
+        payload["distribuidoras"][code] = merge_distribuidora(
+            code, parsed_by_code.get(code), prev_dist.get(code), fecha
+        )
+
     payload["ultima_actualizacion"] = now.strftime("%Y-%m")
-    payload["generado_en"] = now.strftime("%Y-%m-%dT%H:%M:%S")
-    payload["descargas"] = downloads
-    payload["nota"] = (
-        "Valores numéricos en baseline_manual hasta implementar parser "
-        "por PDF/HTML. Los binarios/HTML de la corrida están en "
-        "data/raw/tarifas/."
-    )
+    payload["generado_en"] = fecha
+    estados = [b["estado_campos"]["tarifa_compra_kwh"] for b in payload["distribuidoras"].values()]
+    payload["resumen_extraccion"] = {
+        "distribuidoras_totales": len(estados),
+        "extraidas_en_esta_corrida": estados.count(STATUS_PARSED),
+        "fallback_previous": estados.count(STATUS_FALLBACK),
+        "baseline_manual": estados.count(STATUS_BASELINE),
+        "sin_dato": estados.count(STATUS_MISSING),
+    }
     return payload
-
-
-def seed_reference_from_existing(
-    reference_dir: Path,
-    source: Path | None = None,
-) -> Path:
-    """
-    Escribe un JSON timestamped a partir de un baseline existente.
-
-    Útil para migrar ``config/tarifas.json`` sin re-scrape.
-
-    Args:
-        reference_dir: ``data/reference``.
-        source: JSON de origen. Si None, usa ``BASELINE_TARIFAS``.
-
-    Returns:
-        Path del archivo creado.
-    """
-    now = datetime.now()
-    if source is not None and Path(source).is_file():
-        with Path(source).open(encoding="utf-8") as handle:
-            data = json.load(handle)
-    else:
-        data = json.loads(json.dumps(BASELINE_TARIFAS))
-    data["ultima_actualizacion"] = now.strftime("%Y-%m")
-    data["generado_en"] = now.strftime("%Y-%m-%dT%H:%M:%S")
-    name = build_timestamped_filename(
-        REF_STEM_TARIFAS, suffix=JSON_SUFFIX, ts=now
-    )
-    return save_json(data, reference_dir / name)
 
 
 # ====================== EJECUCIÓN ======================
@@ -389,80 +993,94 @@ def seed_reference_from_existing(
 def run_extractor(
     raw_dir: Path | str | None = None,
     reference_dir: Path | str | None = None,
+    downloader: Callable[[str], bytes] = download_bytes,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+    codes: list[str] | None = None,
+    historial: bool = False,
+    desde: str = BACKFILL_START,
 ) -> Path:
     """
-    Ejecuta descarga de cuadros y escribe la referencia consolidada.
+    Descarga cuadros, extrae tarifas, actualiza el historial y escribe la
+    referencia consolidada.
+
+    Nunca falla por una distribuidora caída: en ese caso conserva el
+    valor previo y lo marca como ``fallback_previous``.
 
     Args:
-        raw_dir: Destino de PDFs/HTML (default ``data/raw/tarifas``).
-        reference_dir: Destino del JSON vigente timestamped
-            (default ``data/reference``).
+        raw_dir: Destino de documentos e índices (default ``data/raw/tarifas``).
+        reference_dir: Destino del JSON y del historial (``data/reference``).
+        downloader: Función de descarga (inyectable para tests).
+        text_extractor: Función documento → [(nombre, texto)] (inyectable).
+        codes: Subconjunto de distribuidoras (default: todas).
+        historial: Si True, procesa todos los cuadros mensuales desde
+            ``desde`` (backfill del historial).
+        desde: Mes inicial AAAA-MM para el backfill.
 
     Returns:
-        Path absoluto del ``YYYYMMDDHHMMSS_tarifas.json`` generado.
+        Path absoluto del ``AAAAMMDDHHMMSS_tarifas.json`` generado.
     """
     now = datetime.now()
     raw_path = Path(raw_dir) if raw_dir is not None else RAW_TARIFAS_DIR
-    ref_path = (
-        Path(reference_dir) if reference_dir is not None else REFERENCE_DIR
-    )
+    ref_path = Path(reference_dir) if reference_dir is not None else REFERENCE_DIR
     raw_path.mkdir(parents=True, exist_ok=True)
     ref_path.mkdir(parents=True, exist_ok=True)
 
-    downloads: dict[str, str | None] = {
-        "EDENOR_AMBA": None,
-        "EPEC_CORDOBA": None,
-        "EPE_SANTA_FE": None,
-        "EDEMSA_MENDOZA": None,
-    }
+    selected = [LEGACY_CODES.get(c, c) for c in (codes or list(DISTRIBUIDORAS))]
+    unknown = sorted(set(selected) - set(DISTRIBUIDORAS))
+    if unknown:
+        raise ValueError(f"Distribuidoras desconocidas: {unknown}")
 
-    edenor = download_edenor_pdf(raw_path, ts=now)
-    if edenor is not None:
-        downloads["EDENOR_AMBA"] = str(edenor)
+    previous = load_previous_reference(ref_path)
+    downloader = with_dead_host_guard(downloader)
+    months = months_since(desde, now) if historial else months_back(now)
+    index_cache: dict[str, bytes | None] = {}
+    parsed_by_code: dict[str, dict[str, Any] | None] = {}
+    records: list[dict[str, Any]] = []
+    for code in selected:
+        chosen, processed = fetch_distribuidora(
+            code, now, raw_path, downloader, text_extractor,
+            months=months,
+            max_downloads=None if historial else MAX_DOWNLOADS_PER_SOURCE,
+            stop_at_first=not historial,
+            index_cache=index_cache,
+        )
+        parsed_by_code[code] = chosen
+        records.extend(history_record(code, p) for p in processed)
 
-    epec = download_epec_pdf(raw_path, ts=now)
-    if epec is not None:
-        downloads["EPEC_CORDOBA"] = str(epec)
+    hist_path, n_new = append_history(records, ref_path)
+    payload = build_reference_payload(parsed_by_code, previous, ts=now)
+    payload["historial"] = {"archivo": hist_path.name, "filas_nuevas": n_new}
 
-    # EPE / EDEMSA: solo índices HTML (sin URL PDF estable en el extractor).
-    record_index_pages(raw_path, ts=now)
-    downloads["EPE_SANTA_FE"] = EPE_INDEX_URL
-    downloads["EDEMSA_MENDOZA"] = EDEMSA_INDEX_URL
-
-    # Si existe un JSON previo, conservar valores numéricos del más reciente.
-    try:
-        previous = find_latest_raw(ref_path, REF_STEM_TARIFAS, suffix=JSON_SUFFIX)
-        with previous.open(encoding="utf-8") as handle:
-            prev_data = json.load(handle)
-        payload = build_reference_payload(downloads, ts=now)
-        if "distribuidoras" in prev_data:
-            for code, block in prev_data["distribuidoras"].items():
-                if code in payload["distribuidoras"]:
-                    for key in (
-                        "tarifa_compra_kwh",
-                        "tarifa_inyeccion_kwh",
-                        "cargo_fijo_mensual",
-                    ):
-                        if key in block:
-                            payload["distribuidoras"][code][key] = block[key]
-        if "parametros_pp30" in prev_data:
-            payload["parametros_pp30"] = prev_data["parametros_pp30"]
-        if "provincia_a_distribuidora" in prev_data:
-            payload["provincia_a_distribuidora"] = prev_data[
-                "provincia_a_distribuidora"
-            ]
-        if "cultivos_biomasa" in prev_data:
-            payload["cultivos_biomasa"] = prev_data["cultivos_biomasa"]
-    except FileNotFoundError:
-        payload = build_reference_payload(downloads, ts=now)
-
-    out_name = build_timestamped_filename(
-        REF_STEM_TARIFAS, suffix=JSON_SUFFIX, ts=now
-    )
+    out_name = build_timestamped_filename(REF_STEM_TARIFAS, suffix=JSON_SUFFIX, ts=now)
     out_path = save_json(payload, ref_path / out_name)
-    print(f"[tarifas] Referencia escrita: {out_path}")
+    logger.info(
+        "[tarifas] Referencia escrita: %s (%s)",
+        out_path,
+        payload["resumen_extraccion"],
+    )
     return out_path
 
 
+def main() -> None:
+    """Entrypoint CLI."""
+    parser = argparse.ArgumentParser(description="Extractor de cuadros tarifarios")
+    parser.add_argument("--historial", action="store_true",
+                        help="Backfill de todos los cuadros mensuales desde --desde")
+    parser.add_argument("--desde", default=BACKFILL_START, help="Mes inicial AAAA-MM")
+    parser.add_argument("--solo", nargs="*", default=None,
+                        help="Códigos de distribuidora a procesar")
+    parser.add_argument("--raw-dir", default=None)
+    parser.add_argument("--reference-dir", default=None)
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    run_extractor(
+        raw_dir=args.raw_dir,
+        reference_dir=args.reference_dir,
+        codes=args.solo,
+        historial=args.historial,
+        desde=args.desde,
+    )
+
+
 if __name__ == "__main__":
-    run_extractor()
+    main()

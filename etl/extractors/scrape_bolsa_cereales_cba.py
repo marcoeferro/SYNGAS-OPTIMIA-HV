@@ -78,6 +78,14 @@ OUTPUT_COLUMNS: Final[list[str]] = [
 
 MERGE_TYPE: Final[str] = "outer"
 
+# Columnas cuya combinación con la clave identifica un registro real.
+CORE_COLUMNS: Final[list[str]] = [
+    "SEMBRADAS",
+    "COSECHADAS",
+    "RENDIMIENTO",
+    "PRODUCCIÓN",
+]
+
 
 # ====================== DESCARGA ======================
 
@@ -102,6 +110,14 @@ def download_excel(url: str) -> bytes:
     )
 
     response.raise_for_status()
+
+    # SharePoint devuelve HTML (login/consentimiento) con HTTP 200 cuando
+    # el enlace deja de ser público: se valida la firma ZIP de XLSX.
+    if response.content[:2] != b"PK":
+        raise ValueError(
+            "La descarga de CBA no es un archivo XLSX (¿enlace de "
+            "SharePoint vencido o que requiere login?)."
+        )
 
     return response.content
 
@@ -176,6 +192,13 @@ def merge_agricultural_data(
     evitar perder registros que estén presentes solamente en alguno
     de los DataFrames.
 
+    Las hojas de rendimiento y producción pueden traer varias filas por
+    clave (variantes "grano limpio y seco"). Un merge outer muchos-a-
+    muchos produce entonces un producto cartesiano que replica la
+    superficie y la producción. Se eliminan duplicados exactos de cada
+    hoja antes del merge y se deduplica el resultado sobre las columnas
+    núcleo, conservando la primera variante de grano limpio y seco.
+
     Args:
         surface: Datos de superficie sembrada y cosechada.
         yield_data: Datos de rendimiento.
@@ -185,11 +208,20 @@ def merge_agricultural_data(
     Returns:
         DataFrame resultante de combinar los tres conjuntos de datos.
     """
-    return (
-        surface
-        .merge(yield_data, on=keys, how=MERGE_TYPE)
-        .merge(production, on=keys, how=MERGE_TYPE)
+    merged = (
+        surface.drop_duplicates()
+        .merge(yield_data.drop_duplicates(), on=keys, how=MERGE_TYPE)
+        .merge(production.drop_duplicates(), on=keys, how=MERGE_TYPE)
     )
+    core = [c for c in CORE_COLUMNS if c in merged.columns]
+    n_before = len(merged)
+    merged = merged.drop_duplicates(subset=keys + core, keep="first")
+    if len(merged) < n_before:
+        print(
+            f"[CBA] {n_before - len(merged)} filas replicadas por merge "
+            "cartesiano eliminadas."
+        )
+    return merged.reset_index(drop=True)
 
 
 def select_output_columns(

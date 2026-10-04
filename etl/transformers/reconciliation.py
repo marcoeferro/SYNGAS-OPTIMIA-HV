@@ -34,6 +34,15 @@ VALID_SOURCES: frozenset[str] = frozenset(
     {"magyp_estimaciones", "bolsa_cereales_cba"}
 )
 
+# Desempate determinístico cuando ambas fuentes declaran exactamente la
+# misma producción: prevalece la fuente oficial (MAGYP). Sin este
+# criterio el resultado dependía del orden de concatenación.
+SOURCE_PRIORITY: dict[str, int] = {
+    "magyp_estimaciones": 0,
+    "bolsa_cereales_cba": 1,
+}
+_PRIORITY_COL = "_prioridad_fuente"
+
 
 def reconciliar_por_mayor_produccion(
     df: pd.DataFrame,
@@ -59,36 +68,32 @@ def reconciliar_por_mayor_produccion(
             df_descartado: Registros no seleccionados.
     """
     key = key or DEFAULT_KEY.copy()
-    ascending = [True] * len(key) + [False]
+    sort_cols = key + [prod_col, _PRIORITY_COL]
+    ascending = [True] * len(key) + [False, True]
 
     # --- Diagnóstico previo ---
     n_original = len(df)
-    duplicados_mask = df.duplicated(subset=key, keep=False)
-    df_duplicados = df[duplicados_mask].copy()
+    work = df.copy()
+    work[_PRIORITY_COL] = work[FUENTE_COL].map(SOURCE_PRIORITY).fillna(99)
 
-    # --- Ordenamiento por producción descendente ---
-    df_sorted = df.sort_values(
-        key + [prod_col], ascending=ascending
-    ).copy()
+    # --- Ordenamiento: producción descendente (NaN al final) y, ante
+    # empate, prioridad de fuente. ``kind="mergesort"`` es estable.
+    df_sorted = work.sort_values(
+        sort_cols, ascending=ascending, na_position="last", kind="mergesort"
+    )
+    is_dup = df_sorted.duplicated(subset=key, keep="first")
 
     # --- Selección del máximo por clave ---
     df_final = (
-        df_sorted
-        .drop_duplicates(subset=key, keep="first")
+        df_sorted[~is_dup]
+        .drop(columns=[_PRIORITY_COL])
         .reset_index(drop=True)
     )
 
-    # --- Construcción del dataset de auditoría ---
-    df_descartado = df_duplicados.sort_values(
-        key + [prod_col], ascending=ascending
-    ).copy()
-    df_descartado["resultado"] = (
-        df_descartado.duplicated(subset=key, keep="first")
-        .map({True: "descartado", False: "seleccionado"})
-    )
+    # --- Dataset de auditoría: todo lo no seleccionado ---
     df_descartado = (
-        df_descartado[df_descartado["resultado"] == "descartado"]
-        .drop(columns=["resultado"])
+        df_sorted[is_dup]
+        .drop(columns=[_PRIORITY_COL])
         .reset_index(drop=True)
     )
 
@@ -118,3 +123,47 @@ def coverage_report(df: pd.DataFrame, key: list[str] | None = None) -> pd.DataFr
         .rename_axis("n_fuentes")
         .to_frame("n_celdas")
     )
+
+def compute_discrepancies(
+    df: pd.DataFrame,
+    key: list[str] | None = None,
+    ref_source: str = "bolsa_cereales_cba",
+    other_source: str = "magyp_estimaciones",
+) -> pd.DataFrame:
+    """
+    Cuantifica discrepancias entre fuentes en claves cubiertas por ambas.
+
+    Para cada clave con registros de las dos fuentes calcula la
+    diferencia relativa ``(otra - ref) / ref`` de superficie y producción.
+    Es el artefacto ``discrepancias_cba_vs_magyp.parquet`` (antes se
+    persistía vacío).
+
+    Args:
+        df: DataFrame concatenado pre-reconciliación con columna ``fuente``.
+        key: Clave natural.
+        ref_source: Fuente de referencia (denominador).
+        other_source: Fuente comparada.
+
+    Returns:
+        DataFrame plano con una fila por clave solapada.
+    """
+    key = key or DEFAULT_KEY.copy()
+    both = df[df[FUENTE_COL].isin([ref_source, other_source])]
+    pivot = both.pivot_table(
+        index=key,
+        columns=FUENTE_COL,
+        values=[SUP_COL, PROD_COL],
+        aggfunc="sum",
+    )
+    if pivot.empty or ref_source not in pivot.columns.get_level_values(1) \
+            or other_source not in pivot.columns.get_level_values(1):
+        return pd.DataFrame(columns=key)
+    pivot = pivot.dropna(subset=[(PROD_COL, ref_source), (PROD_COL, other_source)])
+    out = pd.DataFrame(index=pivot.index)
+    for var, short in ((SUP_COL, "superficie"), (PROD_COL, "produccion")):
+        ref = pivot[(var, ref_source)]
+        oth = pivot[(var, other_source)]
+        out[f"{short}_{ref_source}"] = ref
+        out[f"{short}_{other_source}"] = oth
+        out[f"diff_rel_{short}"] = (oth - ref) / ref.where(ref != 0)
+    return out.reset_index()

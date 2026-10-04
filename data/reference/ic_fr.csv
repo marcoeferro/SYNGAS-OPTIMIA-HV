@@ -1,18 +1,18 @@
-Cultivo,IC,Fuente bibliográfica,FR
-maiz,0.47,Bolsa de Cereales de Buenos Aires (2015),1.1276595744680853
-soja,0.45,Bolsa de Cereales de Buenos Aires (2015),1.2222222222222223
-trigo,0.35,Bolsa de Cereales de Buenos Aires (2015),1.8571428571428574
-girasol,0.37,Raposo (2024),1.7027027027027026
-mani,0.4,"Haro (2022), promedio granoleico",1.4999999999999998
-garbanzo,0.26,Apáez-Barrios (2017) y Ramacciotti (2015),2.846153846153846
-sorgo,0.35,Zamer y Chiarelli,1.8571428571428574
-cebada,0.53,Cuda (2014),0.8867924528301886
-centeno,0.22,Zubiaga et al. (2023),3.5454545454545454
-avena,0.35,Zubiaga et al. (2023),1.8571428571428574
-poroto,0.45,Ortega (2001),1.2222222222222223
-ajo,0.55,"Rizzalli, Villalobos & Orgaz (2002)",0.818181818181818
-colza,0.28,Unkovich et al. / Lu et al. (2016),2.571428571428571
-papa,0.74,"Xu et al. (QUEFTS, Agronomy Journal)",0.35135135135135137
-lino,0.4,Estudios ADAS/AHDB,1.4999999999999998
-arroz,0.45,Hay (1995) y estudios recientes,1.2222222222222223
-algodon,0.3,Estudios regionales (Xinjiang),2.3333333333333335
+Cultivo,IC,Fuente bibliográfica,FR,MS,Fuente MS
+maiz,0.47,Bolsa de Cereales de Buenos Aires (2015),1.1276595744680853,0.855,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+soja,0.45,Bolsa de Cereales de Buenos Aires (2015),1.2222222222222223,0.865,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+trigo,0.35,Bolsa de Cereales de Buenos Aires (2015),1.8571428571428574,0.86,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+girasol,0.37,Raposo (2024),1.7027027027027026,0.89,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+mani,0.4,"Haro (2022), promedio granoleico",1.4999999999999998,0.9,"Maní en caja, humedad típica ~10%"
+garbanzo,0.26,Apáez-Barrios (2017) y Ramacciotti (2015),2.846153846153846,0.86,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+sorgo,0.35,Zamer y Chiarelli,1.8571428571428574,0.85,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+cebada,0.53,Cuda (2014),0.8867924528301886,0.88,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+centeno,0.22,Zubiaga et al. (2023),3.5454545454545454,0.86,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+avena,0.35,Zubiaga et al. (2023),1.8571428571428574,0.86,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+poroto,0.45,Ortega (2001),1.2222222222222223,0.85,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+ajo,0.55,"Rizzalli, Villalobos & Orgaz (2002)",0.818181818181818,0.35,Contenido típico de materia seca de bulbo fresco (~35%)
+colza,0.28,Unkovich et al. / Lu et al. (2016),2.571428571428571,0.92,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+papa,0.74,"Xu et al. (QUEFTS, Agronomy Journal)",0.35135135135135137,0.2,Contenido típico de materia seca de tubérculo fresco (~20%)
+lino,0.4,Estudios ADAS/AHDB,1.4999999999999998,0.89,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+arroz,0.45,Hay (1995) y estudios recientes,1.2222222222222223,0.86,"Humedad base de comercialización (estándares de comercialización de granos, Argentina)"
+algodon,0.3,Estudios regionales (Xinjiang),2.3333333333333335,0.92,"Algodón en bruto, humedad típica ~8%"
