@@ -350,7 +350,8 @@ def test_dead_host_guard_403_sostenido_y_404_no() -> None:
 
 def test_vigencia_carpetas_oceba() -> None:
     base = "https://oceba.gba.gov.ar/nueva_web/adjuntos/"
-    assert st.vigencia_from_name(base + "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf") == "2025-05"
+    doc = "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf"
+    assert st.vigencia_from_name(base + doc) == "2025-05"
     assert st.vigencia_from_name(base + "ct202609/IF-2026-27723597-GDEBA-GMOCEBA.pdf") == "2026-09"
 
 
@@ -380,3 +381,39 @@ def test_serie_elige_cuadro_pleno_por_mes() -> None:
 ])
 def test_vigencia_explicita(texto: str, esperado: str) -> None:
     assert st.vigencia_explicit(texto) == esperado
+
+
+def test_cuadro_manual_se_usa_sin_red(tmp_path: Path) -> None:
+    """Cuadros bajados a mano (fuentes que bloquean la descarga)."""
+    manual = tmp_path / "ref" / st.MANUAL_DIR_NAME / "EPEC"
+    manual.mkdir(parents=True)
+    (manual / "cuadro_tarifario_2026_07.pdf").write_bytes(
+        b"%PDF-1.4\n" + PDF_TEXT.encode("latin1")
+    )
+    out = st.run_extractor(
+        raw_dir=tmp_path / "raw", reference_dir=tmp_path / "ref",
+        downloader=_fake_downloader({}), text_extractor=_fake_extractor,
+        codes=["EPEC"],
+    )
+    epec = json.loads(out.read_text(encoding="utf-8"))["distribuidoras"]["EPEC"]
+    assert epec["tarifa_compra_kwh"] == 65.5
+    assert epec["vigencia"] == "2026-07"
+    assert epec["fuente_tipo"] == st.SOURCE_MANUAL
+    assert epec["estado_campos"]["tarifa_compra_kwh"] == st.STATUS_PARSED
+
+
+def test_epe_enlaces_astro_y_vigencia() -> None:
+    html = (
+        '<astro-island props="{&quot;fileName&quot;:[0,&quot;CUT_T2_Septiembre_2026.pdf&quot;],'
+        '&quot;fileHash&quot;:[0,&quot;5069c712-219f-4abe-9deb-2ea174417e3c&quot;]}"></astro-island>'
+        '<astro-island props="{&quot;fileName&quot;:'
+        '[0,&quot;Trabajos_con_Cargo_Julio_2026.pdf&quot;],'
+        '&quot;fileHash&quot;:[0,&quot;89845de8-b81f-4cd1-8042-044033ac9ad9&quot;]}"></astro-island>'
+    )
+    links = st.astro_file_links(html)
+    assert links == [
+        st.EPE_DOWNLOAD_BASE
+        + "5069c712-219f-4abe-9deb-2ea174417e3c#CUT_T2_Septiembre_2026.pdf"
+    ]
+    assert st.vigencia_from_name(links[0]) == "2026-09"
+    assert "x-api-key" in st.HOST_HEADERS["epe.santafe.gov.ar"]

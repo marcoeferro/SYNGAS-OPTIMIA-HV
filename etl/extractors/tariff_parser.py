@@ -404,7 +404,7 @@ def find_fixed_charge(lines: list[str], index: int) -> float | None:
     for j in range(index, max(-1, index - CONTEXT_LINES - 10), -1):
         line = lines[j]
         if CARGO_FIJO.search(line) and MONTH_UNIT.search(line):
-            cells = [c for c in line.split("|")]
+            cells = line.split("|")
             nums: list[float] = []
             for c in cells:
                 if MONTH_UNIT.search(c):

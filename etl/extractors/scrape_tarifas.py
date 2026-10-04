@@ -40,22 +40,24 @@ import argparse
 import hashlib
 import json
 import logging
+import os
 import re
 from collections.abc import Callable
 from datetime import datetime
+from html import unescape
 from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from etl.extractors import tariff_parser as _parser
 from etl.extractors.io_utils import (
     JSON_SUFFIX,
     REF_STEM_TARIFAS,
     build_timestamped_filename,
     find_latest_raw,
 )
-from etl.extractors import tariff_parser as _parser
 from etl.extractors.tariff_documents import (
     PDF_MAGIC,
     detect_format,
@@ -113,6 +115,26 @@ _PARSED_ALIASES: Final[frozenset[str]] = frozenset({STATUS_PARSED, "parsed_pdf"}
 
 SOURCE_NATIONAL: Final[str] = "nacional"
 SOURCE_OWN: Final[str] = "propia"
+SOURCE_MANUAL: Final[str] = "manual"
+
+# EPE Santa Fe: los archivos se bajan de una API con una clave pública que
+# el propio sitio incluye en su JavaScript (``_astro/httpClient.*.js``).
+# Si la cambian, se puede indicar la nueva en la variable EPE_API_KEY.
+EPE_DOWNLOAD_BASE: Final[str] = "https://epe.santafe.gov.ar/institucional-api/download/"
+HOST_HEADERS: Final[dict[str, dict[str, str]]] = {
+    "epe.santafe.gov.ar": {
+        "x-api-key": os.environ.get("EPE_API_KEY", "d745e6f4-6dd6-41b8-9a21-859e9bd1284b"),
+    },
+}
+ASTRO_FILE: Final[re.Pattern[str]] = re.compile(
+    r'"fileName":\[0,"([^"]+)"\].{0,400}?"fileHash":\[0,"([0-9a-fA-F-]{36})"\]',
+    re.DOTALL,
+)
+
+# Carpeta para cuadros descargados a mano de fuentes que bloquean la
+# descarga automática (EPEC y EPE: 403/API con clave; ESJ, SPSE, DPE).
+# Estructura: data/reference/cuadros_manuales/<CODIGO>/<archivo>.pdf|xlsx|zip
+MANUAL_DIR_NAME: Final[str] = "cuadros_manuales"
 
 DOC_EXTENSIONS: Final[tuple[str, ...]] = (".pdf", ".xlsx", ".xls", ".zip")
 
@@ -172,8 +194,11 @@ def vigencia_from_name(url: str) -> str | None:
     Reconoce ``AAAA_MM`` / ``AAAA-MM`` (portal nacional, EDENOR),
     ``Mes_AAAA`` (EDESA, EDEA, EDERSA) y ``DDMMAA`` (EPEC: se toma la
     fecha más alta, la de aplicación). Devuelve None si no hay fecha.
+    Si la URL trae el nombre de archivo como fragmento (descargas por API
+    de EPE), se usa sólo ese nombre.
     """
-    path = urlparse(url).path.lower()
+    parsed = urlparse(url)
+    path = (parsed.fragment or parsed.path).lower()
     name = path.rsplit("/", 1)[-1]
     candidates: list[str] = []
     for m in re.finditer(r"ct_?(20\d{2})_?(0[1-9]|1[0-2])(?:[0-3]\d)?(?!\d)", path):
@@ -391,6 +416,27 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def astro_file_links(html: str) -> list[str]:
+    """
+    Enlaces de descarga de páginas Astro de EPE Santa Fe.
+
+    El sitio no publica enlaces ``<a href>``: cada archivo viene como
+    propiedades serializadas (``"fileName":[0,"CUT_T2_Septiembre_2026.pdf"]``,
+    ``"fileHash":[0,"<uuid>"]``) y se descarga con ``GET
+    /institucional-api/download/<uuid>``. El nombre se agrega como fragmento
+    de la URL para conservar la vigencia (``Mes_AAAA``) y la trazabilidad.
+    Sólo se toman los cuadros tarifarios (``CUT_*``).
+    """
+    text = unescape(html)
+    links: list[str] = []
+    for name, file_hash in ASTRO_FILE.findall(text):
+        if name.upper().startswith("CUT_"):
+            url = f"{EPE_DOWNLOAD_BASE}{file_hash}#{name}"
+            if url not in links:
+                links.append(url)
+    return links
+
+
 def download_bytes(url: str) -> bytes:
     """
     Descarga el contenido binario de una URL.
@@ -414,7 +460,7 @@ def download_bytes(url: str) -> bytes:
         try:
             response = httpx.get(
                 url,
-                headers=HEADERS,
+                headers={**HEADERS, **HOST_HEADERS.get(host, {})},
                 follow_redirects=FOLLOW_REDIRECTS,
                 timeout=REQUEST_TIMEOUT,
             )
@@ -659,6 +705,7 @@ def candidate_documents(
     for index in info["indices"]:
         html = fetch_index(index)
         if html:
+            own.extend(u for u in astro_file_links(html) if u not in own)
             own.extend(
                 u for u in discover_document_links(html, index, keywords, others)
                 if u not in own
@@ -782,6 +829,7 @@ def fetch_distribuidora(
     stop_at_first: bool = True,
     index_cache: dict[str, bytes | None] | None = None,
     desde: str | None = None,
+    manual_dir: Path | None = None,
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     """
     Descarga y procesa los cuadros de una distribuidora.
@@ -806,6 +854,24 @@ def fetch_distribuidora(
     processed: list[dict[str, Any]] = []
     best_by_source: dict[str, dict[str, Any]] = {}
     seen_sha: set[str] = set()
+    # Cuadros cargados a mano (siempre se procesan todos).
+    if manual_dir is not None and (manual_dir / code).is_dir():
+        for path in sorted((manual_dir / code).iterdir()):
+            if not path.is_file() or path.name.startswith("."):
+                continue
+            parsed = process_document(
+                code, path.as_posix(), path.read_bytes(), SOURCE_MANUAL, now, None,
+                text_extractor,
+            )
+            if parsed is None or parsed["sha256"] in seen_sha:
+                logger.warning("[tarifas] %s: cuadro manual sin tarifa reconocible: %s",
+                               code, path.name)
+                continue
+            seen_sha.add(parsed["sha256"])
+            processed.append(parsed)
+            best = best_by_source.get(SOURCE_MANUAL)
+            if best is None or (vig(parsed), _doc_rank(parsed)) > (vig(best), _doc_rank(best)):
+                best_by_source[SOURCE_MANUAL] = parsed
     for fuente, urls in cands.items():
         downloads = 0
         for url in urls:
@@ -817,12 +883,12 @@ def fetch_distribuidora(
             if desde is not None and name_vig is not None and name_vig < desde:
                 continue
             best = best_by_source.get(fuente)
-            if stop_at_first and best is not None:
-                # Se siguen procesando sólo documentos de la misma vigencia
-                # (varios anexos por mes: pleno, con subsidio, ...); los
-                # más antiguos no pueden ganar.
-                if name_vig is not None and name_vig < vig(best):
-                    break
+            # En modo normal se siguen procesando sólo documentos de la misma
+            # vigencia (varios anexos por mes: pleno, con subsidio, ...); los
+            # más antiguos no pueden ganar.
+            if (stop_at_first and best is not None and name_vig is not None
+                    and name_vig < vig(best)):
+                break
             content = try_download(url, downloader)
             if content is None:
                 continue
@@ -1005,6 +1071,7 @@ def run_extractor(
             stop_at_first=not historial,
             index_cache=index_cache,
             desde=desde if historial else None,
+            manual_dir=ref_path / MANUAL_DIR_NAME,
         )
         parsed_by_code[code] = chosen
         records.extend(history_record(code, p) for p in processed)
