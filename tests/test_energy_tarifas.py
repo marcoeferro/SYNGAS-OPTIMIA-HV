@@ -353,6 +353,9 @@ def test_vigencia_carpetas_oceba() -> None:
     doc = "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf"
     assert st.vigencia_from_name(base + doc) == "2025-05"
     assert st.vigencia_from_name(base + "ct202609/IF-2026-27723597-GDEBA-GMOCEBA.pdf") == "2026-09"
+    vieja = "cuadros-tarifarios/2023/junio-2/eden-r1.pdf"
+    assert st.vigencia_from_name(base + vieja) == "2023-06"
+    assert st.vigencia_from_name(base + "cuadros-tarifarios/2023/abril/eden.pdf") == "2023-04"
 
 
 def test_serie_elige_cuadro_pleno_por_mes() -> None:

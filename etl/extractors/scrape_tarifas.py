@@ -192,7 +192,8 @@ def vigencia_from_name(url: str) -> str | None:
     Vigencia AAAA-MM a partir del nombre/ruta del documento.
 
     Reconoce ``AAAA_MM`` / ``AAAA-MM`` (portal nacional, EDENOR),
-    ``Mes_AAAA`` (EDESA, EDEA, EDERSA) y ``DDMMAA`` (EPEC: se toma la
+    ``Mes_AAAA`` (EDESA, EDEA, EDERSA), carpetas ``AAAA/mes/``
+    (OCEBA) y ``DDMMAA`` (EPEC: se toma la
     fecha más alta, la de aplicación). Devuelve None si no hay fecha.
     Si la URL trae el nombre de archivo como fragmento (descargas por API
     de EPE), se usa sólo ese nombre.
@@ -207,6 +208,9 @@ def vigencia_from_name(url: str) -> str | None:
         candidates.append(_ym(int(m.group(1)), int(m.group(2))) or "")
     for mes, num in MESES.items():
         for m in re.finditer(rf"{mes}[\s_-]*(20\d{{2}})", name):
+            candidates.append(_ym(int(m.group(1)), num) or "")
+        # Carpetas por año y mes (OCEBA: cuadros-tarifarios/2023/junio-2/).
+        for m in re.finditer(rf"(20\d{{2}})/{mes}(?:-\d+)?/", path):
             candidates.append(_ym(int(m.group(1)), num) or "")
     for m in re.finditer(r"(?<!\d)([0-3]\d)([01]\d)(\d{2})(?!\d)", name):
         d, mo, y = int(m.group(1)), int(m.group(2)), 2000 + int(m.group(3))
