@@ -10,7 +10,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from etl.transformers.reconciliation import DEFAULT_KEY, PROD_COL, SUP_COL
+import numpy as np
+
+from etl.transformers.reconciliation import (
+    DEFAULT_KEY,
+    PROD_COL,
+    SUP_COL,
+    VALID_SOURCES,
+)
 
 # =============================================================
 # Constantes de configuración
@@ -40,21 +47,30 @@ def validar_reconciliacion(
 
     Raises:
         AssertionError: Si alguna invariante se viola.
+
+    Note:
+        Se usa ``raise AssertionError`` explícito en lugar de ``assert``
+        para que las validaciones no se desactiven con ``python -O``.
+        Los valores faltantes (NaN, "SD" en MAGYP) no violan las
+        invariantes de signo.
     """
     key = key or DEFAULT_KEY.copy()
 
-    assert df_final.duplicated(key).sum() == 0, \
-        "Invariante rota: duplicados por clave"
+    _check(df_final.duplicated(key).sum() == 0,
+           "Invariante rota: duplicados por clave")
 
-    assert (df_final[SUP_COL] >= 0).all(), \
-        "Invariante rota: superficie negativa"
+    _check(df_final[FUENTE_COL].isin(VALID_SOURCES).all(),
+           "Invariante rota: fuente fuera de dominio")
 
-    assert (df_final[PROD_COL] >= 0).all(), \
-        "Invariante rota: producción negativa"
+    _check(not (df_final[SUP_COL] < 0).any(),
+           "Invariante rota: superficie negativa")
 
-    assert set(map(tuple, df_final[key].values)) == set(
+    _check(not (df_final[PROD_COL] < 0).any(),
+           "Invariante rota: producción negativa")
+
+    _check(set(map(tuple, df_final[key].values)) == set(
         map(tuple, df_all[key].drop_duplicates().values)
-    ), "Invariante rota: cobertura incompleta de claves"
+    ), "Invariante rota: cobertura incompleta de claves")
 
     # --- Verificar selección efectiva del máximo ---
     max_prod = (
@@ -64,8 +80,10 @@ def validar_reconciliacion(
         .rename(columns={PROD_COL: "_prod_max"})
     )
     check = df_final.merge(max_prod, on=key, how="left", validate="1:1")
-    assert (check[PROD_COL] == check["_prod_max"]).all(), \
-        "Invariante rota: no se seleccionó la mayor producción"
+    same = (check[PROD_COL] == check["_prod_max"]) | (
+        check[PROD_COL].isna() & check["_prod_max"].isna()
+    )
+    _check(same.all(), "Invariante rota: no se seleccionó la mayor producción")
 
 
 def validar_biomasa(df: pd.DataFrame) -> None:
@@ -83,18 +101,22 @@ def validar_biomasa(df: pd.DataFrame) -> None:
     Raises:
         AssertionError: Si alguna invariante se viola.
     """
-    import numpy as np
-
     residuo_col = "Residuo de Biomasa (Tn)"
     flag_valido = "_valido_biomasa"
 
     validos = df[df[flag_valido]]
 
-    assert not validos[residuo_col].isin([np.inf, -np.inf]).any(), \
-        "Invariante rota: infinitos en residuo"
+    _check(not validos[residuo_col].isin([np.inf, -np.inf]).any(),
+           "Invariante rota: infinitos en residuo")
 
-    assert (validos[residuo_col] >= 0).all(), \
-        "Invariante rota: residuo negativo en registros válidos"
+    _check((validos[residuo_col] >= 0).all(),
+           "Invariante rota: residuo negativo en registros válidos")
 
-    assert (validos[SUP_COL] > 0).all(), \
-        "Invariante rota: superficie no positiva en registros válidos"
+    _check((validos[SUP_COL] > 0).all(),
+           "Invariante rota: superficie no positiva en registros válidos")
+
+
+def _check(condition: bool, message: str) -> None:
+    """Levanta AssertionError si la condición es falsa (inmune a -O)."""
+    if not bool(condition):
+        raise AssertionError(message)

@@ -8,14 +8,18 @@ Orquesta el flujo end-to-end:
     3. Limpieza léxica / geográfica y resolución de cultivos.
     4. Agrupación por clave natural y estandarización de esquema.
     5. Reconciliación multi-fuente por mayor producción.
-    6. Cálculo de biomasa residual con flags de validez.
-    7. Cálculo energético-financiero APL PP30 (kWh y ARS).
-    8. Validación de invariantes.
-    9. Persistencia de artefactos curados y de auditoría.
+    6. Cálculo de biomasa residual (base seca) con flags de validez y
+       residuo recuperable.
+    7. Cálculo energético-financiero APL PP30 (kWh y ARS) por campaña.
+    8. Anualización sobre el período de referencia (últimas N campañas
+       completas): potencial energético y económico anual.
+    9. Validación de invariantes.
+   10. Persistencia de artefactos curados y de auditoría.
 
 Uso:
     python -m etl.pipelines.run_etl --config config/paths.yaml
     python -m etl.pipelines.run_etl --skip-extract
+    python -m etl.pipelines.run_etl --skip-extract --skip-tarifas
 """
 
 from __future__ import annotations
@@ -31,25 +35,39 @@ import yaml
 
 from etl.extractors import scrape_bolsa_cereales_cba as extract_cba
 from etl.extractors import scrape_estimaciones_agricolas as extract_magyp
+from etl.extractors import scrape_tarifas as extract_tarifas
 from etl.extractors.io_utils import (
     RAW_STEM_CBA,
     RAW_STEM_MAGYP,
     find_latest_raw,
 )
-from etl.loaders.save_processed import save_processed_artifacts
+from etl.loaders.save_processed import save_parquet, save_processed_artifacts
 from etl.reference.load_ic import load_ic_table
 from etl.transformers.biomass import (
+    DEFAULT_FRACCION_RECUPERABLE,
+    RESIDUO_REC_COL,
     add_density_columns,
+    add_recoverable_residue,
     add_validity_flags,
     compute_biomass,
     report_exclusion_impact,
 )
-from etl.transformers.energy_finance import add_energy_finance_columns
+from etl.transformers.energy_finance import (
+    COL_BENEFICIO,
+    COL_KWH_TOTALES,
+    add_energy_finance_columns,
+    load_tarifas_config,
+)
 from etl.transformers.reconciliation import (
     DEFAULT_KEY,
     PROD_COL,
+    compute_discrepancies,
     coverage_report,
     reconciliar_por_mayor_produccion,
+)
+from etl.transformers.reference_period import (
+    annualize,
+    select_reference_campaigns,
 )
 from etl.transformers.source_cleaning import (
     FUENTE_CBA,
@@ -68,8 +86,19 @@ logger = logging.getLogger("etl")
 # Constantes de configuración
 # =============================================================
 DEFAULT_CONFIG_PATH = "config/paths.yaml"
-DEFAULT_LOGGING_PATH = "config/logging.yaml"
+# El archivo versionado es ``logging.yml``; antes se buscaba
+# ``logging.yaml`` y el logging configurado nunca se aplicaba.
+DEFAULT_LOGGING_PATH = "config/logging.yml"
 DEFAULT_TARIFAS_PATH = "data/reference"
+DEFAULT_N_CAMPANAS = 5
+
+ANNUAL_GROUP_COLS = ["Provincia", "Departamento", "Cultivo"]
+ANNUAL_VALUE_COLS = [
+    "Superficie (Ha)",
+    PROD_COL,
+    "Residuo de Biomasa (Tn)",
+    RESIDUO_REC_COL,
+]
 
 
 def setup_logging(logging_path: str | Path = DEFAULT_LOGGING_PATH) -> None:
@@ -82,7 +111,12 @@ def setup_logging(logging_path: str | Path = DEFAULT_LOGGING_PATH) -> None:
     logging_path = Path(logging_path)
     if logging_path.exists():
         with open(logging_path, encoding="utf-8") as f:
-            logging.config.dictConfig(yaml.safe_load(f))
+            cfg = yaml.safe_load(f)
+        # Crear directorios de handlers de archivo (logs/) si no existen.
+        for handler in cfg.get("handlers", {}).values():
+            if "filename" in handler:
+                Path(handler["filename"]).parent.mkdir(parents=True, exist_ok=True)
+        logging.config.dictConfig(cfg)
     else:
         logging.basicConfig(level=logging.INFO)
 
@@ -99,6 +133,29 @@ def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict:
     """
     with open(config_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def run_tarifas_stage(raw_dir: Path, ref_dir: Path) -> Path | None:
+    """
+    Ejecuta el extractor de cuadros tarifarios.
+
+    No es bloqueante: si falla, el pipeline continúa con el JSON de
+    tarifas más reciente en ``ref_dir``.
+
+    Args:
+        raw_dir: Directorio ``data/raw`` (los PDF van a ``raw/tarifas``).
+        ref_dir: Directorio ``data/reference``.
+
+    Returns:
+        Path del JSON generado o None si falló.
+    """
+    try:
+        return extract_tarifas.run_extractor(
+            raw_dir=Path(raw_dir) / "tarifas", reference_dir=ref_dir
+        )
+    except Exception:
+        logger.exception("Extracción de tarifas falló; se usa la referencia previa")
+        return None
 
 
 def run_extract_stage(raw_dir: Path) -> dict[str, Path]:
@@ -157,7 +214,10 @@ def run(
     config_path: str | Path = DEFAULT_CONFIG_PATH,
     *,
     skip_extract: bool = False,
-    tarifas_path: str | Path = DEFAULT_TARIFAS_PATH,
+    skip_tarifas: bool = False,
+    tarifas_path: str | Path | None = None,
+    n_campanas: int = DEFAULT_N_CAMPANAS,
+    fraccion_recuperable: float | None = None,
 ) -> dict:
     """
     Ejecuta el pipeline ETL completo.
@@ -166,7 +226,13 @@ def run(
         config_path: Ruta del archivo de configuración de paths.
         skip_extract: Si True, no descarga fuentes y usa el raw más
             reciente ya presente en disco.
-        tarifas_path: Ruta al JSON de tarifas PP30.
+        skip_tarifas: Si True, no descarga cuadros tarifarios.
+        tarifas_path: JSON de tarifas o directorio. Si None, usa el
+            directorio de referencia de la config.
+        n_campanas: Campañas completas del período de referencia anual.
+        fraccion_recuperable: Fracción del residuo retirable del lote.
+            Si None, usa ``parametros_pp30.fraccion_recuperable_default``
+            del JSON de tarifas (o 0.5).
 
     Returns:
         Diccionario con paths de los artefactos persistidos.
@@ -184,6 +250,16 @@ def run(
     else:
         logger.info("Ejecutando etapa de extracción")
         extracted = run_extract_stage(raw_dir)
+    if not skip_tarifas:
+        logger.info("Ejecutando extracción de cuadros tarifarios")
+        run_tarifas_stage(raw_dir, ref_dir)
+    tarifas_cfg = load_tarifas_config(tarifas_path or ref_dir)
+    if fraccion_recuperable is None:
+        fraccion_recuperable = float(
+            tarifas_cfg.get("parametros_pp30", {}).get(
+                "fraccion_recuperable_default", DEFAULT_FRACCION_RECUPERABLE
+            )
+        )
 
     raw_paths = resolve_raw_paths(raw_dir, extracted)
     logger.info("Raw CBA:   %s", raw_paths["cba"])
@@ -202,6 +278,7 @@ def run(
     # --- 4. Reconciliación multi-fuente ---
     df_all = pd.concat([df_cba, df_magyp], ignore_index=True)
     logger.info("Cobertura:\n%s", coverage_report(df_all).to_string())
+    df_discrepancias = compute_discrepancies(df_all, DEFAULT_KEY)
     df_final, df_descartado = reconciliar_por_mayor_produccion(
         df_all, DEFAULT_KEY, PROD_COL
     )
@@ -221,24 +298,45 @@ def run(
 
     df_biomasa_validos = df_biomasa[df_biomasa["_valido_biomasa"]].copy()
     df_biomasa_validos = add_density_columns(df_biomasa_validos)
+    df_biomasa_validos = add_recoverable_residue(
+        df_biomasa_validos, fraccion_recuperable
+    )
 
-    # --- 7. Energía + finanzas PP30 ---
+    # --- 7. Energía + finanzas PP30 (por campaña) ---
     logger.info("Calculando métricas energéticas y financieras PP30")
     df_biomasa_validos = add_energy_finance_columns(
         df_biomasa_validos,
-        tarifas_path=tarifas_path,
+        config=tarifas_cfg,
     )
 
-    # --- 8. Validación de biomasa ---
+    # --- 8. Potencial anual en el período de referencia ---
+    campanas_ref = select_reference_campaigns(df_final, n_campanas)
+    logger.info("Período de referencia anual: %s", campanas_ref)
+    df_anual = annualize(
+        df_biomasa_validos, campanas_ref, ANNUAL_GROUP_COLS, ANNUAL_VALUE_COLS
+    )
+    # Energía y dinero se recalculan sobre el residuo anualizado (así
+    # ``equipos_pp30_equivalentes`` queda expresado por año).
+    df_anual = add_energy_finance_columns(df_anual, config=tarifas_cfg)
+    logger.info(
+        "Potencial anual: %.3e kWh/año, %.3e ARS/año (bruto, provincias con tarifa)",
+        df_anual[COL_KWH_TOTALES].sum(),
+        df_anual[COL_BENEFICIO].sum(),
+    )
+
+    # --- 9. Validación de biomasa ---
     validar_biomasa(df_biomasa)
 
-    # --- 9. Persistencia ---
+    # --- 10. Persistencia ---
     paths = save_processed_artifacts(
         df_biomasa=df_biomasa_validos,
         df_descartado=df_descartado,
-        df_discrepancias=pd.DataFrame(),
+        df_discrepancias=df_discrepancias,
         processed_dir=processed_dir,
         audit_dir=audit_dir,
+    )
+    paths["potencial_anual"] = save_parquet(
+        df_anual, processed_dir / "potencial_energetico_anual.parquet"
     )
     logger.info("Pipeline completado. Artefactos: %s", paths)
     return paths
@@ -265,9 +363,26 @@ def main() -> int:
         help="Omite descarga de fuentes; usa el raw más reciente en disco",
     )
     parser.add_argument(
+        "--skip-tarifas",
+        action="store_true",
+        help="Omite descarga de cuadros tarifarios; usa el JSON más reciente",
+    )
+    parser.add_argument(
         "--tarifas",
-        default=DEFAULT_TARIFAS_PATH,
-        help="JSON de tarifas o directorio data/reference",
+        default=None,
+        help="JSON de tarifas o directorio (default: data/reference)",
+    )
+    parser.add_argument(
+        "--n-campanas",
+        type=int,
+        default=DEFAULT_N_CAMPANAS,
+        help="Campañas completas del período de referencia anual",
+    )
+    parser.add_argument(
+        "--fraccion-recuperable",
+        type=float,
+        default=None,
+        help="Fracción del rastrojo retirable del lote (0, 1]",
     )
     args = parser.parse_args()
 
@@ -277,7 +392,10 @@ def main() -> int:
         run(
             args.config,
             skip_extract=args.skip_extract,
+            skip_tarifas=args.skip_tarifas,
             tarifas_path=args.tarifas,
+            n_campanas=args.n_campanas,
+            fraccion_recuperable=args.fraccion_recuperable,
         )
     except Exception:
         logger.exception("Fallo en pipeline ETL")
