@@ -78,9 +78,13 @@ def rows_to_text(rows: list[list[object]]) -> str:
     """
     Convierte filas de una planilla en líneas de texto.
 
-    Propaga unidades de encabezado a los valores numéricos de su columna.
+    Si una celda de encabezado contiene una unidad (``$/kWh``, ``$/mes``)
+    y los importes están en las filas siguientes, a cada importe de esa
+    columna se le agrega la unidad y, entre corchetes, el texto del
+    encabezado (p.ej. ``266,8 $/KWh [Cargo Variable Horas Resto $/KWh]``):
+    así el parser sabe a qué banda/cargo corresponde cada columna.
     """
-    units_by_col: dict[int, tuple[str, int]] = {}
+    headers_by_col: dict[int, tuple[str, str, int]] = {}
     lines: list[str] = []
     for r, row in enumerate(rows):
         cells = [_cell_str(v) for v in row]
@@ -88,12 +92,14 @@ def rows_to_text(rows: list[list[object]]) -> str:
         for c, text in enumerate(cells):
             m = re.search(UNIT_HEADER_PATTERN, text, flags=re.IGNORECASE)
             is_number = bool(re.fullmatch(r"-?[\d.]+(?:,\d+)?", text))
-            if m and not is_number:
-                units_by_col[c] = (m.group(0), r)
-            if is_number and c in units_by_col:
-                unit, header_row = units_by_col[c]
-                if r - header_row <= MAX_ROWS_BELOW_HEADER and unit not in " ".join(cells):
-                    text = f"{text} {unit}"
+            if m and not is_number and not re.search(r"\d+,\d+", text):
+                headers_by_col[c] = (m.group(0), text, r)
+            if is_number and c in headers_by_col:
+                unit, header, header_row = headers_by_col[c]
+                if r - header_row <= MAX_ROWS_BELOW_HEADER and not any(
+                    re.search(UNIT_HEADER_PATTERN, x, flags=re.IGNORECASE) for x in cells
+                ):
+                    text = f"{text} {unit} [{header}]"
             out.append(text)
         line = " | ".join(t for t in out if t)
         if line:

@@ -163,7 +163,8 @@ def run_extract_stage(raw_dir: Path) -> dict[str, Path]:
     Ejecuta los extractors de CBA y MAGYP.
 
     Cada extractor escribe un CSV timestamped en ``raw_dir`` y devuelve
-    la ruta del artefacto generado.
+    la ruta del artefacto generado. Si un extractor falla se usa el raw
+    más reciente de esa fuente ya presente en disco.
 
     Args:
         raw_dir: Directorio ``data/raw``.
@@ -174,13 +175,25 @@ def run_extract_stage(raw_dir: Path) -> dict[str, Path]:
     raw_dir = Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Extract CBA → %s", raw_dir)
-    cba_path = extract_cba.run_extractor(output_dir=raw_dir)
-
-    logger.info("Extract MAGYP → %s", raw_dir)
-    magyp_path = extract_magyp.run_extractor(output_dir=raw_dir)
-
-    return {"cba": cba_path, "magyp": magyp_path}
+    sources = {
+        "cba": (extract_cba, RAW_STEM_CBA),
+        "magyp": (extract_magyp, RAW_STEM_MAGYP),
+    }
+    paths: dict[str, Path] = {}
+    for name, (module, stem) in sources.items():
+        logger.info("Extract %s → %s", name.upper(), raw_dir)
+        try:
+            paths[name] = module.run_extractor(output_dir=raw_dir)
+        except Exception:
+            # Una fuente caída (p.ej. el enlace de SharePoint de la BCCBA
+            # exige login) no debe frenar todo el pipeline: se usa el raw
+            # más reciente en disco y queda registrado en el log.
+            logger.exception(
+                "Falló la extracción de %s; se usa el raw más reciente en disco",
+                name.upper(),
+            )
+            paths[name] = find_latest_raw(raw_dir, stem)
+    return paths
 
 
 def resolve_raw_paths(

@@ -353,3 +353,48 @@ python -m etl.extractors.scrape_tarifas --historial --desde 2025-01
 ```
 
 y luego revisar en el JSON `resumen_extraccion`, y por distribuidora `estado_campos`, `seccion_compra` y `valores_detectados`. Si algún formato real no matchea, ajustar `SECTION_PATTERNS_COMPRA` / `SECTION_PATTERNS_INYECCION` o la entrada del registro.
+
+---
+
+## 10. Validación contra las fuentes reales (con red habilitada)
+
+Con la lista de dominios habilitada se ejecutaron todos los extractores contra los sitios reales. Aparecieron errores que no se veían con datos sintéticos.
+
+### 10.1 Extractores agrícolas
+
+| Fuente | Resultado | Error encontrado | Corrección |
+|---|---|---|---|
+| MAGyP (estimaciones) | ✅ 539/539 departamentos, 0 fallos, 162.297 filas | — | — |
+| Bolsa de Cereales de Córdoba | ✅ 4.064 filas (= raw del repo sin las 30 duplicadas) | El Excel pasó a `.xls` y las tres hojas traen ahora 10 filas de título. El extractor (fila de encabezado fija y sin encabezado en dos hojas) fallaba con `KeyError: 'PROVINCIA'` | Se detecta la fila de encabezado buscando `PROVINCIA` en cada hoja; se aceptan `.xls` y `.xlsx`; columnas numéricas convertidas |
+| Bolsa de Cereales de Bs. As. | ❌ HTTP 403 (desafío anti-bot de Cloudflare) | Bloqueo de IPs de datacenter | Sin cambios: no se evade un anti-bot y el dataset está descartado metodológicamente (zonas PAS) |
+| Pipeline | — | Un extractor caído abortaba todo el ETL | `run_extract_stage` usa el raw más reciente en disco de esa fuente y lo registra en el log |
+
+La descarga nueva de MAGyP pasa la limpieza sin cambios de esquema ni cultivos sin mapear. La campaña 2025/26 creció de 1.468 a 1.724 registros y sigue detectándose como incompleta.
+
+### 10.2 Tarifas: problemas de las fuentes reales
+
+- **`energia.gob.ar` corta el handshake TLS** desde redes fuera de Argentina, pero sirve los mismos archivos por **HTTP**. Ese host se normaliza a HTTP.
+- El portal nacional antepone `blank:#` a algunos enlaces. Se quita.
+- Las carpetas reales son por **código de distribuidora** (`EDESAL/2026_06_EDESAL.xlsx`). Los enlaces viejos por provincia (`cordoba/2025_07_EPEC.pdf`) dan 404.
+- Algunas páginas del portal quedaron desactualizadas y existe una **versión nueva con sufijo `-0`** (EPEC, ESJ, SPSE). El registro admite varias páginas por distribuidora.
+- El portal **enlaza archivos inexistentes** (p. ej. `EPEC/2026_06_EPEC.pdf` da 404) y **de otra distribuidora** (la página de EDET apuntaba a un cuadro de EDESE). Se descartan los enlaces cuyo nombre no corresponde al código.
+- Para EDEN, EDEA, EDES y EDELAP el portal nacional **sólo publica componentes** (CTT, cargos de transporte), no el cuadro final. Se usa **OCEBA** y se descarta un PDF combinado "EDEA-EDEN-EDES" que se asignaba a las tres.
+- OCEBA publica **varios anexos por mes** (pleno, con subsidio, por nivel de ingresos). Se procesan todos los del mes más reciente y se elige el de mejor categoría y mayor tarifa, es decir, el cuadro pleno.
+- Los ZIP del portal mezclan el cuadro pleno con regímenes especiales ("Clubes de Barrio", "Subsidio del Estado Nacional") y con una hoja de **tarifas de inyección**. Los cuadros especiales se identifican por el título y se excluyen como compra; la hoja de inyección aporta el precio de inyección.
+- El nombre del archivo puede indicar el mes de publicación y no el de vigencia (`2026_07_EDENOR 1.xlsx` con "vigencia a partir del 1° de junio de 2026"). Prevalece la **vigencia declarada en el texto**. Las carpetas de OCEBA `ctAAAAMM[DD]` también se interpretan.
+- **Rate limiting y cortes**: un intervalo mínimo de 1 s por host, un reintento ante 403/429/503 o error de conexión, y los hosts con 403 o errores de conexión sostenidos se omiten en la corrida (EDENOR propio, `spse.ar`).
+- `EPEC` (sitio propio) responde 403 desde fuera de Argentina, y su archivo del portal nacional está roto. Desde una red argentina debería funcionar la fuente propia.
+
+### 10.3 Parser reescrito (`etl/extractors/tariff_parser.py`)
+
+El parser por secciones "T2/T3" fallaba con los cuadros reales: cada distribuidora organiza filas, columnas (abastecimiento/VAD/total, con/sin subsidio) y unidades a su manera. Se reemplazó por un **puntaje de líneas candidatas**, validado contra 20+ cuadros reales:
+
+- Candidatas: líneas con cargo en $/kWh, con la unidad en la línea, propagada desde el encabezado de la columna, o en la línea anterior para filas de banda horaria, cuyo contexto nombra medianas o grandes demandas, T2/T3 o baja tensión.
+- Se prioriza la **banda "Resto"** (también `restantes`, `(R)` o `®` en PDFs).
+- Se excluyen las líneas residenciales, sociales, subsidiadas, de VAD o costo de compra, peaje, alumbrado, media o alta tensión (incluidos 13,2/33/132 kV y "Vinculación superior") y las categorías de ≥ 300 kW, que no representan a un PP30 de 25 kW.
+- Se exige un puntaje mínimo de medianas demandas: un PDF con la tabla desarmada (EDEMSA propio) ya no devuelve una tarifa residencial.
+- **Formato numérico inglés** (`156.655`, `662,591.7` en EDESE) detectado por documento.
+- Tablas lado a lado en la misma línea de PDF: se corta en la próxima etiqueta.
+- Líneas sin etiqueta (`$/kWh 92,94`) toman el concepto de las líneas previas. Así, en EDELAR el precio de inyección no se confunde con la compra.
+- Tablas cuyo encabezado es "Tarifa de inyección" (APE) no se usan como compra.
+- Las líneas usadas quedan registradas (`lineas_compra`, `lineas_inyeccion`) para auditar.

@@ -33,6 +33,7 @@ HISTORY_COLUMNS: Final[list[str]] = [
     "tarifa_inyeccion_kwh",
     "cargo_fijo_mensual",
     "seccion_compra",
+    "puntaje_compra",
     "n_valores_compra",
     "n_valores_inyeccion",
     "fuente_tipo",
@@ -112,6 +113,31 @@ def append_history(
     return path, n_new
 
 
+def representative_by_month(history: pd.DataFrame) -> pd.DataFrame:
+    """
+    Un cuadro por distribuidora y vigencia: el pleno.
+
+    Algunas fuentes (OCEBA, ZIP del portal nacional) publican varios
+    anexos por mes (pleno, con subsidio, por nivel de ingresos). Se elige
+    el de mayor puntaje de categoría y, a igualdad, la mayor tarifa de
+    compra, con el mismo criterio que el extractor. Las filas sin vigencia
+    se descartan.
+    """
+    valid = history.dropna(subset=["tarifa_compra_kwh", "vigencia"]).copy()
+    if valid.empty:
+        return valid
+    puntaje = valid["puntaje_compra"] if "puntaje_compra" in valid else 0
+    valid["_puntaje"] = pd.to_numeric(puntaje, errors="coerce")
+    valid["_puntaje"] = valid["_puntaje"].fillna(0)
+    return (
+        valid.sort_values(["distribuidora", "vigencia", "_puntaje", "tarifa_compra_kwh"])
+        .groupby(["distribuidora", "vigencia"], as_index=False)
+        .tail(1)
+        .drop(columns="_puntaje")
+        .reset_index(drop=True)
+    )
+
+
 def latest_by_distribuidora(history: pd.DataFrame) -> pd.DataFrame:
     """
     Última vigencia con tarifa de compra por distribuidora.
@@ -120,23 +146,18 @@ def latest_by_distribuidora(history: pd.DataFrame) -> pd.DataFrame:
         history: Salida de ``load_history``.
 
     Returns:
-        Una fila por distribuidora (la de vigencia más reciente; ante
-        empate, la extracción más reciente).
+        Una fila por distribuidora (el cuadro pleno de la vigencia más
+        reciente).
     """
-    valid = history.dropna(subset=["tarifa_compra_kwh"])
-    if valid.empty:
-        return valid
-    return (
-        valid.sort_values(["distribuidora", "vigencia", "fecha_extraccion"])
-        .groupby("distribuidora", as_index=False)
-        .tail(1)
-        .reset_index(drop=True)
-    )
+    rep = representative_by_month(history)
+    if rep.empty:
+        return rep
+    return rep.groupby("distribuidora", as_index=False).tail(1).reset_index(drop=True)
 
 
 def tariff_series(history: pd.DataFrame, field: str = "tarifa_compra_kwh") -> pd.DataFrame:
     """
-    Serie temporal ancha: vigencia × distribuidora.
+    Serie temporal ancha: vigencia × distribuidora (cuadro pleno por mes).
 
     Args:
         history: Salida de ``load_history``.
@@ -145,11 +166,7 @@ def tariff_series(history: pd.DataFrame, field: str = "tarifa_compra_kwh") -> pd
     Returns:
         DataFrame con índice ``vigencia`` y una columna por distribuidora.
     """
-    if history.empty:
+    rep = representative_by_month(history)
+    if rep.empty:
         return pd.DataFrame()
-    return (
-        history.dropna(subset=[field])
-        .sort_values("fecha_extraccion")
-        .pivot_table(index="vigencia", columns="distribuidora", values=field, aggfunc="last")
-        .sort_index()
-    )
+    return rep.pivot(index="vigencia", columns="distribuidora", values=field).sort_index()

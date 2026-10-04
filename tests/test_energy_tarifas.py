@@ -80,7 +80,8 @@ def test_parse_ar_number() -> None:
 
 def test_parse_tariff_text_toma_t3_y_omite_indice() -> None:
     out = st.parse_tariff_text(PDF_TEXT)
-    assert out["valores_compra_detectados"] == [70.1234, 65.5, 60.0]
+    # Banda "Resto" de la T3 (no la T2 ni el índice).
+    assert out["valores_compra_detectados"] == [65.5]
     assert out["tarifa_compra_kwh"] == 65.5
     assert out["tarifa_inyeccion_kwh"] == 35.21
     assert out["cargo_fijo_mensual"] == 25300.0
@@ -166,7 +167,7 @@ def test_xlsx_con_unidad_en_encabezado() -> None:
         ["Valle", None, 60.0],
     ]
     out = st.parse_tariff_text(rows_to_text(rows))
-    assert out["valores_compra_detectados"] == [70.1234, 65.5, 60.0]
+    assert out["valores_compra_detectados"] == [65.5]
     assert out["cargo_fijo_mensual"] == 25300.0
 
 
@@ -234,7 +235,7 @@ def test_run_extractor_end_to_end_con_historial(tmp_path: Path) -> None:
     hist = load_history(tmp_path / "ref")
     assert list(hist["vigencia"]) == ["2026-05", "2026-06"]
     serie = tariff_series(hist)
-    assert serie.loc["2026-05", "EPEC"] == 60.0       # mediana de 70,12 / 50 / 60
+    assert serie.loc["2026-05", "EPEC"] == 50.0       # banda Resto del cuadro de mayo
     n_filas = len(hist)
 
     # Segunda corrida sin red: conserva el valor como fallback y el
@@ -259,10 +260,11 @@ def test_dead_host_guard() -> None:
         raise httpx.ConnectError("caído")
 
     guarded = st.with_dead_host_guard(down)
-    for _ in range(3):
+    for _ in range(4):
         with pytest.raises(httpx.ConnectError):
             guarded("https://caido.example/a.pdf")
-    assert len(calls) == 1
+    # Tras DEAD_HOST_FAILURES errores consecutivos no se vuelve a intentar.
+    assert len(calls) == st.DEAD_HOST_FAILURES
 
 
 def test_resolver_promedia_provincias_con_varias_distribuidoras() -> None:
@@ -324,3 +326,97 @@ def test_xlsx_y_zip_reales_de_punta_a_punta() -> None:
         assert out["tarifa_inyeccion_kwh"] == 35.21
         assert out["cargo_fijo_mensual"] == 25300.0
         assert st.vigencia_from_text(text) == "2026-05"
+
+
+def test_dead_host_guard_403_sostenido_y_404_no() -> None:
+    calls: list[str] = []
+
+    def down(url: str) -> bytes:
+        calls.append(url)
+        code = 403 if "bloqueado" in url else 404
+        request = httpx.Request("GET", url)
+        raise httpx.HTTPStatusError(str(code), request=request,
+                                    response=httpx.Response(code, request=request))
+
+    guarded = st.with_dead_host_guard(down)
+    for _ in range(4):
+        with pytest.raises(httpx.HTTPError):
+            guarded("https://bloqueado.example/a.pdf")
+        with pytest.raises(httpx.HTTPError):
+            guarded("https://normal.example/a.pdf")
+    assert sum("bloqueado" in c for c in calls) == st.DEAD_HOST_FAILURES
+    assert sum("normal" in c for c in calls) == 4
+
+
+def test_vigencia_carpetas_oceba() -> None:
+    base = "https://oceba.gba.gov.ar/nueva_web/adjuntos/"
+    doc = "ct20250502/IF-2025-16721231-GDEBA-GMOCEBA.pdf"
+    assert st.vigencia_from_name(base + doc) == "2025-05"
+    assert st.vigencia_from_name(base + "ct202609/IF-2026-27723597-GDEBA-GMOCEBA.pdf") == "2026-09"
+    vieja = "cuadros-tarifarios/2023/junio-2/eden-r1.pdf"
+    assert st.vigencia_from_name(base + vieja) == "2023-06"
+    assert st.vigencia_from_name(base + "cuadros-tarifarios/2023/abril/eden.pdf") == "2023-04"
+
+
+def test_serie_elige_cuadro_pleno_por_mes() -> None:
+    import pandas as pd
+
+    from etl.loaders.tariff_history import latest_by_distribuidora, tariff_series
+
+    h = pd.DataFrame({
+        "distribuidora": ["EDEN"] * 3 + ["EPEC"],
+        "vigencia": ["2026-09", "2026-09", "2026-08", None],
+        "tarifa_compra_kwh": [47.4, 114.98, 110.0, 99.0],
+        "puntaje_compra": [4, 4, 4, 4],
+        "fecha_extraccion": ["x"] * 4,
+    })
+    serie = tariff_series(h)
+    assert serie.loc["2026-09", "EDEN"] == 114.98
+    assert "EPEC" not in serie.columns          # sin vigencia: fuera de la serie
+    assert latest_by_distribuidora(h)["tarifa_compra_kwh"].tolist() == [114.98]
+
+
+@pytest.mark.parametrize(("texto", "esperado"), [
+    ("Vigencia: 01 de Mayo al 31 de Julio de 2026", "2026-05"),            # EDEMSA
+    ("vigencia a partir del 1° de junio de 2026", "2026-06"),              # EDENOR
+    ("a partir del 01/06/26 con demanda de Potencia < 10 KW", "2026-06"),  # REFSA
+    ("Vigencia: | a partir del 01 de Octubre de 2025 | 2025-10-01", "2025-10"),  # EJESA
+])
+def test_vigencia_explicita(texto: str, esperado: str) -> None:
+    assert st.vigencia_explicit(texto) == esperado
+
+
+def test_cuadro_manual_se_usa_sin_red(tmp_path: Path) -> None:
+    """Cuadros bajados a mano (fuentes que bloquean la descarga)."""
+    manual = tmp_path / "ref" / st.MANUAL_DIR_NAME / "EPEC"
+    manual.mkdir(parents=True)
+    (manual / "cuadro_tarifario_2026_07.pdf").write_bytes(
+        b"%PDF-1.4\n" + PDF_TEXT.encode("latin1")
+    )
+    out = st.run_extractor(
+        raw_dir=tmp_path / "raw", reference_dir=tmp_path / "ref",
+        downloader=_fake_downloader({}), text_extractor=_fake_extractor,
+        codes=["EPEC"],
+    )
+    epec = json.loads(out.read_text(encoding="utf-8"))["distribuidoras"]["EPEC"]
+    assert epec["tarifa_compra_kwh"] == 65.5
+    assert epec["vigencia"] == "2026-07"
+    assert epec["fuente_tipo"] == st.SOURCE_MANUAL
+    assert epec["estado_campos"]["tarifa_compra_kwh"] == st.STATUS_PARSED
+
+
+def test_epe_enlaces_astro_y_vigencia() -> None:
+    html = (
+        '<astro-island props="{&quot;fileName&quot;:[0,&quot;CUT_T2_Septiembre_2026.pdf&quot;],'
+        '&quot;fileHash&quot;:[0,&quot;5069c712-219f-4abe-9deb-2ea174417e3c&quot;]}"></astro-island>'
+        '<astro-island props="{&quot;fileName&quot;:'
+        '[0,&quot;Trabajos_con_Cargo_Julio_2026.pdf&quot;],'
+        '&quot;fileHash&quot;:[0,&quot;89845de8-b81f-4cd1-8042-044033ac9ad9&quot;]}"></astro-island>'
+    )
+    links = st.astro_file_links(html)
+    assert links == [
+        st.EPE_DOWNLOAD_BASE
+        + "5069c712-219f-4abe-9deb-2ea174417e3c#CUT_T2_Septiembre_2026.pdf"
+    ]
+    assert st.vigencia_from_name(links[0]) == "2026-09"
+    assert "x-api-key" in st.HOST_HEADERS["epe.santafe.gov.ar"]

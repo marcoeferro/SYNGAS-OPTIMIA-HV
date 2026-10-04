@@ -53,8 +53,11 @@ SHEETS: Final[list[str]] = [
     SHEET_PRODUCTION,
 ]
 
-SURFACE_HEADER_ROW: Final[int] = 9
-SURFACE_DATA_START_ROW: Final[int] = 10
+# El encabezado de cada hoja se detecta buscando esta celda (las hojas
+# traen un número variable de filas de título; en 2026 pasaron a ser 10
+# en las tres hojas y el extractor con filas fijas dejó de funcionar).
+HEADER_MARKER: Final[str] = "PROVINCIA"
+HEADER_SEARCH_ROWS: Final[int] = 40
 
 KEY_COLUMNS: Final[list[str]] = [
     "PROVINCIA",
@@ -77,6 +80,8 @@ OUTPUT_COLUMNS: Final[list[str]] = [
 ]
 
 MERGE_TYPE: Final[str] = "outer"
+
+OLE_MAGIC: Final[bytes] = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 
 # Columnas cuya combinación con la clave identifica un registro real.
 CORE_COLUMNS: Final[list[str]] = [
@@ -113,9 +118,11 @@ def download_excel(url: str) -> bytes:
 
     # SharePoint devuelve HTML (login/consentimiento) con HTTP 200 cuando
     # el enlace deja de ser público: se valida la firma ZIP de XLSX.
-    if response.content[:2] != b"PK":
+    # Se aceptan XLSX (ZIP, "PK") y XLS (OLE): el archivo publicado pasó
+    # a ser BCCBA_ESTADISTICA_CULTIVOS.xls.
+    if response.content[:2] != b"PK" and response.content[:8] != OLE_MAGIC:
         raise ValueError(
-            "La descarga de CBA no es un archivo XLSX (¿enlace de "
+            "La descarga de CBA no es un archivo Excel (¿enlace de "
             "SharePoint vencido o que requiere login?)."
         )
 
@@ -141,10 +148,36 @@ def read_excel_sheets(
     return pd.read_excel(
         BytesIO(excel_content),
         sheet_name=sheet_names,
+        header=None,
     )
 
 
 # ====================== TRANSFORMACIÓN ======================
+
+def find_header_row(
+    dataframe: pd.DataFrame,
+    marker: str = HEADER_MARKER,
+    max_rows: int = HEADER_SEARCH_ROWS,
+) -> int:
+    """Índice de la primera fila que contiene la celda ``marker``.
+
+    Raises:
+        ValueError: Si el encabezado no aparece en las primeras filas.
+    """
+    head = dataframe.head(max_rows)
+    for idx, row in head.iterrows():
+        if any(str(v).strip().upper() == marker for v in row.tolist()):
+            return int(head.index.get_loc(idx))
+    raise ValueError(
+        f"No se encontró la fila de encabezado ('{marker}') en la hoja de CBA"
+    )
+
+
+def clean_sheet(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Usa la fila de encabezado detectada y descarta las filas de título."""
+    header_row = find_header_row(dataframe)
+    return clean_surface_dataframe(dataframe, header_row, header_row + 1)
+
 
 def clean_surface_dataframe(
     dataframe: pd.DataFrame,
@@ -176,6 +209,9 @@ def clean_surface_dataframe(
     cleaned = cleaned.iloc[data_start_row:].reset_index(drop=True)
 
     cleaned.columns = cleaned.columns.astype(str).str.strip()
+    # Columnas vacías del rango usado de la hoja ("nan") y filas en blanco.
+    cleaned = cleaned.loc[:, [c for c in cleaned.columns if c and c != "nan"]]
+    cleaned = cleaned.dropna(how="all")
 
     return cleaned
 
@@ -252,14 +288,9 @@ def transform_dataframes(
     Returns:
         DataFrame final listo para ser almacenado.
     """
-    surface = clean_surface_dataframe(
-        dataframes[SHEET_SURFACE],
-        header_row=SURFACE_HEADER_ROW,
-        data_start_row=SURFACE_DATA_START_ROW,
-    )
-
-    yield_data = dataframes[SHEET_YIELD]
-    production = dataframes[SHEET_PRODUCTION]
+    surface = clean_sheet(dataframes[SHEET_SURFACE])
+    yield_data = clean_sheet(dataframes[SHEET_YIELD])
+    production = clean_sheet(dataframes[SHEET_PRODUCTION])
 
     merged = merge_agricultural_data(
         surface=surface,
@@ -268,10 +299,16 @@ def transform_dataframes(
         keys=KEY_COLUMNS,
     )
 
-    return select_output_columns(
+    result = select_output_columns(
         dataframe=merged,
         columns=OUTPUT_COLUMNS,
     )
+    # Las hojas se leen sin encabezado (header=None): los valores llegan
+    # como object y se convierten a numérico.
+    for col in OUTPUT_COLUMNS:
+        if col not in KEY_COLUMNS:
+            result[col] = pd.to_numeric(result[col], errors="coerce")
+    return result
 
 
 # ====================== ALMACENAMIENTO ======================
