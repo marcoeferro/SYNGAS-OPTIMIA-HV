@@ -66,6 +66,16 @@ COL_MASA_SECA_KG: Final[str] = "masa_seca_kg"
 COL_MASA_ALIM_KG: Final[str] = "masa_alimentada_kg"
 COL_EQUIPOS: Final[str] = "equipos_pp30_equivalentes"
 COL_TARIFA_PROXY: Final[str] = "tarifa_es_proxy"
+COL_TARIFA_ORIGEN: Final[str] = "tarifa_origen"
+DEPARTAMENTO_COL: Final[str] = "Departamento"
+
+# Códigos de versiones anteriores del JSON de tarifas.
+_LEGACY_CODES: Final[dict[str, str]] = {
+    "EPEC_CORDOBA": "EPEC",
+    "EPE_SANTA_FE": "EPE",
+    "EDEMSA_MENDOZA": "EDEMSA",
+    "EDENOR_AMBA": "EDENOR",
+}
 COL_KWH_TOTALES: Final[str] = "kwh_generados"
 COL_KWH_AUTO: Final[str] = "kwh_autoconsumo"
 COL_KWH_INY: Final[str] = "kwh_inyectados"
@@ -132,6 +142,74 @@ def load_tarifas_config(
     logger.info("Cargando tarifas desde %s", resolved)
     with resolved.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _norm(text: object) -> str:
+    """Normalización mínima para matchear provincias/departamentos."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+    return " ".join(t.lower().split())
+
+
+class TariffResolver:
+    """
+    Resuelve la tarifa aplicable a un (provincia, departamento).
+
+    Orden: excepción por departamento → distribuidora(s) de la provincia.
+    Si la provincia tiene varias distribuidoras, la tarifa es el promedio
+    simple de las que tienen valor y se marca como aproximada.
+    """
+
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        self.dist: dict[str, Any] = {
+            _LEGACY_CODES.get(k, k): v for k, v in cfg.get("distribuidoras", {}).items()
+        }
+        self.prov_map: dict[str, list[str]] = {}
+        for k, v in cfg.get("provincia_a_distribuidora", {}).items():
+            codes = v if isinstance(v, list) else [v]
+            self.prov_map[_norm(k)] = [_LEGACY_CODES.get(c, c) for c in codes]
+        self.dept_map: dict[tuple[str, str], str] = {
+            (_norm(p), _norm(d)): _LEGACY_CODES.get(c, c)
+            for p, depts in cfg.get("departamento_a_distribuidora", {}).items()
+            for d, c in depts.items()
+        }
+        self._cache: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def resolve(self, provincia: object, departamento: object = None) -> dict[str, Any]:
+        """Devuelve distribuidora, tarifas, es_proxy y origen."""
+        key = (_norm(provincia), _norm(departamento) if departamento is not None else "")
+        if key in self._cache:
+            return self._cache[key]
+        codes = (
+            [self.dept_map[key]] if key in self.dept_map else self.prov_map.get(key[0], [])
+        )
+        with_value = [
+            c for c in codes
+            if self.dist.get(c, {}).get("tarifa_compra_kwh") is not None
+        ]
+
+        def mean(field: str) -> float:
+            vals = [
+                float(self.dist[c][field]) for c in with_value
+                if self.dist[c].get(field) is not None
+            ]
+            return float(np.mean(vals)) if vals else np.nan
+
+        origins = sorted({
+            self.dist[c].get("estado_campos", {}).get("tarifa_compra_kwh", "desconocido")
+            for c in with_value
+        })
+        result = {
+            "distribuidora": "+".join(codes) if codes else None,
+            "compra": mean("tarifa_compra_kwh"),
+            "inyeccion": mean("tarifa_inyeccion_kwh"),
+            "es_proxy": len(codes) > 1
+            or any(bool(self.dist.get(c, {}).get("es_proxy", False)) for c in codes),
+            "origen": "+".join(origins) if origins else "sin_dato",
+        }
+        self._cache[key] = result
+        return result
 
 
 def _resolve_param(
@@ -269,42 +347,30 @@ def compute_finance_metrics(
             f"factor_autoconsumo debe estar en [0.0, 1.0]: {alpha}"
         )
 
-    mapping: dict[str, str] = {
-        str(k).strip().lower(): v
-        for k, v in cfg.get("provincia_a_distribuidora", {}).items()
-    }
-    dist_cfg: dict[str, Any] = cfg.get("distribuidoras", {})
-
+    resolver = TariffResolver(cfg)
     out = df.copy()
-    prov = out[PROVINCIA_COL].astype(str).str.strip().str.lower()
-    out[COL_DISTRIBUIDORA] = prov.map(mapping)
-
-    compra = out[COL_DISTRIBUIDORA].map(
-        lambda code: (
-            dist_cfg.get(code, {}).get("tarifa_compra_kwh", np.nan)
-            if isinstance(code, str)
-            else np.nan
+    dept = out[DEPARTAMENTO_COL] if DEPARTAMENTO_COL in out.columns else None
+    resolved = [
+        resolver.resolve(p, d)
+        for p, d in zip(
+            out[PROVINCIA_COL],
+            dept if dept is not None else [None] * len(out),
+            strict=True,
         )
+    ]
+    out[COL_DISTRIBUIDORA] = [r["distribuidora"] for r in resolved]
+    out[COL_TARIFA_COMPRA] = pd.to_numeric(
+        pd.Series([r["compra"] for r in resolved], index=out.index), errors="coerce"
     )
-    inyeccion = out[COL_DISTRIBUIDORA].map(
-        lambda code: (
-            dist_cfg.get(code, {}).get("tarifa_inyeccion_kwh", np.nan)
-            if isinstance(code, str)
-            else np.nan
-        )
+    out[COL_TARIFA_INY] = pd.to_numeric(
+        pd.Series([r["inyeccion"] for r in resolved], index=out.index), errors="coerce"
     )
-    out[COL_TARIFA_COMPRA] = pd.to_numeric(compra, errors="coerce")
-    out[COL_TARIFA_INY] = pd.to_numeric(inyeccion, errors="coerce")
-    # Marca tarifas usadas como aproximación (p.ej. EDENOR-AMBA aplicada a
-    # departamentos rurales bonaerenses atendidos por EDEN/EDEA/EDES o
-    # cooperativas).
-    out[COL_TARIFA_PROXY] = out[COL_DISTRIBUIDORA].map(
-        lambda code: (
-            bool(dist_cfg.get(code, {}).get("es_proxy", False))
-            if isinstance(code, str)
-            else False
-        )
-    )
+    # Aproximación: provincia con varias distribuidoras/cooperativas
+    # (promedio) o distribuidora marcada como proxy.
+    out[COL_TARIFA_PROXY] = [r["es_proxy"] for r in resolved]
+    # Origen de la tarifa de compra (extraido / fallback_previous /
+    # baseline_manual / sin_dato): permite filtrar sólo valores reales.
+    out[COL_TARIFA_ORIGEN] = [r["origen"] for r in resolved]
     sin_tarifa = out[COL_DISTRIBUIDORA].isna()
     if sin_tarifa.any():
         logger.info(

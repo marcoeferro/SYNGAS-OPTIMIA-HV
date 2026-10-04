@@ -29,6 +29,7 @@ Este documento resume la revisión completa del repositorio (extractores, transf
 | E17 | Baja | Taxonomía | `alfalfa` (presente en CBA) no estaba mapeada → fail-fast si trae producción | Corregido |
 | E18 | Baja | Dashboard | Campañas por defecto incluían la campaña incompleta; KPIs sumaban campañas | Corregido |
 | E19 | Baja | Dependencias | Faltaba `pypdf`; `curl_cffi` no declarado | Corregido / documentado |
+| — | Mejora | Tarifas | Sólo 4 distribuidoras; sin historial | 28 distribuidoras + historial (sección 9) |
 
 ---
 
@@ -245,8 +246,110 @@ El notebook se ejecutó de principio a fin con `nbclient` y se guardó con sus o
 
 1. **Correr el scraper de tarifas con acceso a red** y revisar `estado_campos` / `valores_detectados` por distribuidora. Ajustar los patrones de sección si algún cuadro no se reconoce.
 2. **Revisar el baseline de tarifas** (210 ARS/kWh en EPEC frente a ≈ 54 ARS/kWh publicado para T2 en sep-2025).
-3. Incorporar cuadros de **EDEN/EDEA/EDES (OCEBA)** para Buenos Aires y de las provincias sin tarifa (Entre Ríos, La Pampa, Santiago del Estero, Salta, Chaco, …), que concentran ~26 % de la energía.
+3. ~~Incorporar el resto de las distribuidoras~~ → hecho (sección 9). Pendiente: cuadros de las cooperativas bonaerenses y pampeanas, y de Chubut.
 4. **Trigo candeal** queda excluido por no tener IC; podría usar el IC de trigo pan (0,35–0,40) documentando el supuesto.
 5. Diferenciar la **fracción recuperable por cultivo y sistema de labranza** (p. ej. menor en soja, cuyo rastrojo es escaso y frágil).
 6. Para la evaluación económica, incorporar costos de recolección/enfardado/flete, CAPEX y O&M del PP30, e impuestos.
 7. `docs/` está en `.gitignore` aunque sus archivos están versionados: los documentos nuevos en esa carpeta requieren `git add -f`.
+
+---
+
+## 9. Ampliación: todas las distribuidoras e historial de tarifas
+
+### 9.1 Cobertura
+
+El extractor pasó de 4 a **28 distribuidoras** (todas las jurisdicciones de la lista provista; las provincias con más de una distribuidora tienen una entrada por cada una). El registro vive en `etl/reference/distribuidoras.py` y es la única fuente de verdad: agregar o corregir una URL no requiere tocar código.
+
+Para cada distribuidora hay dos tipos de fuente, que se prueban en este orden:
+
+1. **Portal nacional de la Secretaría de Energía** (`argentina.gob.ar/.../cuadros-tarifarios-<slug>`). Publica los cuadros **mensuales de todas las distribuidoras desde 2025** en un formato uniforme, y los archivos tienen una URL predecible: `energia.gob.ar/.../cuadros_tarifarios_desde_2025/<DIR>/<AAAA>_<MM>_<DIR>.<pdf|xlsx|zip>`. Es la fuente preferida y la que permite reconstruir el historial.
+2. **Fuente propia** de la distribuidora o de su ente regulador: páginas índice (OCEBA para EDEN/EDEA/EDES/EDELAP, EPRE Mendoza para EDEMSA/EDESTE, etc.), URLs directas (p. ej. EDESAL, EDESE, EDELAR) y plantillas mensuales (EDENOR, EDESA, EDEA).
+
+Si ambas fuentes responden, se usa el cuadro de **vigencia más reciente**.
+
+| Código | Jurisdicción | Portal nacional | Fuente propia |
+|---|---|---|---|
+| EDENOR | CABA (norte) y GBA norte/oeste | [`edenor`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edenor) | www.edenor.com |
+| EDESUR | CABA (sur) y GBA sur | [`edesur`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edesur) | www.edesur.com.ar |
+| EDELAP | Buenos Aires (Gran La Plata) | [`edelap`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edelap) | oceba.gba.gov.ar |
+| EDEA | Buenos Aires (Costa Atlántica) | [`edea`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edea) | oceba.gba.gov.ar, www.edeaweb.com.ar |
+| EDEN | Buenos Aires (norte y centro) | [`eden`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-eden) | oceba.gba.gov.ar |
+| EDES | Buenos Aires (sur) | [`edessa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edessa) | oceba.gba.gov.ar |
+| ECSAPEM | Catamarca | [`ecsapem`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-ecsapem) | www.ecsapem.com.ar |
+| SECHEEP | Chaco | [`secheep`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-secheep) | www.secheep.gob.ar |
+| EPEC | Córdoba | [`epec`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-epec) | www.epec.com.ar |
+| DPEC | Corrientes | [`dpec`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-dpec) | www.dpec.com.ar |
+| ENERSA | Entre Ríos | [`enersa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-enersa) | www.enersa.com.ar, epre.gov.ar |
+| REFSA | Formosa | [`refsa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-refsa) | recursosyenergia.com.ar |
+| EJESA | Jujuy | [`ejesa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-ejesa) | www.ejesa.com.ar, susepu.jujuy.gob.ar |
+| APE | La Pampa | [`ape`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-ape) | — |
+| EDELAR | La Rioja | [`edelar`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edelar) | www.edelar.com.ar |
+| EDEMSA | Mendoza (salvo zona este) | [`edemsa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edemsa) | www.edemsa.com, epremendoza.gob.ar |
+| EDESTE | Mendoza (zona este) | [`edeste`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edeste) | epremendoza.gob.ar |
+| EMSA | Misiones | [`emsa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-emsa) | energia.misiones.gob.ar, www.energiademisiones.com.ar |
+| EPEN | Neuquén | [`epen`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-epen) | www.epen.gov.ar |
+| EDERSA | Río Negro | [`edersa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edersa) | www.edersa.com.ar, www.eprern.gov.ar |
+| EDESA | Salta | [`edesa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edesa) | www.edesa.com.ar |
+| ESJ | San Juan | [`esj`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-esj) | epresanjuan.gob.ar |
+| EDESAL | San Luis | [`edesal-sa`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edesal-sa) | oficinavirtualedesal.com.ar |
+| SPSE | Santa Cruz | [`spse`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-spse) | spse.ar |
+| EPE | Santa Fe | [`epe`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-epe) | www.epe.santafe.gov.ar |
+| EDESE | Santiago del Estero | [`edese`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edese) | www.edese.com.ar |
+| DPE_TDF | Tierra del Fuego | [`dpe`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-dpe) | www.dpe.com.ar |
+| EDET | Tucumán | [`edet`](https://www.argentina.gob.ar/economia/energia/energia-electrica/estadisticas/cuadros-tarifarios-edet) | www.edetsa.com |
+
+
+Los slugs nacionales `eden`, `refsa`, `ejesa` y `esj` no aparecieron en las búsquedas (sí figuran esas distribuidoras en el índice general del portal) y son la mejor estimación; si fallan, el extractor sigue con la fuente propia.
+
+### 9.2 Formatos y parseo
+
+- Nuevo módulo `etl/extractors/tariff_documents.py`: detecta el formato por firma binaria (PDF, XLSX, XLS, ZIP; un HTML de error con HTTP 200 se descarta) y convierte el documento a texto. En planillas, cuando la unidad (`$/kWh`, `$/mes`) está en el encabezado de la columna, se propaga a cada importe de esa columna para que el parser la reconozca igual que en un PDF. Un ZIP se procesa archivo por archivo.
+- El parser ahora **empareja cada importe con su unidad** (`$/kWh 70,12` o `70,12 $/kWh`). Antes tomaba el último número de la línea y en una fila de planilla con cargo fijo y variable podía confundirlos.
+- La sección de compra termina donde empieza la de usuario-generador, para no mezclar precios de compra e inyección.
+- **Vigencia** de cada cuadro (AAAA-MM): se obtiene del nombre del archivo (`2026_04_DPEC.pdf`, `2026-01`, `Marzo_2026`, `…aplicacion-010925`) o del texto ("vigencia a partir del 1° de septiembre de 2026", "Periodo: OCTUBRE 2025").
+- La validación ya **no rechaza un valor real por diferir de un baseline manual** (sólo compara contra valores extraídos antes).
+- Si un host no responde (error de conexión), se omite el resto de sus URLs en esa corrida, para evitar cientos de timeouts.
+
+### 9.3 Historial de cambios
+
+Nuevo archivo `data/reference/tarifas_historial.csv` (módulo `etl/loaders/tariff_history.py`), append-only y versionado en git:
+
+| Columna | Contenido |
+|---|---|
+| `distribuidora`, `vigencia` | Código y mes de vigencia del cuadro. |
+| `tarifa_compra_kwh`, `tarifa_inyeccion_kwh`, `cargo_fijo_mensual` | Valores extraídos. |
+| `seccion_compra`, `n_valores_*` | Sección usada y cantidad de importes detectados (auditoría del parseo). |
+| `fuente_tipo`, `documento`, `sha256`, `fecha_extraccion` | Trazabilidad del documento. |
+
+Cada documento se registra una sola vez (clave `distribuidora + sha256`), así que correr el extractor todos los días no duplica filas: sólo aparecen filas nuevas cuando se publica un cuadro nuevo. Para reconstruir la serie completa desde 2025:
+
+```bash
+python -m etl.extractors.scrape_tarifas --historial --desde 2025-01
+python -m etl.extractors.scrape_tarifas --solo EPEC EDESAL    # sólo algunas
+```
+
+`load_history`, `latest_by_distribuidora` y `tariff_series` permiten consultarlo. El notebook muestra la evolución en la nueva sección 6.6. Además, cada corrida sigue dejando su JSON timestamped `AAAAMMDDHHMMSS_tarifas.json`.
+
+### 9.4 Asignación de tarifas a los datos agrícolas
+
+`TariffResolver` (en `energy_finance.py`, usado por el ETL y el notebook):
+
+1. **Excepción por departamento**: zona este de Mendoza → EDESTE (San Martín, Junín, Rivadavia, Santa Rosa, La Paz); Gran La Plata → EDELAP (La Plata, Berisso, Ensenada, Brandsen, Magdalena, Punta Indio).
+2. **Distribuidora de la provincia**. Interior bonaerense: promedio de EDEN, EDEA y EDES (marcado `tarifa_es_proxy`, ya que además hay unas 200 cooperativas). La Pampa (APE) también queda marcada como aproximada por el peso de las cooperativas.
+3. **Chubut** no tiene distribuidora provincial (cooperativas): sin tarifa.
+
+Nueva columna **`tarifa_origen`** en los datasets (`extraido`, `fallback_previous`, `baseline_manual` o `sin_dato`), para separar los montos basados en tarifas reales de los ilustrativos. En el notebook, `SOLO_TARIFAS_EXTRAIDAS = True` excluye los valores `baseline_manual`.
+
+Se eliminó el mapeo anterior `buenos aires → EDENOR`: hoy Buenos Aires queda `sin_dato` hasta que se extraigan las tarifas de EDEN/EDEA/EDES, en lugar de usar una tarifa de otra área de concesión.
+
+### 9.5 Estado actual y verificación
+
+- Tests: **65 OK**. Incluyen tests de punta a punta con XLSX y ZIP reales generados en el test, backfill de historial con dos meses, deduplicación en una segunda corrida, selección de la vigencia más reciente, filtro de índices compartidos (OCEBA), resolver con promedio y excepción departamental, y el corte por host caído.
+- También se probó a mano el recorrido real PDF → `pypdf` → parser con un PDF generado.
+- **No se pudo descargar ningún cuadro real**: el proxy de este entorno responde 403 a todos los dominios de distribuidoras, entes y `argentina.gob.ar` / `energia.gob.ar`. El JSON vigente (`20261004143428_tarifas.json`) tiene 4 distribuidoras con `baseline_manual` (EPEC, EPE, EDEMSA, EDENOR) y 24 con `sin_dato`, y el historial está vacío. El primer paso al tener red es:
+
+```bash
+python -m etl.extractors.scrape_tarifas --historial --desde 2025-01
+```
+
+y luego revisar en el JSON `resumen_extraccion`, y por distribuidora `estado_campos`, `seccion_compra` y `valores_detectados`. Si algún formato real no matchea, ajustar `SECTION_PATTERNS_COMPRA` / `SECTION_PATTERNS_INYECCION` o la entrada del registro.

@@ -240,8 +240,12 @@ Genera:
   (biomasa, residuo recuperable, kWh, ARS).
 - `data/processed/potencial_energetico_anual.parquet` — potencial
   energético y económico anual (período de referencia).
-- `data/reference/YYYYMMDDHHMMSS_tarifas.json` — tarifas extraídas de los
-  cuadros tarifarios, con origen por campo (`estado_campos`).
+- `data/reference/YYYYMMDDHHMMSS_tarifas.json` — tarifas de las 28
+  distribuidoras del país extraídas de los cuadros tarifarios, con origen
+  por campo (`estado_campos`).
+- `data/reference/tarifas_historial.csv` — historial de cuadros tarifarios
+  procesados (vigencia, valores, documento, SHA-256). Backfill desde 2025:
+  `python -m etl.extractors.scrape_tarifas --historial --desde 2025-01`.
 - `data/audit/descartados_reconciliacion.parquet` — auditoría.
 - `data/audit/discrepancias_cba_vs_magyp.parquet` — discrepancias.
 
