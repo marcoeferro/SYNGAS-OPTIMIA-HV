@@ -393,10 +393,16 @@ docker compose restart scheduler
 ### Ejecución manual del ETL (una vez, sin esperar al cron)
 
 ```powershell
-.\scripts\Run-Etl.ps1
+.\scripts\Run-Etl.ps1                       # en Docker; inicia Docker Desktop si está apagado
+.\scripts\Run-Etl.ps1 -Local                # sin Docker, con el Python del .venv
+.\scripts\Run-Etl.ps1 -Local -SkipExtract   # reusa los raw ya descargados
 # o:
 docker compose --profile etl run --rm etl_pipeline
 ```
+
+Si aparece `open //./pipe/dockerDesktopLinuxEngine: The system cannot find
+the file specified`, el motor de Docker no está corriendo: abrí Docker
+Desktop (el script lo intenta solo y espera hasta 3 minutos) o usá `-Local`.
 
 ### Detener todo
 
