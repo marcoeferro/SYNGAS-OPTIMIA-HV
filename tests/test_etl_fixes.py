@@ -139,3 +139,45 @@ def test_annualize_divide_por_n_campanas() -> None:
     # campaña sin registro cuenta como 0: (10 + 20) / 3
     assert out["v"].iloc[0] == pytest.approx(10.0)
     assert out["n_campanas_con_dato"].iloc[0] == 2
+
+
+def test_cba_detecta_fila_de_encabezado_en_cada_hoja() -> None:
+    """Formato 2026: las tres hojas traen 10 filas de título."""
+    from etl.extractors import scrape_bolsa_cereales_cba as cba
+
+    def hoja(titulo: str, cols: list[str], filas: list[list[object]]) -> pd.DataFrame:
+        vacias = [[None] * 6 for _ in range(7)]
+        cabecera = [[titulo, *[None] * 5], ["UNIDAD", *[None] * 5], ["Nota", *[None] * 5]]
+        return pd.DataFrame(vacias + cabecera + [cols] + filas)
+
+    key = ["PROVINCIA", "DEPARTAMENTO", "CULTIVO", "CAMPAÑA"]
+    fila = ["Córdoba", "RIO CUARTO", "MAIZ", "2024/25"]
+    sheets = {
+        cba.SHEET_SURFACE: hoja("SUPERFICIE", key + ["SEMBRADAS", "COSECHADAS"],
+                                [fila + [100, 95]]),
+        cba.SHEET_YIELD: hoja("RENDIMIENTO", key + ["RENDIMIENTO",
+                                                     "RENDIMIENTO GRANO LIMPIO Y SECO"],
+                              [fila + [80, None]]),
+        cba.SHEET_PRODUCTION: hoja("PRODUCCIÓN", key + ["PRODUCCIÓN",
+                                                         "PRODUCCIÓN GRANO LIMPIO Y SECO"],
+                                   [fila + [760, None]]),
+    }
+    out = cba.transform_dataframes(sheets)
+    assert len(out) == 1
+    assert out.loc[0, "PRODUCCIÓN"] == 760
+    assert out.loc[0, "COSECHADAS"] == 95
+
+
+def test_extraccion_fallida_usa_raw_en_disco(tmp_path) -> None:
+    from unittest import mock
+
+    import etl.pipelines.run_etl as r
+
+    (tmp_path / "datos_bolsa_granos_cba.csv").write_text("x\n")
+    (tmp_path / "datos_estimaciones.csv").write_text("x\n")
+    with mock.patch.object(r.extract_cba, "run_extractor", side_effect=RuntimeError("403")), \
+            mock.patch.object(r.extract_magyp, "run_extractor",
+                              return_value=tmp_path / "nuevo.csv"):
+        paths = r.run_extract_stage(tmp_path)
+    assert paths["cba"] == tmp_path / "datos_bolsa_granos_cba.csv"
+    assert paths["magyp"] == tmp_path / "nuevo.csv"

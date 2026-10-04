@@ -80,7 +80,8 @@ def test_parse_ar_number() -> None:
 
 def test_parse_tariff_text_toma_t3_y_omite_indice() -> None:
     out = st.parse_tariff_text(PDF_TEXT)
-    assert out["valores_compra_detectados"] == [70.1234, 65.5, 60.0]
+    # Banda "Resto" de la T3 (no la T2 ni el índice).
+    assert out["valores_compra_detectados"] == [65.5]
     assert out["tarifa_compra_kwh"] == 65.5
     assert out["tarifa_inyeccion_kwh"] == 35.21
     assert out["cargo_fijo_mensual"] == 25300.0
@@ -166,7 +167,7 @@ def test_xlsx_con_unidad_en_encabezado() -> None:
         ["Valle", None, 60.0],
     ]
     out = st.parse_tariff_text(rows_to_text(rows))
-    assert out["valores_compra_detectados"] == [70.1234, 65.5, 60.0]
+    assert out["valores_compra_detectados"] == [65.5]
     assert out["cargo_fijo_mensual"] == 25300.0
 
 
@@ -234,7 +235,7 @@ def test_run_extractor_end_to_end_con_historial(tmp_path: Path) -> None:
     hist = load_history(tmp_path / "ref")
     assert list(hist["vigencia"]) == ["2026-05", "2026-06"]
     serie = tariff_series(hist)
-    assert serie.loc["2026-05", "EPEC"] == 60.0       # mediana de 70,12 / 50 / 60
+    assert serie.loc["2026-05", "EPEC"] == 50.0       # banda Resto del cuadro de mayo
     n_filas = len(hist)
 
     # Segunda corrida sin red: conserva el valor como fallback y el
@@ -259,10 +260,11 @@ def test_dead_host_guard() -> None:
         raise httpx.ConnectError("caído")
 
     guarded = st.with_dead_host_guard(down)
-    for _ in range(3):
+    for _ in range(4):
         with pytest.raises(httpx.ConnectError):
             guarded("https://caido.example/a.pdf")
-    assert len(calls) == 1
+    # Tras DEAD_HOST_FAILURES errores consecutivos no se vuelve a intentar.
+    assert len(calls) == st.DEAD_HOST_FAILURES
 
 
 def test_resolver_promedia_provincias_con_varias_distribuidoras() -> None:
@@ -324,3 +326,23 @@ def test_xlsx_y_zip_reales_de_punta_a_punta() -> None:
         assert out["tarifa_inyeccion_kwh"] == 35.21
         assert out["cargo_fijo_mensual"] == 25300.0
         assert st.vigencia_from_text(text) == "2026-05"
+
+
+def test_dead_host_guard_403_sostenido_y_404_no() -> None:
+    calls: list[str] = []
+
+    def down(url: str) -> bytes:
+        calls.append(url)
+        code = 403 if "bloqueado" in url else 404
+        request = httpx.Request("GET", url)
+        raise httpx.HTTPStatusError(str(code), request=request,
+                                    response=httpx.Response(code, request=request))
+
+    guarded = st.with_dead_host_guard(down)
+    for _ in range(4):
+        with pytest.raises(httpx.HTTPError):
+            guarded("https://bloqueado.example/a.pdf")
+        with pytest.raises(httpx.HTTPError):
+            guarded("https://normal.example/a.pdf")
+    assert sum("bloqueado" in c for c in calls) == st.DEAD_HOST_FAILURES
+    assert sum("normal" in c for c in calls) == 4

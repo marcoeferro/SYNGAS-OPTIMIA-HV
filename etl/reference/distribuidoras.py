@@ -31,8 +31,9 @@ NATIONAL_PAGE_BASE: Final[str] = (
     "https://www.argentina.gob.ar/economia/energia/energia-electrica/"
     "estadisticas/cuadros-tarifarios-"
 )
+# HTTP: el servidor corta el handshake TLS desde redes no argentinas.
 NATIONAL_FILES_BASE: Final[str] = (
-    "https://www.energia.gob.ar/contenidos/archivos/Reorganizacion/"
+    "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/"
     "informacion_del_mercado/publicaciones/mercado_electrico/"
     "cuadros_tarifarios_desde_2025/"
 )
@@ -43,7 +44,7 @@ OCEBA_INDEX: Final[str] = "https://oceba.gba.gov.ar/nueva_web/s.php?i=17"
 def _dist(
     nombre: str,
     jurisdiccion: str,
-    slug: str | None,
+    slug: str | list[str] | None,
     *,
     dir_nacional: str | None = None,
     indices: list[str] | None = None,
@@ -51,12 +52,19 @@ def _dist(
     url_templates: list[str] | None = None,
     nota: str | None = None,
 ) -> dict[str, Any]:
-    """Construye una entrada del registro."""
+    """
+    Construye una entrada del registro.
+
+    ``slug`` puede ser una lista: el portal nacional a veces crea una página
+    nueva (sufijo ``-0``) y deja la anterior con enlaces vencidos.
+    """
+    slugs = [slug] if isinstance(slug, str) else list(slug or [])
+    base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
     return {
         "nombre": nombre,
         "jurisdiccion": jurisdiccion,
-        "slug_nacional": slug,
-        "dir_nacional": dir_nacional or (slug.upper() if slug else None),
+        "slug_nacional": slugs,
+        "dir_nacional": dir_nacional or (base.upper() if base else None),
         "indices": indices or [],
         "urls": urls or [],
         "url_templates": url_templates or [],
@@ -85,13 +93,16 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
     "EDELAP": _dist(
         "Empresa Distribuidora La Plata S.A.",
         "Buenos Aires (Gran La Plata)",
-        "edelap",
+        # El portal nacional sólo publica para las distribuidoras
+        # bonaerenses un ZIP de componentes (CTT, cargos de transporte),
+        # no el cuadro final: se usa OCEBA.
+        None,
         indices=[OCEBA_INDEX],
     ),
     "EDEA": _dist(
         "Empresa Distribuidora de Energía Atlántica S.A.",
         "Buenos Aires (Costa Atlántica)",
-        "edea",
+        None,
         indices=[OCEBA_INDEX],
         url_templates=[
             "https://www.edeaweb.com.ar/wp-content/uploads/{year}/{month}/"
@@ -103,14 +114,13 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
     "EDEN": _dist(
         "Empresa Distribuidora de Energía Norte S.A.",
         "Buenos Aires (norte y centro)",
-        "eden",
+        None,
         indices=[OCEBA_INDEX],
     ),
     "EDES": _dist(
         "Empresa Distribuidora de Energía Sur S.A.",
         "Buenos Aires (sur)",
-        # En el portal nacional figura como "EDESSA" (EDES S.A.).
-        "edessa",
+        None,
         indices=[OCEBA_INDEX],
     ),
     # --- Resto de las provincias ---
@@ -129,7 +139,7 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
     "EPEC": _dist(
         "Empresa Provincial de Energía de Córdoba",
         "Córdoba",
-        "epec",
+        ["epec-0", "epec"],
         indices=["https://www.epec.com.ar/docs/cuadro-tarifario/"],
     ),
     "DPEC": _dist(
@@ -227,20 +237,19 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
     "ESJ": _dist(
         "Energía San Juan S.A.",
         "San Juan",
-        "esj",
+        ["esj-0", "esj"],
         indices=["https://epresanjuan.gob.ar/"],
     ),
     "EDESAL": _dist(
         "Empresa Distribuidora San Luis S.A.",
         "San Luis",
         "edesal-sa",
-        dir_nacional="EDESAL",
         urls=["https://oficinavirtualedesal.com.ar/ove/upload/CuadroTarifario.pdf"],
     ),
     "SPSE": _dist(
         "Servicios Públicos Sociedad del Estado",
         "Santa Cruz",
-        "spse",
+        ["spse-0", "spse"],
         indices=["https://spse.ar/atencion-cliente"],
     ),
     "EPE": _dist(
