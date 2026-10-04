@@ -173,6 +173,13 @@ def aggregate_by_department(df: pd.DataFrame) -> pd.DataFrame:
     return g
 
 
+def default_campaigns(df: pd.DataFrame, n: int = 5) -> list[str]:
+    """Últimas ``n`` campañas completas (excluye la campaña en curso)."""
+    from etl.transformers.reference_period import select_reference_campaigns
+
+    return select_reference_campaigns(df, n)
+
+
 def format_tn(x: float) -> str:
     if pd.isna(x):
         return "—"

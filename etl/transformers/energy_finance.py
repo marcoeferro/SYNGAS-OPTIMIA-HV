@@ -1,10 +1,26 @@
 """
 Cálculo energético y financiero APL PP30 sobre biomasa residual.
 
-Transforma ``Residuo de Biomasa (Tn)`` en kWh generados (consumo
-específico 1.1 kg/kWh) y en flujos monetarios bajo balance neto de
-facturación (Ley 27.424): ahorro por autoconsumo e ingreso por
-inyección, discriminados por distribuidora provincial.
+Cadena de cálculo (por registro):
+
+    masa_seca_kg        = Residuo Recuperable (t MS) × 1000
+    masa_alimentada_kg  = masa_seca_kg / (1 − H/100)     # a humedad operativa
+    kwh_generados       = masa_alimentada_kg / CE        # CE: kg tal-cual / kWh
+    horas_operacion     = kwh_generados / P_nom
+    equipos_pp30        = horas_operacion / (8760 × disponibilidad)
+
+El consumo específico del gasificador (≈1.1 kg/kWh) está expresado sobre
+biomasa *tal como se alimenta* (con su humedad operativa, ≤15–20%). La
+versión anterior multiplicaba la masa por (1 − H) y luego dividía por CE,
+descontando la humedad dos veces sobre un residuo que ya estaba en base
+seca. Ahora el residuo (t MS) se lleva a humedad operativa antes de
+aplicar el CE.
+
+Los kWh se valorizan bajo balance neto de facturación (Ley 27.424):
+ahorro por autoconsumo (tarifa de compra) e ingreso por inyección
+(tarifa de inyección), discriminados por distribuidora provincial. Los
+montos son **beneficio bruto** (no descuentan CAPEX, O&M ni costo de
+recolección/flete del rastrojo).
 
 Las tarifas y parámetros operativos se leen desde el JSON más
 reciente en ``data/reference/YYYYMMDDHHMMSS_tarifas.json`` (extractor
@@ -36,6 +52,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_TARIFAS_DIR: Final[Path] = Path("data/reference")
 
 RESIDUO_COL: Final[str] = "Residuo de Biomasa (Tn)"
+RESIDUO_REC_COL: Final[str] = "Residuo Recuperable (Tn)"
+HOURS_PER_YEAR: Final[float] = 8760.0
+DEFAULT_DISPONIBILIDAD: Final[float] = 0.8
 PROVINCIA_COL: Final[str] = "Provincia"
 CULTIVO_COL: Final[str] = "Cultivo"
 
@@ -44,6 +63,19 @@ HUMEDAD_ALERTA_PCT: Final[float] = 20.0
 
 COL_MASA_HUMEDA_KG: Final[str] = "masa_humeda_kg"
 COL_MASA_SECA_KG: Final[str] = "masa_seca_kg"
+COL_MASA_ALIM_KG: Final[str] = "masa_alimentada_kg"
+COL_EQUIPOS: Final[str] = "equipos_pp30_equivalentes"
+COL_TARIFA_PROXY: Final[str] = "tarifa_es_proxy"
+COL_TARIFA_ORIGEN: Final[str] = "tarifa_origen"
+DEPARTAMENTO_COL: Final[str] = "Departamento"
+
+# Códigos de versiones anteriores del JSON de tarifas.
+_LEGACY_CODES: Final[dict[str, str]] = {
+    "EPEC_CORDOBA": "EPEC",
+    "EPE_SANTA_FE": "EPE",
+    "EDEMSA_MENDOZA": "EDEMSA",
+    "EDENOR_AMBA": "EDENOR",
+}
 COL_KWH_TOTALES: Final[str] = "kwh_generados"
 COL_KWH_AUTO: Final[str] = "kwh_autoconsumo"
 COL_KWH_INY: Final[str] = "kwh_inyectados"
@@ -112,6 +144,74 @@ def load_tarifas_config(
         return json.load(handle)
 
 
+def _norm(text: object) -> str:
+    """Normalización mínima para matchear provincias/departamentos."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+    return " ".join(t.lower().split())
+
+
+class TariffResolver:
+    """
+    Resuelve la tarifa aplicable a un (provincia, departamento).
+
+    Orden: excepción por departamento → distribuidora(s) de la provincia.
+    Si la provincia tiene varias distribuidoras, la tarifa es el promedio
+    simple de las que tienen valor y se marca como aproximada.
+    """
+
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        self.dist: dict[str, Any] = {
+            _LEGACY_CODES.get(k, k): v for k, v in cfg.get("distribuidoras", {}).items()
+        }
+        self.prov_map: dict[str, list[str]] = {}
+        for k, v in cfg.get("provincia_a_distribuidora", {}).items():
+            codes = v if isinstance(v, list) else [v]
+            self.prov_map[_norm(k)] = [_LEGACY_CODES.get(c, c) for c in codes]
+        self.dept_map: dict[tuple[str, str], str] = {
+            (_norm(p), _norm(d)): _LEGACY_CODES.get(c, c)
+            for p, depts in cfg.get("departamento_a_distribuidora", {}).items()
+            for d, c in depts.items()
+        }
+        self._cache: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def resolve(self, provincia: object, departamento: object = None) -> dict[str, Any]:
+        """Devuelve distribuidora, tarifas, es_proxy y origen."""
+        key = (_norm(provincia), _norm(departamento) if departamento is not None else "")
+        if key in self._cache:
+            return self._cache[key]
+        codes = (
+            [self.dept_map[key]] if key in self.dept_map else self.prov_map.get(key[0], [])
+        )
+        with_value = [
+            c for c in codes
+            if self.dist.get(c, {}).get("tarifa_compra_kwh") is not None
+        ]
+
+        def mean(field: str) -> float:
+            vals = [
+                float(self.dist[c][field]) for c in with_value
+                if self.dist[c].get(field) is not None
+            ]
+            return float(np.mean(vals)) if vals else np.nan
+
+        origins = sorted({
+            self.dist[c].get("estado_campos", {}).get("tarifa_compra_kwh", "desconocido")
+            for c in with_value
+        })
+        result = {
+            "distribuidora": "+".join(codes) if codes else None,
+            "compra": mean("tarifa_compra_kwh"),
+            "inyeccion": mean("tarifa_inyeccion_kwh"),
+            "es_proxy": len(codes) > 1
+            or any(bool(self.dist.get(c, {}).get("es_proxy", False)) for c in codes),
+            "origen": "+".join(origins) if origins else "sin_dato",
+        }
+        self._cache[key] = result
+        return result
+
+
 def _resolve_param(
     config: dict[str, Any],
     key: str,
@@ -129,24 +229,33 @@ def compute_energy_metrics(
     humedad_pct: float | None = None,
     consumo_especifico_kg_kwh: float | None = None,
     potencia_nominal_kw: float | None = None,
+    disponibilidad: float | None = None,
+    residuo_col: str | None = None,
     config: dict[str, Any] | None = None,
     tarifas_path: Path | str | None = None,
 ) -> pd.DataFrame:
     """
-    Calcula masa seca, kWh generados y horas de operación estimadas.
+    Calcula masa alimentada, kWh generados, horas y equipos equivalentes.
 
     Fórmulas (Guía APL PP30):
-        masa_humeda_kg = Residuo_Tn * 1000
-        masa_seca_kg   = masa_humeda_kg * (1 - H/100)
-        kwh_generados  = masa_seca_kg / CE
+        masa_seca_kg       = Residuo_t_MS * 1000
+        masa_alimentada_kg = masa_seca_kg / (1 - H/100)
+        kwh_generados      = masa_alimentada_kg / CE
+        horas              = kwh_generados / P_nom
+        equipos            = horas / (8760 * disponibilidad)
+
+    ``equipos_pp30_equivalentes`` sólo tiene sentido sobre cantidades
+    anuales (una campaña o un promedio anual).
 
     Args:
-        df: DataFrame con columna ``Residuo de Biomasa (Tn)``.
-        humedad_pct: Humedad del material (%). Si None, usa el default
-            del config.
-        consumo_especifico_kg_kwh: kg biomasa seca por kWh. Si None,
-            usa el default del config.
+        df: DataFrame con la columna de residuo (t MS).
+        humedad_pct: Humedad operativa del material (%). Si None, usa el
+            default del config.
+        consumo_especifico_kg_kwh: kg de biomasa *tal cual* por kWh.
         potencia_nominal_kw: Potencia continua de referencia (PP30).
+        disponibilidad: Factor de disponibilidad anual del equipo (0, 1].
+        residuo_col: Columna de residuo a convertir. Si None, usa
+            ``Residuo Recuperable (Tn)`` si existe, si no el residuo total.
         config: Config ya cargado. Si None, se lee desde ``tarifas_path``.
         tarifas_path: JSON de tarifas o directorio ``data/reference``.
 
@@ -155,34 +264,45 @@ def compute_energy_metrics(
 
     Raises:
         KeyError: Si falta la columna de residuo.
-        ValueError: Si humedad o CE son inválidos.
+        ValueError: Si humedad, CE, potencia o disponibilidad son inválidos.
     """
-    if RESIDUO_COL not in df.columns:
-        raise KeyError(f"Falta columna requerida: {RESIDUO_COL}")
+    if residuo_col is None:
+        residuo_col = RESIDUO_REC_COL if RESIDUO_REC_COL in df.columns else RESIDUO_COL
+    if residuo_col not in df.columns:
+        raise KeyError(f"Falta columna requerida: {residuo_col}")
 
     cfg = config if config is not None else load_tarifas_config(tarifas_path)
     h = _resolve_param(cfg, "humedad_pct_default", humedad_pct)
     ce = _resolve_param(cfg, "consumo_especifico_kg_kwh", consumo_especifico_kg_kwh)
     pnom = _resolve_param(cfg, "potencia_nominal_kw", potencia_nominal_kw)
+    if disponibilidad is None:
+        disponibilidad = float(
+            cfg.get("parametros_pp30", {}).get("disponibilidad", DEFAULT_DISPONIBILIDAD)
+        )
 
     if not (0.0 <= h < 100.0):
         raise ValueError(f"humedad_pct fuera de rango [0, 100): {h}")
     if ce <= 0.0:
         raise ValueError(f"consumo_especifico_kg_kwh debe ser > 0: {ce}")
+    if pnom <= 0.0:
+        raise ValueError(f"potencia_nominal_kw debe ser > 0: {pnom}")
+    if not (0.0 < disponibilidad <= 1.0):
+        raise ValueError(f"disponibilidad debe estar en (0, 1]: {disponibilidad}")
     if h > HUMEDAD_ALERTA_PCT:
         logger.warning(
             "Humedad %.1f%% supera el umbral crítico del PP30 (%.1f%%). "
-            "Riesgo de alquitranes e inestabilidad térmica.",
+            "Se requiere secado previo; riesgo de alquitranes.",
             h,
             HUMEDAD_ALERTA_PCT,
         )
 
     out = df.copy()
-    residuo = pd.to_numeric(out[RESIDUO_COL], errors="coerce")
-    out[COL_MASA_HUMEDA_KG] = residuo * KG_PER_TON
-    out[COL_MASA_SECA_KG] = out[COL_MASA_HUMEDA_KG] * (1.0 - h / 100.0)
-    out[COL_KWH_TOTALES] = out[COL_MASA_SECA_KG] / ce
+    residuo = pd.to_numeric(out[residuo_col], errors="coerce")
+    out[COL_MASA_SECA_KG] = residuo * KG_PER_TON
+    out[COL_MASA_ALIM_KG] = out[COL_MASA_SECA_KG] / (1.0 - h / 100.0)
+    out[COL_KWH_TOTALES] = out[COL_MASA_ALIM_KG] / ce
     out[COL_HORAS] = out[COL_KWH_TOTALES] / pnom
+    out[COL_EQUIPOS] = out[COL_HORAS] / (HOURS_PER_YEAR * disponibilidad)
     return out
 
 
@@ -227,32 +347,38 @@ def compute_finance_metrics(
             f"factor_autoconsumo debe estar en [0.0, 1.0]: {alpha}"
         )
 
-    mapping: dict[str, str] = {
-        str(k).strip().lower(): v
-        for k, v in cfg.get("provincia_a_distribuidora", {}).items()
-    }
-    dist_cfg: dict[str, Any] = cfg.get("distribuidoras", {})
-
+    resolver = TariffResolver(cfg)
     out = df.copy()
-    prov = out[PROVINCIA_COL].astype(str).str.strip().str.lower()
-    out[COL_DISTRIBUIDORA] = prov.map(mapping)
-
-    compra = out[COL_DISTRIBUIDORA].map(
-        lambda code: (
-            dist_cfg.get(code, {}).get("tarifa_compra_kwh", np.nan)
-            if isinstance(code, str)
-            else np.nan
+    dept = out[DEPARTAMENTO_COL] if DEPARTAMENTO_COL in out.columns else None
+    resolved = [
+        resolver.resolve(p, d)
+        for p, d in zip(
+            out[PROVINCIA_COL],
+            dept if dept is not None else [None] * len(out),
+            strict=True,
         )
+    ]
+    out[COL_DISTRIBUIDORA] = [r["distribuidora"] for r in resolved]
+    out[COL_TARIFA_COMPRA] = pd.to_numeric(
+        pd.Series([r["compra"] for r in resolved], index=out.index), errors="coerce"
     )
-    inyeccion = out[COL_DISTRIBUIDORA].map(
-        lambda code: (
-            dist_cfg.get(code, {}).get("tarifa_inyeccion_kwh", np.nan)
-            if isinstance(code, str)
-            else np.nan
+    out[COL_TARIFA_INY] = pd.to_numeric(
+        pd.Series([r["inyeccion"] for r in resolved], index=out.index), errors="coerce"
+    )
+    # Aproximación: provincia con varias distribuidoras/cooperativas
+    # (promedio) o distribuidora marcada como proxy.
+    out[COL_TARIFA_PROXY] = [r["es_proxy"] for r in resolved]
+    # Origen de la tarifa de compra (extraido / fallback_previous /
+    # baseline_manual / sin_dato): permite filtrar sólo valores reales.
+    out[COL_TARIFA_ORIGEN] = [r["origen"] for r in resolved]
+    sin_tarifa = out[COL_DISTRIBUIDORA].isna()
+    if sin_tarifa.any():
+        logger.info(
+            "%d registros sin distribuidora mapeada (finanzas en NaN). "
+            "Provincias: %s",
+            int(sin_tarifa.sum()),
+            sorted(out.loc[sin_tarifa, PROVINCIA_COL].astype(str).unique())[:30],
         )
-    )
-    out[COL_TARIFA_COMPRA] = pd.to_numeric(compra, errors="coerce")
-    out[COL_TARIFA_INY] = pd.to_numeric(inyeccion, errors="coerce")
 
     kwh = pd.to_numeric(out[COL_KWH_TOTALES], errors="coerce")
     out[COL_KWH_AUTO] = kwh * alpha
@@ -270,7 +396,9 @@ def add_energy_finance_columns(
     factor_autoconsumo: float | None = None,
     consumo_especifico_kg_kwh: float | None = None,
     potencia_nominal_kw: float | None = None,
+    disponibilidad: float | None = None,
     tarifas_path: Path | str | None = None,
+    config: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
     """
     Orquesta el cálculo energético + financiero en un solo paso.
@@ -281,17 +409,20 @@ def add_energy_finance_columns(
         factor_autoconsumo: Override de α.
         consumo_especifico_kg_kwh: Override de CE.
         potencia_nominal_kw: Override de potencia nominal.
+        disponibilidad: Override del factor de disponibilidad anual.
         tarifas_path: JSON de tarifas o directorio ``data/reference``.
+        config: Config ya cargado (evita releer el JSON).
 
     Returns:
         DataFrame con columnas energéticas y financieras.
     """
-    cfg = load_tarifas_config(tarifas_path)
+    cfg = config if config is not None else load_tarifas_config(tarifas_path)
     out = compute_energy_metrics(
         df,
         humedad_pct=humedad_pct,
         consumo_especifico_kg_kwh=consumo_especifico_kg_kwh,
         potencia_nominal_kw=potencia_nominal_kw,
+        disponibilidad=disponibilidad,
         config=cfg,
     )
     out = compute_finance_metrics(

@@ -79,6 +79,9 @@ CROP_TAXONOMY: dict[str, CropEntry] = {
     "yerba mate":     {"canonical": "yerba mate",     "is_aggregate": False},
 
     # --- Cultivos simples ---
+    # alfalfa: forrajera reportada por CBA (sin IC; queda excluida por
+    # flag). Se mapea para evitar el fail-fast cuando trae producción.
+    "alfalfa":   {"canonical": "alfalfa",  "is_aggregate": False},
     "ajo":       {"canonical": "ajo",      "is_aggregate": False},
     "algodon":   {"canonical": "algodon",  "is_aggregate": False},
     "alpiste":   {"canonical": "alpiste",  "is_aggregate": False},

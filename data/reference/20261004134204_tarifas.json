@@ -1,0 +1,83 @@
+{
+  "descripcion": "Cuadros tarifarios regionales de Argentina para Generacion Distribuida (Tarifas Comerciales T2/T3)",
+  "unidad_moneda": "ARS",
+  "unidad_tarifas": "ARS/kWh sin impuestos; cargo fijo en ARS/mes",
+  "parametros_pp30": {
+    "consumo_especifico_kg_kwh": 1.1,
+    "humedad_pct_default": 12.0,
+    "factor_autoconsumo_default": 0.6,
+    "potencia_nominal_kw": 25.0,
+    "disponibilidad": 0.8,
+    "fraccion_recuperable_default": 0.5
+  },
+  "provincia_a_distribuidora": {
+    "cordoba": "EPEC_CORDOBA",
+    "santa fe": "EPE_SANTA_FE",
+    "mendoza": "EDEMSA_MENDOZA",
+    "buenos aires": "EDENOR_AMBA"
+  },
+  "distribuidoras": {
+    "EPEC_CORDOBA": {
+      "provincia": "Córdoba",
+      "fuente_url": "https://www.epec.com.ar/docs/cuadro-tarifario/",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 210.0,
+      "tarifa_inyeccion_kwh": 42.0,
+      "cargo_fijo_mensual": 12500.0,
+      "estado_campos": {
+        "tarifa_compra_kwh": "baseline_manual",
+        "tarifa_inyeccion_kwh": "baseline_manual",
+        "cargo_fijo_mensual": "baseline_manual"
+      },
+      "parse_status": "baseline_manual"
+    },
+    "EPE_SANTA_FE": {
+      "provincia": "Santa Fe",
+      "fuente_url": "https://www.epe.santafe.gov.ar/institucional/usuarios",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 175.0,
+      "tarifa_inyeccion_kwh": 38.0,
+      "cargo_fijo_mensual": 11200.0,
+      "estado_campos": {
+        "tarifa_compra_kwh": "baseline_manual",
+        "tarifa_inyeccion_kwh": "baseline_manual",
+        "cargo_fijo_mensual": "baseline_manual"
+      },
+      "parse_status": "baseline_manual"
+    },
+    "EDEMSA_MENDOZA": {
+      "provincia": "Mendoza",
+      "fuente_url": "https://edemsa.com/segmentacion-tarifaria/",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 135.0,
+      "tarifa_inyeccion_kwh": 33.0,
+      "cargo_fijo_mensual": 9800.0,
+      "estado_campos": {
+        "tarifa_compra_kwh": "baseline_manual",
+        "tarifa_inyeccion_kwh": "baseline_manual",
+        "cargo_fijo_mensual": "baseline_manual"
+      },
+      "parse_status": "baseline_manual"
+    },
+    "EDENOR_AMBA": {
+      "provincia": "Buenos Aires / AMBA",
+      "fuente_url": "https://www.edenor.com/",
+      "es_proxy": true,
+      "tarifa_compra_kwh": 85.0,
+      "tarifa_inyeccion_kwh": 26.5,
+      "cargo_fijo_mensual": 8500.0,
+      "estado_campos": {
+        "tarifa_compra_kwh": "baseline_manual",
+        "tarifa_inyeccion_kwh": "baseline_manual",
+        "cargo_fijo_mensual": "baseline_manual"
+      },
+      "parse_status": "baseline_manual"
+    }
+  },
+  "ultima_actualizacion": "2026-10",
+  "generado_en": "2026-10-04T13:42:04",
+  "resumen_extraccion": {
+    "distribuidoras_con_tarifa_extraida": 0,
+    "distribuidoras_totales": 4
+  }
+}

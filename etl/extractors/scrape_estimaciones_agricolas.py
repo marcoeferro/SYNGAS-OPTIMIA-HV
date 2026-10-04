@@ -81,6 +81,10 @@ REQUEST_RATE_DELAY: Final[float] = 1.5
 RATE_LIMIT_STATUS_CODE: Final[int] = 429
 RETRYABLE_STATUS_CODES: Final[set[int]] = {429, 500, 502, 503, 504}
 
+# Si falla más de esta fracción de departamentos, la extracción se
+# considera inválida (antes se guardaba un dataset parcial en silencio).
+MAX_FAIL_RATIO: Final[float] = 0.05
+
 # ====================== DATOS ======================
 
 START_CAMPAIGN: Final[str] = "1"
@@ -344,7 +348,10 @@ def fetch_provincias(client: httpx.Client) -> JSONData:
     return response.json()
 
 
-def get_provincias(client: httpx.Client) -> JSONData:
+def get_provincias(
+    client: httpx.Client,
+    cache_path: Path = PROVINCIAS_CACHE_PATH,
+) -> JSONData:
     """Obtiene el catálogo de provincias, usando caché en disco si existe.
 
     Si existe estimaciones_agricolas_provincias.json lo carga.
@@ -356,15 +363,15 @@ def get_provincias(client: httpx.Client) -> JSONData:
     Returns:
         Lista de diccionarios con la información de las provincias.
     """
-    cached = load_json_cache(PROVINCIAS_CACHE_PATH)
+    cached = load_json_cache(cache_path)
     if cached is not None:
-        print(f"Provincias cargadas desde caché: {PROVINCIAS_CACHE_PATH}")
+        print(f"Provincias cargadas desde caché: {cache_path}")
         return cached
 
     print("Provincias no encontradas en caché. Solicitando a MAGyP...")
     data = fetch_provincias(client)
-    save_json_cache(PROVINCIAS_CACHE_PATH, data)
-    print(f"Provincias guardadas en: {PROVINCIAS_CACHE_PATH}")
+    save_json_cache(cache_path, data)
+    print(f"Provincias guardadas en: {cache_path}")
     return data
 
 
@@ -414,6 +421,7 @@ def fetch_departamentos(
 def get_departamentos(
     client: httpx.Client,
     provincias: JSONData,
+    cache_path: Path = DEPARTAMENTOS_CACHE_PATH,
 ) -> JSONData:
     """Obtiene el catálogo de departamentos, usando caché en disco si existe.
 
@@ -427,15 +435,15 @@ def get_departamentos(
     Returns:
         Lista de diccionarios con la información de los departamentos.
     """
-    cached = load_json_cache(DEPARTAMENTOS_CACHE_PATH)
+    cached = load_json_cache(cache_path)
     if cached is not None:
-        print(f"Departamentos cargados desde caché: {DEPARTAMENTOS_CACHE_PATH}")
+        print(f"Departamentos cargados desde caché: {cache_path}")
         return cached
 
     print("Departamentos no encontrados en caché. Solicitando a MAGyP...")
     data = fetch_departamentos(client, provincias)
-    save_json_cache(DEPARTAMENTOS_CACHE_PATH, data)
-    print(f"Departamentos guardados en: {DEPARTAMENTOS_CACHE_PATH}")
+    save_json_cache(cache_path, data)
+    print(f"Departamentos guardados en: {cache_path}")
     return data
 
 
@@ -706,7 +714,7 @@ def parse_download_response(
 
     try:
         return read_csv_response(content)
-    except Exception as csv_error:
+    except Exception:
         try:
             return read_excel_response(content)
         except Exception as excel_error:
@@ -749,7 +757,27 @@ def descargar_datos(
         data=data,
     )
 
-    return parse_download_response(response)
+    dataframe = parse_download_response(response)
+    validate_download_columns(dataframe)
+    return dataframe
+
+
+def validate_download_columns(dataframe: pd.DataFrame) -> None:
+    """Verifica que la descarga tenga el esquema esperado.
+
+    El portal puede responder HTTP 200 con una página HTML de error que
+    ``read_csv`` interpreta como una tabla de una columna. Sin esta
+    verificación ese contenido se concatenaba al dataset.
+
+    Raises:
+        ValueError: Si faltan columnas obligatorias.
+    """
+    required = {"Cultivo", "Campaña", *VARIABLES}
+    missing = required - set(dataframe.columns)
+    if missing:
+        raise ValueError(
+            f"Respuesta MAGyP sin columnas esperadas: {sorted(missing)}"
+        )
 
 
 # ====================== CONSOLIDACIÓN ======================
@@ -871,6 +899,12 @@ def descargar_todos_los_datos(
             time.sleep(REQUEST_RATE_DELAY)
 
     print(f"Descarga finalizada: {ok}/{total} OK, {fail} fallidos.")
+    if total and fail / total > MAX_FAIL_RATIO:
+        raise RuntimeError(
+            f"Extracción MAGyP incompleta: {fail}/{total} departamentos "
+            f"fallidos (> {MAX_FAIL_RATIO:.0%}). No se persiste un dataset "
+            "parcial."
+        )
     return dataframes
 
 
@@ -953,10 +987,15 @@ def run_extractor(output_dir: Path | str | None = None) -> Path:
         print(f"Período hasta: {hasta}")
         print(f"Cultivos detectados ({len(crop_ids)}): {crop_ids}")
 
-        provincias_response = get_provincias(client)
+        # Los catálogos se cachean junto al output (antes siempre en
+        # ./data/raw, aunque se pidiera otro directorio).
+        provincias_response = get_provincias(
+            client, target_dir / PROVINCIAS_CACHE_PATH.name
+        )
         departamentos_response = get_departamentos(
             client,
             provincias_response,
+            target_dir / DEPARTAMENTOS_CACHE_PATH.name,
         )
         provincias, departamentos = construir_catalogos(
             provincias_response,
