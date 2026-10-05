@@ -3,7 +3,7 @@
 Sistema que estima, para cada **departamento de Argentina**, cuánto
 **rastrojo** (biomasa residual) dejan los cultivos después de la cosecha,
 cuánta **electricidad** podría generarse con él usando un gasificador
-pequeño (APL PP30, 25 kW) y cuánto **dinero** representa esa electricidad
+pequeño (APL PP30, 22 kW a 50 Hz) y cuánto **dinero** representa esa electricidad
 a las tarifas vigentes de cada distribuidora eléctrica.
 
 Se actualiza solo todos los días con datos públicos y muestra los
@@ -41,8 +41,8 @@ Responde tres preguntas, por provincia y departamento:
 | Pregunta | Resultado | Ejemplo (promedio anual 2020/21–2024/25) |
 |---|---|---|
 | ¿Cuánto rastrojo queda después de cada cosecha? | Toneladas de materia seca | ~154 millones de t |
-| ¿Cuánta electricidad podría generarse con la mitad recuperable? | kWh por año y equipos PP30 | ~79 TWh |
-| ¿Cuánto dinero representa? | Pesos por año (ahorro en la factura + venta a la red) | ~10,9 billones de pesos (provincias con tarifa) |
+| ¿Cuánta electricidad podría generarse con la mitad recuperable? | kWh por año y equipos PP30 | ~77 TWh |
+| ¿Cuánto dinero representa? | Pesos por año (ahorro en la factura + venta a la red) | ~10,6 billones de pesos (provincias con tarifa; ~9,2 sin contar la inyección estimada) |
 
 Son **potenciales técnicos**: no descuentan costos de recolección,
 transporte ni equipos. Explicación completa sin tecnicismos:
@@ -68,13 +68,16 @@ flowchart LR
    lo mismo, se queda con la de mayor producción.
 3. **Calcula la biomasa**: producción × materia seca × relación
    rastrojo/grano de cada cultivo.
-4. **Calcula la energía**: la mitad del rastrojo, a 12 % de humedad, con un
-   consumo de 1,1 kg por kWh.
+4. **Calcula la energía**: la mitad del rastrojo (supuesto de
+   conservación del suelo), a 1 kg de materia seca por kWh (ficha técnica
+   del PP30).
 5. **Calcula el dinero** (Ley 27.424 de generación distribuida): 60 % de
    la energía se autoconsume y ahorra la tarifa de compra; 40 % se inyecta
    a la red a la tarifa de inyección.
 6. **Controla** la calidad (invariantes y alertas) y **guarda** los
-   resultados, que el dashboard muestra.
+   resultados, que el dashboard muestra. En el dashboard se pueden cambiar
+   los supuestos (autoconsumo, escenario de inyección, consumo específico y
+   fracción de rastrojo retirada).
 
 Fórmulas y supuestos: [metodología](docs/02_metodologia/metodologia.md).
 
@@ -232,8 +235,13 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
   [tarifas eléctricas](docs/03_datos/tarifas_electricas.md#carga-manual-de-cuadros).
 - **Cultivos sin coeficientes** (caña de azúcar, yerba mate, cítricos)
   quedan fuera: subrepresenta al NOA y NEA.
-- **Coeficientes constantes por cultivo** y fracción recuperable única
-  (50 %).
-- **Beneficio bruto**: sin costos de inversión, operación ni logística.
+- **Coeficientes constantes por cultivo** (los de trigo y sorgo están en
+  revisión) y fracción recuperable única (50 %, límite superior según la
+  bibliografía; ver [metodología](docs/02_metodologia/metodologia.md#2-residuo-recuperable)).
+- **Material del gasificador**: el fabricante aprueba chips de madera,
+  cáscaras y marlo; el rastrojo suelto requiere triturado o pelletizado,
+  cuyo costo no está incluido.
+- **Beneficio bruto**: sin costos de inversión, operación, acondicionamiento
+  ni logística.
 
 Lista completa: [metodología → limitaciones](docs/02_metodologia/metodologia.md#limitaciones).

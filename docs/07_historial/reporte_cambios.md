@@ -667,3 +667,20 @@ Con fuentes aportadas por el usuario:
 
 **Resultado**: 25 de 28 distribuidoras con tarifa de compra; 12 con inyección real. El ratio mediano inyección/compra pasó de 0,75 (3 valores) a 0,915 (12 valores), y la inyección estimada cubre ≈ 31 % de la energía (antes ≈ 65 %). Beneficio anual ≈ 10,9 billones de pesos. El fundamento de la estimación quedó documentado en POL-TARIFF-002.
 
+---
+
+## 18. Revisión contra las guías de la cátedra y la ficha del fabricante (2026-10-05)
+
+Se revisaron dos guías entregadas por la cátedra (cálculo energético y módulo tarifario del PP30) y la documentación oficial de All Power Labs. Comparación completa en [metodología §7](../02_metodologia/metodologia.md#7-comparación-con-las-guías-de-la-cátedra).
+
+**Cambios en el modelo**:
+- **Consumo específico**: ahora 1,0 kg de materia seca por kWh, tomado de la ficha técnica del PP30 ("Biomass Consumption: 1.0 kg/kWh (dry basis)"). Antes: 1,1 kg/kWh sobre material al 12 % (≈ 0,968 kg MS/kWh). Energía −3,2 % (≈ 77 TWh/año).
+- **Potencia de referencia**: 22 kW (PP30 a 50 Hz conectado a red con CHP); antes 25 kW, que es el valor a 60 Hz. Sólo cambia los equipos equivalentes (+14 %).
+- **Parámetros del PP30**: los fija el código y pisan los del JSON anterior.
+
+**Dashboard**: barra lateral "⚙️ Supuestos del cálculo" con autoconsumo, tres escenarios de inyección para las distribuidoras sin precio publicado (conservador 0, central compra × 0,915, alto = compra), consumo específico (1,0 o 1,1 kg MS/kWh) y fracción de rastrojo retirada (20–70 %). Se recalcula sobre los Parquet sin correr el ETL. Beneficio anual: ≈ 10,6 billones (central) y ≈ 9,2 billones (conservador).
+
+**Documentado**: justificación y fuentes de la fracción recuperable del 50 % (POL-RECOVERY-001; es un límite superior), restricción de material del fabricante (rastrojo suelto no aprobado; requiere acondicionamiento, no costeado), coeficientes de trigo y sorgo a revisar, tarifas sin impuestos.
+
+**Sobre las guías**: la estructura de cálculo coincide con la del modelo. Difieren en: fracción retirada (100 % en las guías), consumo específico (1,1 kg MS/kWh, conservador frente a la ficha), coeficientes de trigo y sorgo, y tarifas de referencia (la inyección de las guías es 3 a 4 veces menor que la de los cuadros oficiales).
+

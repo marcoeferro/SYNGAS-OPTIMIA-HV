@@ -9,7 +9,7 @@ Para valorizar la energía se necesitan dos precios por distribuidora:
 
 - **Tarifa de compra**: lo que paga un usuario por kWh. Se toma la
   categoría de **medianas o grandes demandas** (un establecimiento con un
-  equipo de 25 kW), en **baja tensión**, preferentemente para menos de
+  equipo de ≈ 22–25 kW), en **baja tensión**, preferentemente para menos de
   300 kW, **banda horaria "Resto"**, **sin impuestos**, del **cuadro pleno**
   (sin subsidios ni regímenes especiales).
 - **Tarifa de inyección**: lo que se paga por kWh entregado a la red (Ley

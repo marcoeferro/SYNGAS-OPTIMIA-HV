@@ -11,7 +11,8 @@
 | [POL-MISSING-001](#pol-missing-001--valores-faltantes) | Los faltantes no se convierten en cero ni se borran en silencio | versión inicial |
 | [POL-GEO-001](#pol-geo-001--alias-de-departamento-entre-fuentes) | Alias para nombres de departamento que difieren entre fuentes | 2026-10 |
 | [POL-PERIOD-001](#pol-period-001--período-de-referencia-anual) | Resultados por año: promedio de las 5 últimas campañas completas | 2026-10 |
-| [POL-ENERGY-001](#pol-energy-001--conversión-a-energía-apl-pp30) | Energía con el gasificador PP30 sobre el residuo recuperable | 2026-10 |
+| [POL-ENERGY-001](#pol-energy-001--conversión-a-energía-apl-pp30) | Energía con la ficha del PP30: 1,0 kg MS/kWh, 22 kW a 50 Hz | 2026-10 |
+| [POL-RECOVERY-001](#pol-recovery-001--fracción-de-rastrojo-retirada) | Se retira el 50 % del rastrojo (límite superior sostenible) | 2026-10 |
 | [POL-TARIFF-001](#pol-tariff-001--tarifa-de-compra-representativa) | Tarifa de compra: medianas/grandes demandas, baja tensión, banda Resto | 2026-10 |
 | [POL-TARIFF-002](#pol-tariff-002--tarifa-de-inyección-faltante) | Inyección faltante: compra × ratio observado | 2026-10 |
 | [POL-QA-001](#pol-qa-001--tests-y-controles-de-calidad-de-datos) | Tests en CI; controles de datos y alertas en cada corrida | 2026-10 |
@@ -103,11 +104,42 @@ magnitud física, y la campaña en curso subestimaría el resultado.
 
 ## POL-ENERGY-001 — Conversión a energía (APL PP30)
 
-**Regla**: residuo recuperable (50 % del residuo) → masa a humedad
-operativa (12 %) → energía con un consumo específico de 1,1 kg/kWh. La
-humedad se aplica **una sola vez**: el residuo ya está en materia seca.
+**Regla**: residuo recuperable (t de materia seca) → energía con el
+consumo específico de la **ficha técnica del fabricante: 1,0 kg de materia
+seca por kWh**. La humedad operativa (12 %) sólo se usa para calcular la
+masa que se carga al equipo; no cambia los kWh. Potencia de referencia
+para los equipos equivalentes: **22 kW** (PP30 a 50 Hz conectado a red).
 
-**Código**: `etl/transformers/energy_finance.py`.
+**Fundamento**: All Power Labs publica el consumo en base seca (1,0 kg/kWh)
+y su ajuste por humedad (1,1 / 1,2 / 1,3 kg/kWh con 10 / 20 / 30 %). Como el
+residuo del modelo ya está en materia seca, se usa el valor seco directo.
+
+**Antes** (hasta 2026-10): 1,1 kg/kWh sobre material al 12 % (≈ 0,968 kg
+MS/kWh) y 25 kW. El cambio bajó la energía un 3,2 %.
+
+**Escenario**: el dashboard permite usar 1,1 kg MS/kWh (conservador).
+
+**Código**: `etl/transformers/energy_finance.py`. Detalle:
+[metodología §3](metodologia.md#3-energía-gasificador-apl-pp30).
+
+---
+
+## POL-RECOVERY-001 — Fracción de rastrojo retirada
+
+**Regla**: se retira el **50 %** del rastrojo (residuo recuperable); el
+resto queda en el lote.
+
+**Fundamento**: es un supuesto, elegido como límite superior de lo que la
+bibliografía considera sostenible (Wilhelm et al. 2007: la materia
+orgánica del suelo exige dejar más rastrojo que el control de erosión;
+Agronomy Journal 2021: no más de 25–40 % en maíz con rendimientos altos).
+Es optimista; 30–40 % es más prudente.
+
+**Escenario**: el dashboard permite variarlo entre 20 % y 70 %; el ETL lo
+acepta con `--fraccion-recuperable`.
+
+**Código**: `etl/transformers/biomass.py` (`add_recoverable_residue`).
+Detalle: [metodología §2](metodologia.md#2-residuo-recuperable).
 
 ---
 
