@@ -558,3 +558,15 @@ Contenido nuevo:
 - Si `biomasa_validos.parquet` o el potencial anual no tienen las columnas de energía y dinero, la página explica que fueron generados por una versión anterior del ETL. Muestra la ruta, la fecha y los comandos para reconstruir la imagen, en lugar del `KeyError`.
 - Inicio → "Archivos de datos" muestra la fecha de cada artefacto.
 - Verificación: se reprodujo el caso con un Parquet sin columnas de energía y sin el potencial anual; aparecen los mensajes nuevos. Al restaurar los archivos, el mismo servidor de Streamlit mostró los datos nuevos sin reiniciarse. Se agregó un test de la caché.
+
+### 13.1 Costo de recursos de estos cambios
+
+Revisión pensando en un VPS chico:
+
+| Cambio | Costo | Ajuste |
+|---|---|---|
+| Caché por fecha de modificación | Un `stat` por archivo en cada interacción (~2 µs). | Sin límite, cada corrida del ETL dejaba en memoria otra copia de `biomasa_validos` (~93 MB) que nunca se liberaba: con un ETL diario, ~2,8 GB por mes. Ahora `max_entries` acota la caché y descarta las versiones viejas. |
+| `build` antes de correr el ETL | Si el código no cambió, Docker reutiliza todas las capas: segundos. | El Dockerfile copiaba el código antes de instalar dependencias: cualquier cambio en `etl/` o `dashboard/` volvía a descargar y compilar pandas, pyarrow, Streamlit, etc. Ahora la capa de dependencias depende sólo de `pyproject.toml`. |
+| Imágenes viejas | Cada `build` con código nuevo deja la imagen anterior sin etiqueta (~1 GB). | `Run-Etl.ps1` y `make docker-etl` borran las imágenes sin etiqueta de este proyecto (`LABEL project=etl-biomasa`), sin tocar las de otros proyectos del servidor. |
+
+El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen levantada con `docker compose up -d --build`.

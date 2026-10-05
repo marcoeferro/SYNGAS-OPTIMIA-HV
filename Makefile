@@ -113,6 +113,7 @@ docker-shell:
 docker-etl:
 	# La imagen contiene el código del ETL: se reconstruye antes de correrlo.
 	$(DOCKER_COMPOSE) --profile etl build etl_pipeline
+	docker image prune -f --filter label=project=etl-biomasa
 	$(DOCKER_COMPOSE) --profile etl run --rm etl_pipeline
 
 docker-clean:

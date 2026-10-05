@@ -219,10 +219,13 @@ def file_info(path: Path) -> str:
 
 # La caché se indexa por (ruta, fecha de modificación): cuando el ETL
 # reescribe un Parquet, el dashboard lo vuelve a leer sin reiniciarse.
+# ``max_entries`` acota la memoria: sin límite, cada corrida del ETL dejaba
+# en memoria otra copia de biomasa_validos (~93 MB) que nunca se liberaba.
+# Con 4 archivos y 8 entradas se descartan las versiones viejas (LRU).
 # Antes la caché no tenía en cuenta el archivo y, si el dashboard estaba
 # abierto mientras corría el ETL, seguía mostrando los datos viejos (o
 # "archivo inexistente") hasta reiniciar Streamlit.
-@st.cache_data(show_spinner="Cargando datos…")
+@st.cache_data(show_spinner="Cargando datos…", max_entries=8)
 def _load_parquet_cached(path: str, mtime: float, geo: bool) -> pd.DataFrame:
     # ``mtime`` sólo forma parte de la clave de caché (no lleva "_" adelante:
     # Streamlit excluye de la clave los parámetros que empiezan con "_").
@@ -295,7 +298,7 @@ def load_discrepancias() -> pd.DataFrame | None:
     return _load(PATH_DISCREPANCIAS)
 
 
-@st.cache_data
+@st.cache_data(max_entries=2)
 def _load_json_cached(path: str, mtime: float) -> dict[str, Any]:
     del mtime  # sólo para la clave de caché
     with open(path, encoding="utf-8") as f:
@@ -310,7 +313,7 @@ def load_tarifas() -> tuple[dict[str, Any] | None, Path | None]:
     return _load_json_cached(str(files[-1]), files[-1].stat().st_mtime), files[-1]
 
 
-@st.cache_data
+@st.cache_data(max_entries=2)
 def _load_historial_cached(mtime: float) -> pd.DataFrame:
     del mtime  # sólo para la clave de caché
     from etl.loaders.tariff_history import load_history, representative_by_month

@@ -37,6 +37,10 @@ if ($Local) {
     Write-Host "Actualizando la imagen del ETL..." -ForegroundColor Cyan
     docker compose --profile etl build etl_pipeline
     if ($LASTEXITCODE -ne 0) { throw "docker compose build falló con código $LASTEXITCODE" }
+    # Cada build que cambia el código deja la imagen anterior sin etiqueta
+    # ("dangling"); se borran (sólo las de este proyecto) para no llenar el
+    # disco del servidor.
+    docker image prune -f --filter "label=project=etl-biomasa" | Out-Null
     Write-Host "Ejecutando ETL en Docker (one-shot)..." -ForegroundColor Cyan
     docker compose --profile etl run --rm etl_pipeline python @etlArgs
 }
