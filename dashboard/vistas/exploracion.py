@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from dashboard.data_loader import (
+    COL_BENEFICIO,
+    COL_KWH,
     default_campaigns,
     filter_biomasa,
+    format_ars,
+    format_kwh,
     format_tn,
     load_biomasa,
 )
 
-st.set_page_config(page_title="Exploración | Biomasa", page_icon="🔍", layout="wide")
 st.title("Exploración")
 
 df = load_biomasa()
@@ -45,36 +47,33 @@ filtered = filter_biomasa(
     campanas=sel_camp or None,
 )
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 c1.metric("Filas", f"{len(filtered):,}")
-c2.metric("Biomasa residual", format_tn(filtered["Residuo de Biomasa (Tn)"].sum()))
-c3.metric("Producción", format_tn(filtered["Produccion (Tn)"].sum()))
+c2.metric("Biomasa residual (suma)", format_tn(filtered["Residuo de Biomasa (Tn)"].sum()))
+c3.metric("Energía (suma)", format_kwh(filtered[COL_KWH].sum()))
+c4.metric("Beneficio bruto (suma)", format_ars(filtered[COL_BENEFICIO].sum()))
+st.caption("Sumas de todas las campañas seleccionadas (no promedio anual).")
 
 if filtered.empty:
     st.warning("Sin datos para los filtros elegidos.")
     st.stop()
 
 # --- Serie temporal ---
+# Una magnitud por gráfico (nunca dos escalas en un mismo eje).
 st.subheader("Evolución por campaña")
 by_camp = (
     filtered.groupby("Campaña", as_index=False)
-    .agg(
-        {
-            "Residuo de Biomasa (Tn)": "sum",
-            "Produccion (Tn)": "sum",
-            "Superficie (Ha)": "sum",
-        }
-    )
+    .agg({"Residuo de Biomasa (Tn)": "sum", "Produccion (Tn)": "sum", COL_KWH: "sum"})
     .sort_values("Campaña")
 )
-fig_ts = px.line(
-    by_camp,
-    x="Campaña",
-    y=["Residuo de Biomasa (Tn)", "Produccion (Tn)"],
-    markers=True,
-    title="Biomasa residual y producción por campaña",
-)
-fig_ts.update_layout(legend_title_text="", height=400, xaxis_tickangle=-45)
+by_camp["Energía (GWh)"] = by_camp[COL_KWH] / 1e6
+serie = st.segmented_control(
+    "Serie", ["Residuo de Biomasa (Tn)", "Produccion (Tn)", "Energía (GWh)"],
+    default="Residuo de Biomasa (Tn)", key="serie_exploracion",
+) or "Residuo de Biomasa (Tn)"
+fig_ts = px.line(by_camp, x="Campaña", y=serie, markers=True, title=f"{serie} por campaña")
+fig_ts.update_traces(line={"width": 2, "color": "#2a78d6"}, marker={"size": 8})
+fig_ts.update_layout(height=400, xaxis_tickangle=-45)
 st.plotly_chart(fig_ts, use_container_width=True)
 
 # --- Comparación cultivo x provincia (si hay pocos) ---
@@ -89,6 +88,7 @@ fig_cult = px.bar(
     x="Cultivo",
     y="Residuo de Biomasa (Tn)",
     title="Total biomasa residual por cultivo (filtros aplicados)",
+    color_discrete_sequence=["#2a78d6"],
 )
 fig_cult.update_layout(height=400, xaxis_tickangle=-40)
 st.plotly_chart(fig_cult, use_container_width=True)
@@ -106,6 +106,11 @@ show_cols = [
     "FR",
     "Residuo de Biomasa (Tn)",
     "Residuo de Biomasa (Tn/Ha)",
+    "Residuo Recuperable (Tn)",
+    "kwh_generados",
+    "distribuidora",
+    "tarifa_compra_kwh",
+    "beneficio_total_ars",
     "fuente",
 ]
 show_cols = [c for c in show_cols if c in filtered.columns]
@@ -123,6 +128,10 @@ st.dataframe(
             "FR": "{:,.3f}",
             "Residuo de Biomasa (Tn)": "{:,.1f}",
             "Residuo de Biomasa (Tn/Ha)": "{:,.3f}",
+            "Residuo Recuperable (Tn)": "{:,.1f}",
+            "kwh_generados": "{:,.0f}",
+            "tarifa_compra_kwh": "{:,.2f}",
+            "beneficio_total_ars": "{:,.0f}",
         },
         na_rep="—",
     ),

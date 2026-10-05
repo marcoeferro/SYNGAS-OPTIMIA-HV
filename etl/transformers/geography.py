@@ -49,6 +49,10 @@ ABBREV_SAFE: dict[str, str] = {
 DEPT_ALIASES: dict[tuple[str, str], str] = {
     ("tucuman", "j b alberdi"): "juan b alberdi",
     ("santiago del estero", "j f ibarra"): "juan felipe ibarra",
+    # MAGyP y la Bolsa de Córdoba nombran distinto el mismo departamento:
+    # sin alias la reconciliación no los cruza y suma ambas fuentes.
+    ("santiago del estero", "juan f ibarra"): "juan felipe ibarra",
+    ("san luis", "libertador san martin"): "libertador general san martin",
 }
 
 
