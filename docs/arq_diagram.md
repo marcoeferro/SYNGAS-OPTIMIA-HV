@@ -1,18 +1,50 @@
+# Arquitectura
 
-architecture-beta
+```mermaid
+graph TB
+    subgraph Fuentes["Fuentes externas"]
+        S1[Bolsa de Cereales de Córdoba<br/>Excel]
+        S2[MAGyP Estimaciones<br/>API por departamento]
+        S3[Portal nacional de energía<br/>cuadros por distribuidora]
+        S4[OCEBA, EPE, sitios de<br/>distribuidoras y entes]
+    end
 
-group sources(cloud)[Fuentes de Datos] service cba_csv(server)[CBA CSV] in sources service magyp_csv(server)[MAGYP CSV] in sources
+    subgraph ETL["Pipeline ETL (Python)"]
+        E1[Extractores agrícolas]
+        E2[Extractor de tarifas<br/>scrape_tarifas + tariff_parser]
+        T1[Transformers<br/>limpieza, geografía, reconciliación, biomasa]
+        T2[energy_finance<br/>energía PP30 y dinero]
+        L1[Loaders<br/>Parquet + historial]
+    end
 
-group etl(server)[Pipeline ETL] service extractors(server)[Extractores] in etl service transformers(server)[Transformers] in etl service loaders(server)[Loaders] in etl
+    subgraph Datos["Almacenamiento en disco"]
+        R1[(data/raw)]
+        R2[(data/reference<br/>IC/FR/MS, tarifas,<br/>cuadros manuales)]
+        R3[(data/processed)]
+        R4[(data/audit)]
+    end
 
-group storage(disk)[Almacenamiento] service raw_dir(disk)[RAW] in storage service ref_dir(disk)[REFERENCE] in storage service interim_dir(disk)[INTERIM] in storage service processed_dir(disk)[PROCESSED] in storage service audit_dir(disk)[AUDIT] in storage
+    subgraph Servicio["Capa de servicio"]
+        D1[DuckDB en memoria]
+        D2[Streamlit<br/>Inicio, Resumen, Energía, Dinero,<br/>Exploración, Auditoría]
+    end
 
-group serving(database)[Capa de Servicio] service duckdb_engine(database)[DuckDB Engine] in serving service streamlit_app(server)[Streamlit Dashboard] in serving
-
-group consumers(internet)[Consumidores] service browser(internet)[Browser] in consumers
-
-cba_csv:R --> L:extractors magyp_csv:R --> L:extractors extractors:R --> L:raw_dir raw_dir:R --> L:transformers ref_dir:R --> L:transformers transformers:R --> L:interim_dir transformers:R --> L:processed_dir transformers:R --> L:audit_dir
-
-processed_dir:R --> L:duckdb_engine audit_dir:R --> L:duckdb_engine
-
-duckdb_engine:R --> L:streamlit_app streamlit_app:R --> L:browser
+    S1 --> E1
+    S2 --> E1
+    S3 --> E2
+    S4 --> E2
+    E1 --> R1
+    E2 --> R2
+    R1 --> T1
+    R2 --> T1
+    T1 --> T2
+    R2 --> T2
+    T2 --> L1
+    L1 --> R3
+    L1 --> R4
+    R3 --> D1
+    R4 --> D1
+    R2 --> D2
+    D1 --> D2
+    D2 --> U[Navegador]
+```

@@ -1,0 +1,959 @@
+{
+  "descripcion": "Tarifas de energía eléctrica por distribuidora (categorías T2/T3 y usuario-generador, Ley 27.424) extraídas de los cuadros tarifarios oficiales.",
+  "unidad_moneda": "ARS",
+  "unidad_tarifas": "ARS/kWh sin impuestos; cargo fijo en ARS/mes",
+  "parametros_pp30": {
+    "consumo_especifico_kg_kwh": 1.1,
+    "humedad_pct_default": 12.0,
+    "factor_autoconsumo_default": 0.6,
+    "potencia_nominal_kw": 25.0,
+    "disponibilidad": 0.8,
+    "fraccion_recuperable_default": 0.5
+  },
+  "provincia_a_distribuidora": {
+    "ciudad autonoma de buenos aires": [
+      "EDENOR",
+      "EDESUR"
+    ],
+    "capital federal": [
+      "EDENOR",
+      "EDESUR"
+    ],
+    "buenos aires": [
+      "EDEN",
+      "EDEA",
+      "EDES"
+    ],
+    "catamarca": "ECSAPEM",
+    "chaco": "SECHEEP",
+    "cordoba": "EPEC",
+    "corrientes": "DPEC",
+    "entre rios": "ENERSA",
+    "formosa": "REFSA",
+    "jujuy": "EJESA",
+    "la pampa": "APE",
+    "la rioja": "EDELAR",
+    "mendoza": "EDEMSA",
+    "misiones": "EMSA",
+    "neuquen": "EPEN",
+    "rio negro": "EDERSA",
+    "salta": "EDESA",
+    "san juan": "ESJ",
+    "san luis": "EDESAL",
+    "santa cruz": "SPSE",
+    "santa fe": "EPE",
+    "santiago del estero": "EDESE",
+    "tierra del fuego": "DPE_TDF",
+    "tucuman": "EDET"
+  },
+  "departamento_a_distribuidora": {
+    "mendoza": {
+      "san martin": "EDESTE",
+      "junin": "EDESTE",
+      "rivadavia": "EDESTE",
+      "santa rosa": "EDESTE",
+      "la paz": "EDESTE"
+    },
+    "buenos aires": {
+      "la plata": "EDELAP",
+      "berisso": "EDELAP",
+      "ensenada": "EDELAP",
+      "brandsen": "EDELAP",
+      "coronel brandsen": "EDELAP",
+      "magdalena": "EDELAP",
+      "punta indio": "EDELAP"
+    }
+  },
+  "distribuidoras": {
+    "EDENOR": {
+      "nombre": "Empresa Distribuidora y Comercializadora Norte S.A.",
+      "jurisdiccion": "CABA (norte) y GBA norte/oeste",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 108.369,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 177533.46,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDENOR/2026_06_EDENOR.zip!2026_07_EDENOR 2.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-06",
+      "sha256": "875eb828b3e1735a3e24358be2b7cb0a74ce5f252a037464bb084853118788ac",
+      "seccion_compra": "Cargo Variable Resto | $/kWh | 108,369",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          108.369
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDESUR": {
+      "nombre": "Empresa Distribuidora Sur S.A.",
+      "jurisdiccion": "CABA (sur) y GBA sur",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 107.91,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 181371.18,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDESUR/2026_05_EDESUR.zip!2026_05_EDESUR3.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-05",
+      "sha256": "17193481d074ae7e80c803a7af09925294ea2c9132ac7528b4d4cc2bba4682d9",
+      "seccion_compra": "Cargo Variable Resto | $/kWh | 107,91",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          107.91
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDELAP": {
+      "nombre": "Empresa Distribuidora La Plata S.A.",
+      "jurisdiccion": "Buenos Aires (Gran La Plata)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 148.7238,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 337341.25,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "https://oceba.gba.gov.ar/nueva_web/adjuntos/ct202609/IF-2026-27777428-GDEBA-GMOCEBA.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "fcca0584dc744afe92cd159c8d3aaee3784fc0297f536730b77db203525326ff",
+      "seccion_compra": "Cargo Variable Resto $/kWh 148,7238",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          148.7238
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDEA": {
+      "nombre": "Empresa Distribuidora de Energía Atlántica S.A.",
+      "jurisdiccion": "Buenos Aires (Costa Atlántica)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 136.4393,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 35838.39,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "fallback_previous"
+      },
+      "parse_status": "mixto",
+      "documento": "https://oceba.gba.gov.ar/nueva_web/adjuntos/ct202609/IF-2026-27778457-GDEBA-GMOCEBA.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "419f959f506d8491a658455f2e7801debe9b45e040bc7ccc11b88a9d22d5f704",
+      "seccion_compra": "CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 136,4393 $/kWh",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          136.4393
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDEN": {
+      "nombre": "Empresa Distribuidora de Energía Norte S.A.",
+      "jurisdiccion": "Buenos Aires (norte y centro)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 135.2341,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 45259.77,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "fallback_previous"
+      },
+      "parse_status": "mixto",
+      "documento": "https://oceba.gba.gov.ar/nueva_web/adjuntos/ct202609/IF-2026-27778714-GDEBA-GMOCEBA.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "24693ed78a794b74b5fba55641576fc362c3b77befa5e24056a5f6912b7a8f35",
+      "seccion_compra": "CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 135,2341 $/kWh",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          135.2341
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDES": {
+      "nombre": "Empresa Distribuidora de Energía Sur S.A.",
+      "jurisdiccion": "Buenos Aires (sur)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 137.1814,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 51934.79,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "fallback_previous"
+      },
+      "parse_status": "mixto",
+      "documento": "https://oceba.gba.gov.ar/nueva_web/adjuntos/ct202609/IF-2026-27779022-GDEBA-GMOCEBA.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "ff2b23ae3a7b3fbbdfa37d856f4276553faff8825ca487f38f75c907fc5ba355",
+      "seccion_compra": "CARGO VARIABLE POR ENERGÍA DEMANDADA EN RESTO 137,1814     $/kWh",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          137.1814
+        ],
+        "inyeccion": []
+      }
+    },
+    "ECSAPEM": {
+      "nombre": "Energía de Catamarca S.A.P.E.M.",
+      "jurisdiccion": "Catamarca",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 106.28844,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 35569.984458,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/ECSAPEM/2026_05_ECSAPEM.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-05",
+      "sha256": "e894e982dd167dad565b6aa98b06919c198b51d9e9cae7571709b9a872077971",
+      "seccion_compra": "Período Horas Resto | $/KWh. | 0 | 106,288443 | 106,288443 | 0 | 96,601652 | 96,601652",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          106.288443,
+          106.288443
+        ],
+        "inyeccion": [
+          107.555803,
+          100.576875,
+          176.238847,
+          107.545683,
+          111.769803,
+          104.790875,
+          108.894803,
+          101.915875,
+          107.555803,
+          100.576875,
+          90.612516,
+          110.71023,
+          109.378502,
+          107.83523,
+          106.503502,
+          106.49623,
+          105.164502,
+          110.898099,
+          108.467314,
+          108.030099,
+          105.599314,
+          106.695099,
+          104.264314,
+          110.50823,
+          109.176502,
+          107.64023,
+          106.308502,
+          106.30523,
+          104.973502,
+          300.0
+        ]
+      },
+      "rechazos_validacion": {
+        "tarifa_inyeccion_kwh": "inyección (107.55074) >= compra (106.28844)"
+      }
+    },
+    "SECHEEP": {
+      "nombre": "Servicios Energéticos del Chaco E.E.P.",
+      "jurisdiccion": "Chaco",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 117.49885,
+      "tarifa_inyeccion_kwh": 89.9911,
+      "cargo_fijo_mensual": 30591.87,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "extraido",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "extraido",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/SECHEEP/2026_06_SECHEEP.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-06",
+      "sha256": "d5c977c0ac6a99035ec79ed32fff4a31025afb8cc54e3689524c5e1816b8cc0a",
+      "seccion_compra": "Cargo Energía Resto | $/KWh | 115,719 | 3,5597 | 119,2787",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          115.719,
+          119.2787
+        ],
+        "inyeccion": [
+          89.9122,
+          89.9122,
+          90.2979,
+          90.2979,
+          89.9058,
+          89.9058,
+          90.2788,
+          90.2788,
+          92.743,
+          92.743,
+          89.875,
+          89.875,
+          88.54,
+          88.54,
+          92.945,
+          92.945,
+          90.07,
+          90.07,
+          88.731,
+          88.731
+        ]
+      }
+    },
+    "EPEC": {
+      "nombre": "Empresa Provincial de Energía de Córdoba",
+      "jurisdiccion": "Córdoba",
+      "es_proxy": false,
+      "tarifa_compra_kwh": null,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "sin_dato",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "sin_dato"
+    },
+    "DPEC": {
+      "nombre": "Dirección Provincial de Energía de Corrientes",
+      "jurisdiccion": "Corrientes",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 109.204,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/DPEC/2026_04_DPEC.pdf",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-04",
+      "sha256": "7c4e5ae4c08ad9bad122860f76da4b24364b11c8b0000f655a5da04ca47d4de6",
+      "seccion_compra": "Horas Resto $/KWh 109,204",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          109.204
+        ],
+        "inyeccion": []
+      }
+    },
+    "ENERSA": {
+      "nombre": "Energía de Entre Ríos S.A.",
+      "jurisdiccion": "Entre Ríos",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 130.84,
+      "tarifa_inyeccion_kwh": 93.55,
+      "cargo_fijo_mensual": 131733.69,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "extraido",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "extraido",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/ENERSA/2026_05_ENERSA.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-05",
+      "sha256": "1fed450c79e343ecaeca67772a5ab57aff1f78aa509e3dc4292cb531ef8627a6",
+      "seccion_compra": "Período horas restantes | 57,77 | 130,84 | 131,1",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          57.77,
+          130.84,
+          131.1
+        ],
+        "inyeccion": [
+          93.36,
+          40.12,
+          93.74,
+          93.93
+        ]
+      }
+    },
+    "REFSA": {
+      "nombre": "Recursos y Energía Formosa S.A.",
+      "jurisdiccion": "Formosa",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 135.2848,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "https://recursosyenergia.com.ar/Descargas/descarga/_res/pdf/cuadros_tarifarios/v2/51_cuadro_2026-06.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-06",
+      "sha256": "b69e1c20598bb0e1bcf30faa7a34da3a343ba682b986f45017fd2ced99ab607b",
+      "seccion_compra": "Período Horas Restantes [$/KW-Hs] 135,2848$",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          135.2848
+        ],
+        "inyeccion": []
+      }
+    },
+    "EJESA": {
+      "nombre": "Empresa Jujeña de Energía S.A.",
+      "jurisdiccion": "Jujuy",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 113.0882,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "fallback_previous",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EJESA/2025_10_EJESA.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2025-10",
+      "sha256": "81fb0dfe2e14efbbafd4265f190a5b9e7fc0929eb52049eb70c99db32f960282",
+      "fecha_extraccion": "2026-10-04T19:18:43"
+    },
+    "APE": {
+      "nombre": "Administración Provincial de Energía de La Pampa",
+      "jurisdiccion": "La Pampa",
+      "es_proxy": true,
+      "tarifa_compra_kwh": 169.39959,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/APE/2025_12_APE.zip!2025_12_APE.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2025-12",
+      "sha256": "eff3d7b693da9da672fbc1e991b0ff47a60a008beb54fbf6b5ed22cf0d03cfb4",
+      "seccion_compra": "Costo Compra de Energía | $/kWh | 110,86959 | 0 | 110,86959 + VAD excedente de 4000 kWh | $/kWh | 58,53 | 58,53 | 0,055",
+      "fecha_extraccion": "2026-10-04T23:54:22",
+      "valores_detectados": {
+        "compra": [
+          169.39959
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDELAR": {
+      "nombre": "Empresa Distribuidora de Electricidad de La Rioja S.A.",
+      "jurisdiccion": "La Rioja",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 104.6719,
+      "tarifa_inyeccion_kwh": 78.673,
+      "cargo_fijo_mensual": 15106.9,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "extraido",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "extraido",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDELAR/2026_03_EDELAR.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-03",
+      "sha256": "e0ea88f6c55b309ba2216c96b92c8bf6bc7d6449cb5e92f65efa217a878ce3b8",
+      "seccion_compra": "Por consumo de energía en horas restantes: | $/kWh | 104,6719",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          104.6719
+        ],
+        "inyeccion": [
+          36.641474,
+          78.673,
+          78.673
+        ]
+      }
+    },
+    "EDEMSA": {
+      "nombre": "Empresa Distribuidora de Electricidad de Mendoza S.A.",
+      "jurisdiccion": "Mendoza (salvo zona este)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 106.5078,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 7254.979,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDEMSA/2026_05_EDEMSA.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-05",
+      "sha256": "1940bb8a738a6e831a84d053af3132b6383578789ae53af46b55657f9fade6d1",
+      "seccion_compra": "-RESTO (R) - 05 a 18hs. | $/kWh | 113,7974 | 114,0199 | 107,6405 | 107,8509 | 106,4038 | 106,6118 | 103,684 | 103,8866 | 102,2303 | 102,4301",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          113.7974,
+          114.0199,
+          107.6405,
+          107.8509,
+          106.4038,
+          106.6118,
+          103.684,
+          103.8866,
+          102.2303,
+          102.4301
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDESTE": {
+      "nombre": "Empresa Distribuidora de Electricidad del Este S.A.",
+      "jurisdiccion": "Mendoza (zona este)",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 106.5078,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 7254.979,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDESTE/2026_05_EDESTE.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-05",
+      "sha256": "7feaa683453915b1ff0150646ff2882ba28bcc2036246c22256bfcc33531fd72",
+      "seccion_compra": "-RESTO (R) - 05 a 18hs. | $/kWh | 113,7974 | 114,0199 | 107,6405 | 107,8509 | 106,4038 | 106,6118 | 103,684 | 103,8866 | 102,2303 | 102,4301",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          113.7974,
+          114.0199,
+          107.6405,
+          107.8509,
+          106.4038,
+          106.6118,
+          103.684,
+          103.8866,
+          102.2303,
+          102.4301
+        ],
+        "inyeccion": []
+      }
+    },
+    "EMSA": {
+      "nombre": "Energía de Misiones S.A.",
+      "jurisdiccion": "Misiones",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 204.058,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EMSA/2025_11_EMSA.zip!2025_11_EMSA (1).xls",
+      "fuente_tipo": "nacional",
+      "vigencia": "2025-09",
+      "sha256": "37ad499929b8114c4c409aec12cfeceda22ac9547d7e2d12942cb3d1a2357a09",
+      "seccion_compra": "Energía | 204,058 | 7594,7",
+      "fecha_extraccion": "2026-10-04T23:54:22",
+      "valores_detectados": {
+        "compra": [
+          204.058
+        ],
+        "inyeccion": []
+      }
+    },
+    "EPEN": {
+      "nombre": "Ente Provincial de Energía del Neuquén",
+      "jurisdiccion": "Neuquén",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 359.733,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "https://www.epen.gov.ar/wp-content/uploads/2026/09/CT-consumos-08-2026-Final.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-08",
+      "sha256": "b38f2e20b090ad1aa6342b9b9c353aab3e092c6caf30b5d6d526bf87c5918680",
+      "seccion_compra": "Por consumo de energía en período horas restante 359,733 $/KWh",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          359.733
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDERSA": {
+      "nombre": "Empresa de Energía de Río Negro S.A.",
+      "jurisdiccion": "Río Negro",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 155.261,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "https://www.edersa.com.ar/wp-content/uploads/2026/09/Cuadro-Tarifario-EdERSA-SEPTIEMBRE-2026_U.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "882d8c81b601a057877c5a7e416501cdf4d00b605bd71fc20ded90ce42d720d2",
+      "seccion_compra": "CARGO ENERGIA (R) $/kWh 155,261 161,079 152,293",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          155.261,
+          161.079,
+          152.293
+        ],
+        "inyeccion": [
+          63.073,
+          63.073,
+          148.198,
+          148.198,
+          63.093,
+          63.093,
+          148.165,
+          148.165,
+          148.165,
+          148.165,
+          173.041,
+          173.041,
+          173.237,
+          173.237,
+          168.943,
+          175.273,
+          166.349,
+          172.582,
+          165.326,
+          171.521,
+          168.943,
+          175.273,
+          165.713,
+          166.349,
+          172.582,
+          163.169,
+          165.326,
+          171.521,
+          162.165,
+          188.634,
+          195.702,
+          176.927,
+          185.028,
+          157.573,
+          185.344,
+          192.289,
+          173.842,
+          181.801,
+          156.042,
+          184.156,
+          191.057,
+          172.727,
+          180.635,
+          155.697,
+          168.943,
+          175.273,
+          166.349,
+          172.582,
+          165.326,
+          171.521,
+          168.943,
+          175.273,
+          158.458,
+          165.713,
+          166.349,
+          172.582,
+          156.025,
+          163.169,
+          165.326,
+          171.521,
+          155.066,
+          162.165,
+          188.634,
+          195.702,
+          176.927,
+          185.028,
+          176.739,
+          185.344,
+          192.289,
+          173.842,
+          181.801,
+          173.656,
+          184.156,
+          191.057,
+          172.727,
+          180.635,
+          172.543,
+          74.809,
+          77.612,
+          71.896,
+          74.59,
+          71.481,
+          74.159,
+          74.809,
+          77.612,
+          73.378,
+          71.896,
+          74.59,
+          70.521,
+          71.481,
+          74.159,
+          70.114,
+          74.809,
+          77.612,
+          70.166,
+          73.378,
+          70.091,
+          71.896,
+          74.59,
+          67.434,
+          70.521,
+          67.362,
+          71.481,
+          74.159,
+          67.045,
+          70.114,
+          66.973
+        ]
+      },
+      "rechazos_validacion": {
+        "tarifa_inyeccion_kwh": "inyección (165.326) >= compra (155.261)"
+      }
+    },
+    "EDESA": {
+      "nombre": "Empresa Distribuidora de Electricidad de Salta S.A.",
+      "jurisdiccion": "Salta",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 266.80879,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": 16170.405475,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "extraido"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDESA/2026_06_EDESA.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-06",
+      "sha256": "f72742c8a6053c01135305d54893da10cf86265a29767261abd280e21be56484",
+      "seccion_compra": "BT-MD | 16170,405475 $/mes [Cargo Fijo $/mes] | 5276,988136 $/mes [Cargo Fijo $/mes] | 39435,881323 $/mes [Cargo Fijo $/mes] | 270,314784 $/kwh [Cargo Variable Horas Pico $/kwh] | 266,808787 $/KWh [Ca",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          266.808787
+        ],
+        "inyeccion": []
+      }
+    },
+    "ESJ": {
+      "nombre": "Energía San Juan S.A.",
+      "jurisdiccion": "San Juan",
+      "es_proxy": false,
+      "tarifa_compra_kwh": null,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "sin_dato",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "sin_dato"
+    },
+    "EDESAL": {
+      "nombre": "Empresa Distribuidora San Luis S.A.",
+      "jurisdiccion": "San Luis",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 110.758,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "http://www.energia.gob.ar/contenidos/archivos/Reorganizacion/informacion_del_mercado/publicaciones/mercado_electrico/cuadros_tarifarios_desde_2025/EDESAL/2026_06_EDESAL.xlsx",
+      "fuente_tipo": "nacional",
+      "vigencia": "2026-06",
+      "sha256": "56f7a8b36c26d340ddea2e1f91970f3d7c5a69d545a930b405680652f09c0a23",
+      "seccion_compra": "Cargo por Consumo de Energía en hs.Resto | [$/kWh ] | 122,6623 | 116,237 | 110,4567 | 111,9029 | 113,105 | 108,2724 | 110,6273 | 106,4577 | 106,7586 | 122,8959 | 116,4593 | 110,674 | 112,121 | 113,323",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          122.6623,
+          116.237,
+          110.4567,
+          111.9029,
+          113.105,
+          108.2724,
+          110.6273,
+          106.4577,
+          106.7586,
+          122.8959,
+          116.4593,
+          110.674,
+          112.121,
+          113.3231,
+          108.487,
+          110.842,
+          106.6706,
+          106.9651
+        ],
+        "inyeccion": []
+      }
+    },
+    "SPSE": {
+      "nombre": "Servicios Públicos Sociedad del Estado",
+      "jurisdiccion": "Santa Cruz",
+      "es_proxy": false,
+      "tarifa_compra_kwh": null,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "sin_dato",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "sin_dato"
+    },
+    "EPE": {
+      "nombre": "Empresa Provincial de la Energía de Santa Fe",
+      "jurisdiccion": "Santa Fe",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 146.77374,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "https://epe.santafe.gov.ar/institucional-api/download/5069c712-219f-4abe-9deb-2ea174417e3c#CUT_T2_Septiembre_2026.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "090b90714b1a69288c5bc7489fa03cfea1b606bc09a6dbaf2a126f1baea39481",
+      "seccion_compra": "2 B1 Demandas menores a 300 kW 151,41966 146,77374 145,67246",
+      "fecha_extraccion": "2026-10-04T23:54:22",
+      "valores_detectados": {
+        "compra": [
+          146.77374
+        ],
+        "inyeccion": []
+      }
+    },
+    "EDESE": {
+      "nombre": "Empresa Distribuidora de Electricidad de Santiago del Estero S.A.",
+      "jurisdiccion": "Santiago del Estero",
+      "es_proxy": false,
+      "tarifa_compra_kwh": 156.655,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "extraido",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "mixto",
+      "documento": "https://www.edese.com.ar/public/assets/archivos/CuadroTarifarioVigente.pdf",
+      "fuente_tipo": "propia",
+      "vigencia": "2026-09",
+      "sha256": "5813e5e2cf8e2a67acaf740dd9bdda4650a774de3dd01b2b56724c97600c3ff6",
+      "seccion_compra": "T3-BT Cargo Variable por Energía en hs.Restantes $/kWh 156.655 Conexiones Comunes:",
+      "fecha_extraccion": "2026-10-04T21:49:15",
+      "valores_detectados": {
+        "compra": [
+          156.655
+        ],
+        "inyeccion": []
+      }
+    },
+    "DPE_TDF": {
+      "nombre": "Dirección Provincial de Energía de Tierra del Fuego",
+      "jurisdiccion": "Tierra del Fuego",
+      "es_proxy": false,
+      "tarifa_compra_kwh": null,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "sin_dato",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "sin_dato"
+    },
+    "EDET": {
+      "nombre": "Empresa de Distribución Eléctrica de Tucumán S.A.",
+      "jurisdiccion": "Tucumán",
+      "es_proxy": false,
+      "tarifa_compra_kwh": null,
+      "tarifa_inyeccion_kwh": null,
+      "cargo_fijo_mensual": null,
+      "estado_campos": {
+        "tarifa_compra_kwh": "sin_dato",
+        "tarifa_inyeccion_kwh": "sin_dato",
+        "cargo_fijo_mensual": "sin_dato"
+      },
+      "parse_status": "sin_dato"
+    }
+  },
+  "ultima_actualizacion": "2026-10",
+  "generado_en": "2026-10-04T23:54:22",
+  "resumen_extraccion": {
+    "distribuidoras_totales": 28,
+    "extraidas_en_esta_corrida": 22,
+    "fallback_previous": 1,
+    "baseline_manual": 0,
+    "sin_dato": 5
+  },
+  "historial": {
+    "archivo": "tarifas_historial.csv",
+    "filas_nuevas": 4
+  }
+}

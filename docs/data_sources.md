@@ -1,8 +1,8 @@
-# bolsa de cereales de Buenos Aires
+# Bolsa de Cereales de Buenos Aires (descartada)
 https://www.bolsadecereales.com/datasets
 
 ## Columnas
-Campaña	Zona	Cultivo	Sembrado (Ha)	Perdído(Ha)	Cosechado(Ha)	Rinde(qq/Ha)	Producción(MTn)
+Campaña	Zona	Cultivo	Sembrado (Ha)	Perdido(Ha)	Cosechado(Ha)	Rinde(qq/Ha)	Producción(MTn)
 
 **Nota**: Este Dataset Utiliza ZONAS PAS para discriminar el Territorio las zonas pas son las siguientes:
 
@@ -27,9 +27,9 @@ XIV - Cuenca del Salado.
 
 ![alt text](image.png)
 
-Es debido a esto que este dataset no permite discriminar correctamente por provincia (salvo la provincia de SAN LUIS la cual solo deja fueara a un departamento) y es mi entender que es de interes realizar dicha discriminacion es por lo cual queda descartada como Fuente de datos
+Por esto el dataset no permite discriminar correctamente por provincia (salvo San Luis, donde sólo queda afuera un departamento) y, como el análisis es por provincia y departamento, queda descartado como fuente. Además, el sitio bloquea descargas automáticas (desafío anti-bot de Cloudflare).
 
-# Ministerio de Agricultura ganaderia y pesca de la nacion
+# Ministerio de Agricultura, Ganadería y Pesca de la Nación (MAGyP)
 https://datosestimaciones.magyp.gob.ar/reportes.php?reporte=Estimaciones
 
 ## Columnas
@@ -40,15 +40,21 @@ Produccion: se muestran en toneladas (Tn)
 Rendimiento: se muestran en kg/ha.
 
 
-# Bolsa de Cereales de Cordoba
+# Bolsa de Cereales de Córdoba
 https://bccba.sharepoint.com/:x:/s/DWDIA/IQA2_dOYoDNgSJwuCx3WFQeIAUSP2lLSWrJM35ACasy6Qfg?rtime=_N4iR4sM30g
 
 ## Columnas
 PROVINCIA, DEPARTAMENTO, CULTIVO, CAMPAÑA, SEMBRADAS, COSECHADAS, RENDIMIENTO, RENDIMIENTO GRANO LIMPIO Y SECO, PRODUCCIÓN, PRODUCCIÓN GRANO LIMPIO Y SECO
 
-Superficie Sembrada se mide en Ha (hectarias)
-Produccion se mide en Toneladas (Tn)
-Rendimiento se mide en kilo quintales sobre hectaria (qq/Ha)
+Superficie sembrada: hectáreas (Ha)
+Producción: toneladas (Tn)
+Rendimiento: quintales por hectárea (qq/Ha)
+
+Desde 2026 el archivo se publica como `.xls` con 10 filas de título en cada
+hoja; el extractor detecta la fila de encabezado buscando `PROVINCIA`.
+La base también cubre departamentos de otras provincias (San Luis,
+Santiago del Estero, La Pampa, Catamarca, Tucumán), que se reconcilian con
+MAGyP.
 
 ![alt text](image-1.png)
 
@@ -59,3 +65,24 @@ Rendimiento se mide en kilo quintales sobre hectaria (qq/Ha)
 # Baires Darsena 
 
 # Rosario
+
+# Cuadros tarifarios eléctricos
+
+Tarifas de las 28 distribuidoras del registro `etl/reference/distribuidoras.py`.
+Para cada una se prueba primero el portal nacional y después la fuente
+propia; se toma el cuadro de vigencia más reciente.
+
+| Fuente | Distribuidoras | Formato |
+|--------|----------------|---------|
+| Portal de la Secretaría de Energía (`argentina.gob.ar/.../cuadros-tarifarios-<slug>`, archivos en `energia.gob.ar`, por HTTP) | La mayoría | PDF, XLSX, ZIP |
+| OCEBA (`oceba.gba.gov.ar`) | EDEN, EDEA, EDES, EDELAP | PDF por anexo |
+| EPE (`epe.santafe.gov.ar/institucional-api/download/<uuid>`) | EPE | PDF vía API del sitio |
+| Sitios propios (EDERSA, EDESE, EPEN, REFSA, EDENOR, ...) | Varias | PDF |
+| `data/reference/cuadros_manuales/<CÓDIGO>/` | Cualquiera | Cargados a mano |
+
+Sin dato automático al 2026-10: EPEC (sitio con 403 fuera de Argentina; el
+ente regulador `ersep.cba.gov.ar` está fuera de la lista de dominios
+permitidos), EDET y DPE (PDF escaneados), ESJ y SPSE (enlaces rotos en el
+portal y sitios propios fuera de la lista de dominios). EJESA usa el último
+valor extraído.
+

@@ -1,18 +1,29 @@
+# Arquitectura de despliegue (Docker Compose)
 
-architecture-beta
+```mermaid
+graph LR
+    subgraph Host["Host (Docker Engine)"]
+        SCH["scheduler<br/>(Ofelia)"]
+        W["etl_worker<br/>(permanente)"]
+        J["etl_pipeline<br/>(job manual, perfil etl)"]
+        DASH["dashboard<br/>Streamlit :8501"]
+        V1[("./data")]
+        V2[("./config")]
+        V3[("./logs")]
+    end
+    U[Navegador] -->|HTTP 8501| DASH
+    SCH -->|"docker exec según<br/>config/schedule.ini"| W
+    W -.rw.-> V1
+    J -.rw.-> V1
+    W -.ro.-> V2
+    J -.ro.-> V2
+    W -.rw.-> V3
+    DASH -.ro.-> V1
+```
 
-group host(cloud)[Host]
-
-group etl(server)[ETL] in host service etl_img(server)[ETL_Image] in etl service etl_cmd(server)[Run_ETL] in etl
-
-group dashboard(database)[Dashboard] in host service streamlit_img(server)[Streamlit] in dashboard service dashboard_port(database)[Port_8501] in dashboard
-
-group volumes(disk)[Volumes] in host service processed(disk)[Processed] in volumes service audit(disk)[Audit] in volumes
-
-group external(internet)[External] in host service browser(internet)[Browser] in external
-
-etl_img:R --> L:processed etl_img:R --> L:audit
-
-streamlit_img:R --> L:processed streamlit_img:R --> L:audit
-
-dashboard_port:R --> L:browser
+- Una sola imagen (`etl-biomasa:latest`) sirve para el ETL y el dashboard.
+- El ETL descarga fuentes y tarifas: necesita salida a Internet hacia los
+  dominios de `README.md` (sección *Dominios necesarios*).
+- El dashboard sólo lee `./data` (montado de solo lectura).
+- El navegador del usuario descarga la cartografía base de Plotly desde
+  `cdn.plot.ly`; sin acceso a ese CDN los mapas quedan en blanco.

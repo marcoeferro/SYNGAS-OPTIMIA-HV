@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from etl.transformers.geography import (
     expand_abbrevs,
@@ -33,3 +34,14 @@ def test_flag_invalid_geo() -> None:
     df = pd.DataFrame({"Departamento": ["capital", "sin definir", "rio cuarto"]})
     out = flag_invalid_geo(df)
     assert out["_dept_valido"].tolist() == [True, False, True]
+
+@pytest.mark.parametrize(
+    ("provincia", "dept", "esperado"),
+    [
+        ("santiago del estero", "juan f ibarra", "juan felipe ibarra"),
+        ("san luis", "libertador san martin", "libertador general san martin"),
+    ],
+)
+def test_alias_unifica_nombres_entre_fuentes(provincia: str, dept: str, esperado: str) -> None:
+    """MAGyP y la Bolsa de Córdoba: sin alias se sumaban ambas fuentes."""
+    assert resolve_dept_alias(provincia, dept) == esperado

@@ -65,6 +65,8 @@ dashboard = [
     "plotly>=5.18",
 ]
 dev = [
+    # El dashboard tiene tests (tests/test_dashboard.py).
+    "streamlit>=1.32",
     "pytest>=8.0",
     "pytest-cov>=4.1",
     "ruff>=0.4",
@@ -83,9 +85,9 @@ all = [
 etl-biomasa = "etl.pipelines.run_etl:main"
 
 [project.urls]
-Homepage = "https://github.com/usuario/proyecto-biomasa"
-Repository = "https://github.com/usuario/proyecto-biomasa"
-Issues = "https://github.com/usuario/proyecto-biomasa/issues"
+Homepage = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV"
+Repository = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV"
+Issues = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/issues"
 
 # =============================================================
 # Configuración de setuptools

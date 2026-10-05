@@ -316,3 +316,64 @@ def test_cantidad_de_kwh_no_es_precio() -> None:
         "-Baja (de 23 a 14hs.) hasta 800 kWh mes $/kWh\n"
     )
     assert parse_tariff_text(texto)["tarifa_compra_kwh"] is None
+
+
+# EPE (Santa Fe) 2026-09, CUT_T2: la tensión sólo figura en el código de
+# fila ("2 B1" baja tensión, "2M11" media) y las bandas son columnas.
+EPE_T2 = """\
+Cargo energía hs. Pico ($/kWh) Cargo energía hs. Resto ($/kWh) Cargo energía hs. Valle ($/kWh)
+2 B1 Demandas menores a 300 kW 151,41966 146,77374 145,67246
+2 B2 - O B2 Demandas mayores o iguales a 300 kW 171,82228 166,45516 165,18272
+2M11 Demandas menores a 300 kW 143,90237 139,48710 138,44049
+TARIFA 2 - GRANDES DEMANDAS
+"""
+
+
+def test_fila_indicada_en_registro_epe() -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    out = parse_tariff_text(EPE_T2, DISTRIBUIDORAS["EPE"]["fila_tarifa"])
+    assert out["tarifa_compra_kwh"] == pytest.approx(146.77374)
+    # Un cuadro sin esa fila (T4, T6, residencial) no aporta compra.
+    otro = parse_tariff_text("Residencial $/kWh 200,5\n", DISTRIBUIDORAS["EPE"]["fila_tarifa"])
+    assert otro["tarifa_compra_kwh"] is None
+
+
+# APE (La Pampa) 2025-12: precio = costo de compra de energía + VAD.
+APE = """\
+T1NRI         CATEGORÍA INDUSTRIALES | Unidad | Precio de Venta Máximo | Subsidio Estado Nacional
+Costo Compra de Energía | $/kWh | 110,86959 | 0 | 110,86959
+VAD Cooperativa | $/kWh | 69,69 | 69,69 | 0,055
+T2I | Consumos mayores a 4000 kWh/mes
+Cargo Fijo | $/mes | 3543,9 | 3543,9
+Costo Compra de Energía | $/kWh | 110,86959 | 0 | 110,86959
+VAD primeros 4000 kWh | $/kWh | 66,08 | 66,08 | 0,055
+VAD excedente de 4000 kWh | $/kWh | 58,53 | 58,53 | 0,055
+"""
+
+# EMSA (Misiones) 2025-11, CT Pleno: cargo de energía único por categoría.
+EMSA = """\
+CUADRO TARIFARIO  Nº  568
+3 | INDUSTRIAL | 3.a 1    Menor o igual a 2000 KWh
+Primeros 800KWh | 187,29 | 6073,7
+3.b   Mayor a 4000 KWh
+Energía | 204,058 | 7594,7
+4.b   Mayor a 4000 KWh
+Energía | 212,193 | 11190,5
+"""
+
+
+@pytest.mark.parametrize(
+    ("codigo", "texto", "esperado"),
+    [("APE", APE, 110.86959 + 58.53), ("EMSA", EMSA, 204.058)],
+)
+def test_filas_ancladas_del_registro(codigo: str, texto: str, esperado: float) -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    out = parse_tariff_text(texto, DISTRIBUIDORAS[codigo]["fila_tarifa"])
+    assert out["tarifa_compra_kwh"] == pytest.approx(esperado)
+
+
+def test_proyecto_de_cuadro_no_es_vigente() -> None:
+    texto = "PROYECTO DE CUADRO TARIFARIO Nº 574\nTarifas Sin Subsidios\n" + EMSA
+    assert parse_tariff_text(texto)["documento_especial"]

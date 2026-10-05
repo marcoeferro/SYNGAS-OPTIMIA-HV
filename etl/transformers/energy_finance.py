@@ -67,6 +67,9 @@ COL_MASA_ALIM_KG: Final[str] = "masa_alimentada_kg"
 COL_EQUIPOS: Final[str] = "equipos_pp30_equivalentes"
 COL_TARIFA_PROXY: Final[str] = "tarifa_es_proxy"
 COL_TARIFA_ORIGEN: Final[str] = "tarifa_origen"
+COL_TARIFA_INY_ESTIMADA: Final[str] = "tarifa_inyeccion_estimada"
+# Ratio inyección/compra si ninguna distribuidora publica ambos valores.
+DEFAULT_RATIO_INYECCION: Final[float] = 0.75
 DEPARTAMENTO_COL: Final[str] = "Departamento"
 
 # Códigos de versiones anteriores del JSON de tarifas.
@@ -150,6 +153,27 @@ def _norm(text: object) -> str:
 
     t = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
     return " ".join(t.lower().split())
+
+
+def injection_ratio(cfg: dict[str, Any]) -> float:
+    """
+    Ratio mediano tarifa de inyección / tarifa de compra.
+
+    Pocas distribuidoras publican el precio de inyección (Ley 27.424). Para
+    no valorizar en cero la energía inyectada donde falta, se estima como
+    compra × este ratio, calculado con las distribuidoras que publican
+    ambos valores extraídos del cuadro.
+    """
+    ratios = []
+    for info in cfg.get("distribuidoras", {}).values():
+        estados = info.get("estado_campos", {})
+        compra, iny = info.get("tarifa_compra_kwh"), info.get("tarifa_inyeccion_kwh")
+        if (
+            compra and iny and 0 < iny < compra
+            and estados.get("tarifa_inyeccion_kwh") in ("extraido", "parsed_pdf")
+        ):
+            ratios.append(float(iny) / float(compra))
+    return float(np.median(ratios)) if ratios else DEFAULT_RATIO_INYECCION
 
 
 class TariffResolver:
@@ -378,6 +402,18 @@ def compute_finance_metrics(
             "Provincias: %s",
             int(sin_tarifa.sum()),
             sorted(out.loc[sin_tarifa, PROVINCIA_COL].astype(str).unique())[:30],
+        )
+
+    # Sin precio de inyección publicado: se estima con el ratio observado
+    # (ver ``injection_ratio``) y se marca para poder filtrarlo.
+    ratio = injection_ratio(cfg)
+    estimar = out[COL_TARIFA_INY].isna() & out[COL_TARIFA_COMPRA].notna()
+    out[COL_TARIFA_INY_ESTIMADA] = estimar
+    out.loc[estimar, COL_TARIFA_INY] = out.loc[estimar, COL_TARIFA_COMPRA] * ratio
+    if estimar.any():
+        logger.info(
+            "Tarifa de inyección estimada como compra × %.3f en %d registros",
+            ratio, int(estimar.sum()),
         )
 
     kwh = pd.to_numeric(out[COL_KWH_TOTALES], errors="coerce")
