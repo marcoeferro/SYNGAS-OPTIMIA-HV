@@ -23,17 +23,14 @@ from dashboard.data_loader import (
     load_geojson_provinces,
     load_potencial,
     load_tarifas,
+    stop_missing_potencial,
 )
 
 st.title("Energía")
 
 df = load_potencial()
 if df is None or df.empty:
-    st.error(
-        "No se encontró `data/processed/potencial_energetico_anual.parquet`. "
-        "Ejecutá el pipeline ETL."
-    )
-    st.stop()
+    stop_missing_potencial()
 
 periodo = df["periodo_referencia"].dropna().iloc[0] if "periodo_referencia" in df else "—"
 st.caption(

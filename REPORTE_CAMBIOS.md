@@ -539,3 +539,34 @@ Contenido nuevo:
 - `etl/extractors/http_retry.py`: la política pasa a un módulo compartido y se amplía. Reintenta ante 429, 500, 502, 503 y 504 y también ante cortes de red (conexión rechazada o cortada, timeouts). Usa backoff exponencial de 2, 4, 8… s (tope 60 s), hasta 6 intentos, y respeta `Retry-After`. MAGyP y CBA la usan.
 - `run_extract_stage`: si una fuente falla igual, se sigue con las demás y al final se hace una **segunda pasada** (tras 60 s) sobre las que fallaron. Recién si vuelve a fallar se usa el raw más reciente en disco.
 - Tests: 503 con `Retry-After`, corte de red, error no reintentable (404), intentos agotados, segunda pasada que recupera la fuente y fallback al raw.
+
+---
+
+## 13. Dashboard con datos viejos después de correr el ETL (2026-10-05)
+
+**Síntoma**: Resumen y Exploración fallaban con `KeyError: 'kwh_generados'`. Energía y Dinero pedían ejecutar el ETL, aunque ya se había ejecutado.
+
+**Causas**:
+
+1. **La imagen de Docker no se reconstruía.** `Run-Etl.ps1` y `make docker-etl` corrían `docker compose run` sobre la imagen existente. El código del ETL se copia dentro de la imagen (no es un volumen), así que se ejecutaba la versión del último `build`. Si esa versión era anterior a la etapa de energía y dinero, `biomasa_validos.parquet` quedaba sin `kwh_generados` y no se generaba `potencial_energetico_anual.parquet`. El dashboard, en cambio, monta `./dashboard` en vivo y sí tenía el código nuevo.
+2. **La caché del dashboard no miraba los archivos.** `st.cache_data` guardaba el DataFrame (o el "archivo inexistente") la primera vez y no lo volvía a leer. Si el dashboard estaba abierto mientras corría el ETL, seguía mostrando los datos viejos hasta reiniciarlo.
+
+**Corrección**:
+
+- `Run-Etl.ps1` y `make docker-etl` hacen `docker compose --profile etl build etl_pipeline` antes de correr el ETL. Docker reutiliza las capas sin cambios, así que si el código no cambió el paso tarda segundos.
+- La caché del dashboard se indexa por ruta y fecha de modificación: cuando el ETL reescribe un archivo, se vuelve a leer sin reiniciar Streamlit.
+- Si `biomasa_validos.parquet` o el potencial anual no tienen las columnas de energía y dinero, la página explica que fueron generados por una versión anterior del ETL. Muestra la ruta, la fecha y los comandos para reconstruir la imagen, en lugar del `KeyError`.
+- Inicio → "Archivos de datos" muestra la fecha de cada artefacto.
+- Verificación: se reprodujo el caso con un Parquet sin columnas de energía y sin el potencial anual; aparecen los mensajes nuevos. Al restaurar los archivos, el mismo servidor de Streamlit mostró los datos nuevos sin reiniciarse. Se agregó un test de la caché.
+
+### 13.1 Costo de recursos de estos cambios
+
+Revisión pensando en un VPS chico:
+
+| Cambio | Costo | Ajuste |
+|---|---|---|
+| Caché por fecha de modificación | Un `stat` por archivo en cada interacción (~2 µs). | Sin límite, cada corrida del ETL dejaba en memoria otra copia de `biomasa_validos` (~93 MB) que nunca se liberaba: con un ETL diario, ~2,8 GB por mes. Ahora `max_entries` acota la caché y descarta las versiones viejas. |
+| `build` antes de correr el ETL | Si el código no cambió, Docker reutiliza todas las capas: segundos. | El Dockerfile copiaba el código antes de instalar dependencias: cualquier cambio en `etl/` o `dashboard/` volvía a descargar y compilar pandas, pyarrow, Streamlit, etc. Ahora la capa de dependencias depende sólo de `pyproject.toml`. |
+| Imágenes viejas | Cada `build` con código nuevo deja la imagen anterior sin etiqueta (~1 GB). | `Run-Etl.ps1` y `make docker-etl` borran las imágenes sin etiqueta de este proyecto (`LABEL project=etl-biomasa`), sin tocar las de otros proyectos del servidor. |
+
+El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen levantada con `docker compose up -d --build`.

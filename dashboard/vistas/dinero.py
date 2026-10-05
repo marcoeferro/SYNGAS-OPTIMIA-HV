@@ -22,6 +22,7 @@ from dashboard.data_loader import (
     load_potencial,
     load_tarifas,
     load_tarifas_historial,
+    stop_missing_potencial,
     tarifas_table,
 )
 
@@ -29,8 +30,7 @@ st.title("Dinero")
 
 df = load_potencial()
 if df is None or df.empty:
-    st.error("No se encontró el potencial anual. Ejecutá el pipeline ETL.")
-    st.stop()
+    stop_missing_potencial()
 
 st.caption(
     "Beneficio **bruto** anual a tarifas vigentes (pesos del último cuadro tarifario): "

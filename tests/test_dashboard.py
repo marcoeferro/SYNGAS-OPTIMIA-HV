@@ -45,3 +45,17 @@ def test_casi_todos_los_departamentos_tienen_poligono() -> None:
 def test_nombre_legible() -> None:
     assert dl.nice_name("santiago del estero") == "Santiago del Estero"
     assert dl.format_ars(7.54e12) == "$ 7.54 billones"
+
+
+def test_cache_relee_el_parquet_cuando_el_etl_lo_reescribe(tmp_path) -> None:
+    """Antes la caché ignoraba el archivo y mostraba datos viejos hasta reiniciar."""
+    import os
+
+    path = tmp_path / "x.parquet"
+    pd.DataFrame({"a": [1]}).to_parquet(path)
+    assert dl._load(path)["a"].tolist() == [1]
+    pd.DataFrame({"a": [2]}).to_parquet(path)
+    st_ = path.stat()
+    os.utime(path, (st_.st_atime, st_.st_mtime + 10))
+    assert dl._load(path)["a"].tolist() == [2]
+    assert dl._load(tmp_path / "no_existe.parquet") is None
