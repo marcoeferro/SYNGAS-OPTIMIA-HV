@@ -74,6 +74,43 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | `DASHBOARD_PORT` | `8501` | Puerto del dashboard en la máquina |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria del horario del ETL |
 | `EPE_API_KEY` | clave pública del sitio de EPE | Sólo si EPE cambia la clave de su API de descargas |
+| `NOTIFY_WEBHOOK_URL` | (vacío) | Webhook para avisos (Slack, Discord, Teams, Google Chat). Ver [avisos](#avisos) |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | (vacío) | Avisos por un bot de Telegram |
+| `NOTIFY_ON_SUCCESS` | (vacío) | `1` para avisar también las corridas sin problemas |
+| `DATOS_VIEJOS_HORAS` | `48` | Horas sin datos nuevos a partir de las cuales el dashboard muestra un aviso |
+
+## Avisos
+
+El ETL avisa por mensaje cuando:
+
+| Situación | Aviso |
+|---|---|
+| La corrida falla (fuente caída sin descarga previa, invariante rota, error de código) | 🔴 con la causa |
+| Hay alertas de calidad (salto de tarifa, cambio grande de totales) | 🟠 con la lista de alertas; en modo `--estricto` aclara que no se publicaron los datos nuevos |
+| Todo salió bien | 🟢 sólo si `NOTIFY_ON_SUCCESS=1` |
+
+Canales (se puede usar uno, varios o ninguno), configurados en el archivo
+`.env` junto a `docker-compose.yml`:
+
+```ini
+# Slack / Discord / Teams / Google Chat: URL del "webhook entrante" del canal
+NOTIFY_WEBHOOK_URL=https://hooks.slack.com/services/...
+
+# Telegram: crear un bot con @BotFather (da el token) y obtener el id del chat
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHAT_ID=123456789
+```
+
+Después de cambiar `.env`: `docker compose up -d` (recrea el worker con las
+variables nuevas). Un aviso que no se puede enviar no hace fallar el ETL;
+queda en el log. Las URL y tokens son secretos: no subir `.env` al
+repositorio.
+
+**Si el ETL directamente no corre** (scheduler detenido, servidor
+apagado), no hay quién mande el aviso. Para eso, el dashboard muestra un
+cartel en todas las páginas cuando los datos tienen más de
+`DATOS_VIEJOS_HORAS` horas (48 por defecto: dos corridas diarias
+perdidas). El código está en `etl/notifications.py` y `dashboard/app.py`.
 
 ## Recursos
 

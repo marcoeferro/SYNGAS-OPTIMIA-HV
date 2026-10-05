@@ -207,6 +207,19 @@ def _mtime(path: Path) -> float | None:
     return path.stat().st_mtime if path.exists() else None
 
 
+def horas_desde_ultima_corrida(path: Path = PATH_POTENCIAL) -> float | None:
+    """
+    Horas desde que el ETL publicó resultados por última vez.
+
+    Se mira el potencial anual: el ETL lo reescribe en cada corrida exitosa
+    (no en una fallida ni en modo estricto con alertas). None si no existe.
+    """
+    mtime = _mtime(path)
+    if mtime is None:
+        return None
+    return (pd.Timestamp.now(tz="UTC").timestamp() - mtime) / 3600
+
+
 def file_info(path: Path) -> str:
     """Ruta y fecha de modificación de un artefacto (para mensajes)."""
     mtime = _mtime(path)

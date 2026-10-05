@@ -45,6 +45,7 @@ from etl.extractors.io_utils import (
 )
 from etl.loaders.save_processed import save_parquet, save_processed_artifacts
 from etl.loaders.tariff_history import load_history
+from etl.notifications import notify_run_result
 from etl.reference.load_ic import load_ic_table
 from etl.transformers.biomass import (
     DEFAULT_FRACCION_RECUPERABLE,
@@ -165,6 +166,10 @@ def run_tarifas_stage(raw_dir: Path, ref_dir: Path) -> Path | None:
 class DataQualityError(RuntimeError):
     """Alertas de calidad en modo estricto (``--estricto``)."""
 
+    def __init__(self, message: str, alertas: pd.DataFrame | None = None) -> None:
+        super().__init__(message)
+        self.alertas = alertas
+
 
 def quality_gate(df_alertas: pd.DataFrame, estricto: bool, path: Path) -> None:
     """
@@ -178,7 +183,8 @@ def quality_gate(df_alertas: pd.DataFrame, estricto: bool, path: Path) -> None:
     if estricto and not df_alertas.empty:
         raise DataQualityError(
             f"{len(df_alertas)} alerta(s) de calidad (ver {path}); "
-            "no se sobrescriben los datos publicados (modo estricto)."
+            "no se sobrescriben los datos publicados (modo estricto).",
+            df_alertas,
         )
 
 
@@ -480,7 +486,7 @@ def main() -> int:
     setup_logging(args.log_config)
 
     try:
-        run(
+        paths = run(
             args.config,
             skip_extract=args.skip_extract,
             skip_tarifas=args.skip_tarifas,
@@ -489,9 +495,17 @@ def main() -> int:
             fraccion_recuperable=args.fraccion_recuperable,
             estricto=args.estricto,
         )
-    except Exception:
+    except DataQualityError as exc:
         logger.exception("Fallo en pipeline ETL")
+        notify_run_result(exc, exc.alertas, estricto=True)
         return 1
+    except Exception as exc:
+        logger.exception("Fallo en pipeline ETL")
+        notify_run_result(exc)
+        return 1
+    alertas_path = paths.get("alertas_calidad")
+    df_alertas = pd.read_parquet(alertas_path) if alertas_path else None
+    notify_run_result(df_alertas=df_alertas)
     return 0
 
 

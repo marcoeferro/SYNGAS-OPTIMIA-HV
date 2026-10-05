@@ -96,8 +96,9 @@ sospechosos (`etl/transformers/data_checks.py`):
 | `cambio_provincia` | La energía de una provincia cambia más de **50 %** (sólo provincias con ≥ 1 % del total) | Falta un departamento o cambió un nombre |
 
 Las alertas se escriben en el log (nivel WARNING), en
-`data/audit/alertas_calidad.parquet` y en el dashboard (**Auditoría de
-datos → Alertas de calidad**). La primera corrida no tiene con qué
+`data/audit/alertas_calidad.parquet`, en el dashboard (**Auditoría de
+datos → Alertas de calidad**) y, si hay un canal configurado, se avisan por
+mensaje (ver [avisos](../04_arquitectura/despliegue.md#avisos)). La primera corrida no tiene con qué
 comparar y no genera alertas de cambio.
 
 Por defecto el ETL **publica igual** y deja la alerta. Con `--estricto`,
