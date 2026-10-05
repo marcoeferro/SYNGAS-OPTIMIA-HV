@@ -25,8 +25,8 @@ data/
 | MAGyP | `data/raw/AAAAMMDDhhmmss_datos_estimaciones.csv` | CSV UTF-8 con BOM | `scrape_estimaciones_agricolas.run_extractor` |
 | Bolsa de Córdoba | `data/raw/AAAAMMDDhhmmss_datos_bolsa_granos_cba.csv` | CSV UTF-8 con BOM | `scrape_bolsa_cereales_cba.run_extractor` |
 | Catálogos MAGyP | `data/raw/estimaciones_agricolas_provincias.json`, `…_departamentos.json` | JSON | extractor MAGyP (caché) |
-| Cuadros tarifarios | `data/raw/<código>/<sha256[:16]>.<pdf\|xlsx\|xls\|zip>` | original | `scrape_tarifas` |
-| Páginas índice de tarifas | `data/raw/indices/AAAAMMDDhhmmss_<host>.html` | HTML | `scrape_tarifas` |
+| Cuadros tarifarios | `data/raw/tarifas/<código>/<sha256[:16]>.<pdf\|xlsx\|xls\|zip>` | original | `scrape_tarifas` |
+| Páginas índice de tarifas | `data/raw/tarifas/indices/AAAAMMDDhhmmss_<host>.html` | HTML | `scrape_tarifas` |
 
 **Reglas de nombre**:
 - Prefijo `AAAAMMDDhhmmss_` (hora local) y nombre fijo por fuente.
