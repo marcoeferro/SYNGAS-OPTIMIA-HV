@@ -1,4 +1,25 @@
-# Reporte de revisión y correcciones — ETL Biomasa Residual
+# Reporte de cambios — ETL Biomasa Residual
+
+> **Cómo leer este documento.** Es un **registro histórico**: cuenta, en
+> orden, qué errores se encontraron entre el 4 y el 5 de octubre de 2026,
+> por qué eran errores y cómo se corrigieron. Algunas secciones describen
+> situaciones que después se superaron (están marcadas con
+> **[Superado]**). Para saber cómo funciona el sistema **hoy**, leer la
+> documentación vigente: [índice de docs](../README.md),
+> [metodología](../02_metodologia/metodologia.md) y
+> [tarifas eléctricas](../03_datos/tarifas_electricas.md).
+>
+> | Secciones | Tema |
+> |---|---|
+> | 1–8 | Revisión inicial: errores del ETL, metodología y notebook |
+> | 9–10 | 28 distribuidoras, historial de tarifas y validación contra las fuentes reales |
+> | 11 | Tarifas restantes, dashboard y documentación |
+> | 12–13 | Reintentos de descarga y dashboard con datos viejos |
+> | 14 | CI y controles de calidad de datos |
+>
+> Los nombres de archivos de `docs/` citados en las secciones 1–14 son los
+> de ese momento; la carpeta se reorganizó después (ver
+> [índice de docs](../README.md)).
 
 Fecha: 2026-10-04 · Rama: `claude/magical-archimedes-n5hea8`
 
@@ -57,6 +78,8 @@ Este documento resume la revisión completa del repositorio (extractores, transf
 
 **Verificación**. Tests unitarios y end-to-end (`tests/test_energy_tarifas.py`) con un cuadro sintético: toma la sección T3 ignorando el índice, devuelve 65,50 ARS/kWh (mediana de pico/resto/valle), 35,21 de inyección y 25.300 de cargo fijo; ignora la respuesta HTML de EPE; y en una segunda corrida sin red conserva el valor como `fallback_previous`. Además se probó el recorrido real `PDF → pypdf → parser` con un PDF generado localmente.
 
+> **[Superado]** en la sección 10: con la red habilitada el parser se reescribió y validó contra los cuadros reales; hoy ninguna tarifa sale de valores cargados a mano (`baseline_manual`). El texto siguiente se conserva como registro.
+>
 > ⚠ **Limitación importante**: la política de red de este entorno bloquea `epec.com.ar`, `edenor.com`, `epe.santafe.gov.ar` y `edemsa.com` (HTTP 403 del proxy), así que **no fue posible validar el parser contra los PDF reales**. El JSON vigente (`data/reference/20261004134204_tarifas.json`) quedó con todos los campos en `baseline_manual`. Hay que correr `python -m etl.extractors.scrape_tarifas` desde una red con acceso y revisar `estado_campos` y `valores_detectados`. Si el formato de algún cuadro no matchea, ajustar `SECTION_PATTERNS_COMPRA` / `SECTION_PATTERNS_INYECCION`.
 >
 > Una búsqueda pública indica que el cargo variable de la Tarifa N.º 2 de EPEC era ≈ 54 ARS/kWh (cuadro aplicado el 01/09/2025, sin impuestos), mientras que el baseline usa **210 ARS/kWh**. No pude verificar si el baseline incluye impuestos u otros cargos, pero podría estar sobreestimando los montos hasta ~4×. Los montos en ARS deben considerarse ilustrativos hasta que se extraigan las tarifas reales.
@@ -176,6 +199,8 @@ Los gráficos del notebook ("Residuo de biomasa total por provincia/cultivo", "T
 
 ### E12 — Tarifa de Buenos Aires
 
+> **[Superado]** en la sección 9.4: el interior bonaerense usa hoy el promedio de EDEN, EDEA y EDES (OCEBA), y el Gran La Plata, EDELAP.
+
 `buenos aires → EDENOR_AMBA`: EDENOR sólo abastece al AMBA norte/oeste. Los departamentos agrícolas bonaerenses (que aportan ~34 % de la energía) los atienden EDEN, EDEA, EDES y cooperativas, con cuadros OCEBA distintos. Se marcó `es_proxy: true` y se propaga a la columna `tarifa_es_proxy` para no mezclar resultados aproximados con valores firmes. Las provincias sin distribuidora quedan con montos `NaN` (se informa en el log), sin imputar.
 
 ---
@@ -243,6 +268,8 @@ El notebook se ejecutó de principio a fin con `nbclient` y se guardó con sus o
 ---
 
 ## 8. Pendientes y recomendaciones
+
+> **[Superado]** los puntos 1, 2 y 7: el scraper se corrió contra las fuentes reales (sección 10), ninguna tarifa sale del baseline manual, y `docs/` no está en `.gitignore`.
 
 1. **Correr el scraper de tarifas con acceso a red** y revisar `estado_campos` / `valores_detectados` por distribuidora. Ajustar los patrones de sección si algún cuadro no se reconoce.
 2. **Revisar el baseline de tarifas** (210 ARS/kWh en EPEC frente a ≈ 54 ARS/kWh publicado para T2 en sep-2025).
@@ -603,3 +630,17 @@ El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen l
 - **Impacto**: sólo esas dos filas del historial; la tarifa vigente y el dinero no se ven afectados. La alerta va a desaparecer cuando entre al historial el próximo cuadro de ENERSA.
 
 **Tests nuevos**: salto de tarifa contra el cuadro anterior (ignorando valores arrastrados), cambios de energía total y por provincia (ignorando provincias chicas), primera corrida sin alertas y modo estricto.
+
+---
+
+## 15. Documentación reorganizada (2026-10-05)
+
+**Problema.** La documentación estaba dispersa (README de 450 líneas, `REPORTE_CAMBIOS.md` en la raíz, `docs/` con nombres mezclados en inglés y español y diagramas sueltos) y suponía conocimientos técnicos. No había un orden de lectura ni una explicación para quien no programa.
+
+**Cambios.**
+- `docs/` se organizó en carpetas numeradas por tema, con un índice ([`docs/README.md`](../README.md)) que dice qué contiene cada documento y en qué orden leerlo: `01_introduccion`, `02_metodologia`, `03_datos`, `04_arquitectura`, `05_uso`, `06_calidad`, `07_historial` (este reporte, movido desde la raíz). `docs/informes/` no se tocó.
+- Documentos nuevos: cómo funciona (sin tecnicismos), glosario, metodología con ejemplo numérico verificado contra el ETL, tarifas eléctricas, instalación, ejecutar el ETL, solución de problemas y tests y controles.
+- Documentos corregidos: los contratos de artefactos tenían columnas que ya no existían (`masa_humeda_kg`) y no listaban el potencial anual, el historial de tarifas ni las alertas; el despliegue no tenía recursos, seguridad ni dominios.
+- README raíz reescrito: qué es, cómo se usa, mapa de la documentación y una sección para asistentes de IA; `llms.txt` en la raíz con el mismo mapa.
+- Referencias a rutas viejas de `docs/` actualizadas en el código (`crop_taxonomy.py`, página de Auditoría).
+
