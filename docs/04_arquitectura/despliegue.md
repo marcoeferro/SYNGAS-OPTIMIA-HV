@@ -86,7 +86,7 @@ Estimación con los datos de octubre de 2026 (orientativa):
 | Disco | Imagen Docker ≈ 1 GB. Datos: unos 10 MB nuevos por día de descargas (ver [limpieza](ciclo_de_vida_de_los_datos.md#limpieza-del-disco)). |
 
 Un VPS con **2 GB de RAM, 1 vCPU y 20 GB de disco** alcanza. Los scripts
-`Run-Etl.ps1` y `make docker-build` borran las imágenes viejas del
+`Run-Etl.ps1` y `make docker-etl` borran las imágenes viejas del
 proyecto (etiqueta `project=etl-biomasa`) para que no se acumulen.
 
 ## Seguridad y acceso
