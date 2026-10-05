@@ -126,6 +126,9 @@ por contexto, el registro de distribuidoras fija la fila (`fila_tarifa`):
 - EPE: T2, fila "2 B1".
 - APE: T2I, costo de compra + VAD del excedente.
 - EMSA: industrial 3.b.
+- EPEC: Tarifa 3, baja tensión, < 300 kW, apartado a.1.2 (no clubes de
+  barrio), banda "Horas Restantes"; la inyección sale de la misma
+  categoría en la sección de generación distribuida (`fila_inyeccion`).
 
 **Código**: `etl/extractors/tariff_parser.py`, `etl/reference/distribuidoras.py`.
 Detalle: [tarifas eléctricas](../03_datos/tarifas_electricas.md).

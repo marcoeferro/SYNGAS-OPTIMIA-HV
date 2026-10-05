@@ -50,7 +50,8 @@ def _dist(
     indices: list[str] | None = None,
     urls: list[str] | None = None,
     url_templates: list[str] | None = None,
-    fila_tarifa: tuple[str, int] | None = None,
+    fila_tarifa: tuple[str, int] | dict[str, Any] | None = None,
+    fila_inyeccion: dict[str, Any] | None = None,
     nota: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -62,6 +63,8 @@ def _dist(
     ``fila_tarifa`` fija la fila del cuadro de la que sale la tarifa de
     compra cuando el contexto no alcanza para reconocer la categoría:
     (regex de la fila, índice del importe tras la coincidencia).
+    ``fila_inyeccion`` hace lo mismo con la tarifa de inyección (ver
+    ``tariff_parser.find_hinted_row``).
     """
     slugs = [slug] if isinstance(slug, str) else list(slug or [])
     base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
@@ -74,6 +77,7 @@ def _dist(
         "urls": urls or [],
         "url_templates": url_templates or [],
         "fila_tarifa": fila_tarifa,
+        "fila_inyeccion": fila_inyeccion,
         "nota": nota,
     }
 
@@ -146,7 +150,22 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Empresa Provincial de Energía de Córdoba",
         "Córdoba",
         ["epec-0", "epec"],
-        indices=["https://www.epec.com.ar/docs/cuadro-tarifario/"],
+        # Página Angular: los enlaces a los cuadros están en el bundle JS
+        # (ver ``spa_bundle_links``). Un PDF por mes con todas las tarifas.
+        indices=["https://www.epec.com.ar/informacion-comercial/grandes-clientes"],
+        # Tarifa 3 (> 40 kW), baja tensión, < 300 kW, apartado a.1.2 (no
+        # clubes de barrio), banda "Horas Restantes". El texto del PDF
+        # pone la banda en una línea y el importe en la siguiente.
+        fila_tarifa={
+            "anclas": [r"^3\.1\.1\.\s*BAJA\s+TENSI", r"^a\.1\.2\."],
+            "filas": [(r"Horas\s+Restantes", 0)],
+        },
+        # Generación distribuida (Ley 27.424 y Ley provincial 10.604),
+        # misma categoría: "3.1. BAJA TENSION" → a.1.2 → Horas Restantes.
+        fila_inyeccion={
+            "anclas": [r"^3\.1\.\s+BAJA\s+TENSI", r"^a\.1\.2\..*inyectad"],
+            "filas": [(r"Horas\s+Restantes", 0)],
+        },
     ),
     "DPEC": _dist(
         "Dirección Provincial de Energía de Corrientes",

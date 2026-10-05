@@ -377,3 +377,55 @@ def test_filas_ancladas_del_registro(codigo: str, texto: str, esperado: float) -
 def test_proyecto_de_cuadro_no_es_vigente() -> None:
     texto = "PROYECTO DE CUADRO TARIFARIO Nº 574\nTarifas Sin Subsidios\n" + EMSA
     assert parse_tariff_text(texto)["documento_especial"]
+
+
+# EPEC (Córdoba) 2026-10, fragmento del PDF tal como lo devuelve pypdf: la
+# banda horaria en una línea y el importe (en letras y números) en la de
+# abajo. El encabezado "TARIFA Nº 3" sale después de su primera sección.
+EPEC = """\
+CUADRO TARIFARIO EPEC S/RES. GRAL. ERSeP Nº 25/2026 - Letra: D
+3.1.1.   BAJA TENSION (220/380 V):
+a.1.
+a.1.1.
+Por cada kWh consumido, se facturará:
+En Horario de Pico
+(Pesos treinta y seis con noventa y dos mil novecientos tres cienmilésimos) $ 36,92903
+En Horario de Horas Restantes
+(Pesos treinta y seis con tres mil quinientos treinta y siete cienmilésimos) $ 36,03537
+a.1.2. Por cada consumo no incluido en el apartado anterior, se facturará:
+ - Por cada kW de "Demanda de Potencia" por mes (Horario Fuera de Punta)
+(Pesos diecinueve mil trescientos dos con nueve mil siete diezmilésimos) $ 19.302,9007
+Por cada kWh consumido, se facturará:
+En Horario de Pico
+(Pesos ciento cuarenta y cuatro con sesenta y siete mil cincuenta y un cienmilésimos) $ 144,67051
+En Horario de Horas Restantes
+(Pesos ciento cuarenta con veintitres mil setenta cienmilésimos) $ 140,23070
+TARIFA Nº 3 - GRANDES CONSUMOS
+a.2.
+En Horario de Horas Restantes
+(Pesos ciento cincuenta y nueve con tres mil ochocientos noventa y ocho cienmilésimos) $ 159,03898
+GENERACION DISTRIBUIDA
+3.1.   BAJA TENSION (220/380 V):
+a.1.
+a.1.1.
+En Horario de Horas Restantes
+(Pesos treinta y tres con veinte mil seiscientos treinta y cinco cienmilésimos) $ 33,20635
+a.1.2. Por cada kWh inyectado de suministros no incluidos en el apartado anterior:
+En Horario de Horas Restantes
+(Pesos ciento treinta y siete con cuarenta mil ciento sesenta y ocho cienmilésimos) $ 137,40168
+a.2.
+Por cada kWh inyectado:
+En Horario de Horas Restantes
+(Pesos ciento cincuenta y seis con veinte mil novecientos noventa y cinco cienmilésimos) $ 156,20995
+"""
+
+
+def test_epec_tarifa_3_baja_tension_compra_e_inyeccion() -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS["EPEC"]
+    out = parse_tariff_text(EPEC, info["fila_tarifa"], info["fila_inyeccion"])
+    # < 300 kW, no clubes (a.1.2), banda Horas Restantes; no la de clubes
+    # (36,04) ni la de grandes usuarios ≥ 300 kW (159,04).
+    assert out["tarifa_compra_kwh"] == pytest.approx(140.2307)
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(137.40168)

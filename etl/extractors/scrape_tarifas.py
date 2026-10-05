@@ -193,7 +193,7 @@ def vigencia_from_name(url: str) -> str | None:
 
     Reconoce ``AAAA_MM`` / ``AAAA-MM`` (portal nacional, EDENOR),
     ``Mes_AAAA`` (EDESA, EDEA, EDERSA), carpetas ``AAAA/mes/``
-    (OCEBA) y ``DDMMAA`` (EPEC: se toma la
+    (OCEBA), ``DDMMAA``/``DDMMAAAA`` y ``AAAAMMDD`` (EPEC: se toma la
     fecha más alta, la de aplicación). Devuelve None si no hay fecha.
     Si la URL trae el nombre de archivo como fragmento (descargas por API
     de EPE), se usa sólo ese nombre.
@@ -216,6 +216,17 @@ def vigencia_from_name(url: str) -> str | None:
         d, mo, y = int(m.group(1)), int(m.group(2)), 2000 + int(m.group(3))
         if 1 <= d <= 31:
             candidates.append(_ym(y, mo) or "")
+    # Fechas de 8 dígitos: DDMMAAAA (EPEC: "publicado-02102026") y AAAAMMDD
+    # (EPEC hasta 2024: "tarifa_n3c20240308"). Sólo una de las dos lecturas
+    # da un mes válido.
+    for m in re.finditer(r"(?<!\d)(\d{8})(?!\d)", name):
+        token = m.group(1)
+        d, mo, y = int(token[:2]), int(token[2:4]), int(token[4:])
+        if 1 <= d <= 31:
+            candidates.append(_ym(y, mo) or "")
+        y2, mo2, d2 = int(token[:4]), int(token[4:6]), int(token[6:])
+        if 1 <= d2 <= 31:
+            candidates.append(_ym(y2, mo2) or "")
     candidates = [c for c in candidates if c]
     return max(candidates) if candidates else None
 
@@ -446,6 +457,45 @@ def astro_file_links(html: str) -> list[str]:
             if url not in links:
                 links.append(url)
     return links
+
+
+# Bundle principal de una SPA (Angular: ``main.<hash>.js``).
+SPA_BUNDLE: Final = re.compile(r"""<script[^>]+src=["']([^"']*\bmain[.\w-]*\.js)["']""", re.I)
+# Rutas a documentos embebidas en código JS ("/docs/.../cuadro.pdf").
+EMBEDDED_DOC_PATH: Final = re.compile(
+    r"""["'](/[^"'\s<>]+?\.(?:pdf|xlsx?|zip))["']""", re.IGNORECASE
+)
+
+
+def spa_bundle_links(
+    html: str, base_url: str, fetch: Callable[[str], bytes | None]
+) -> str | None:
+    """
+    Enlaces a documentos de una página armada en el navegador (SPA).
+
+    Algunos sitios (EPEC) no traen los enlaces en el HTML: la lista de
+    cuadros está compilada dentro del bundle JS (``main.<hash>.js``), cuyo
+    nombre cambia con cada versión del sitio. Se descarga el bundle y se
+    devuelven las rutas de documentos como un HTML de enlaces ``<a>`` para
+    procesarlo igual que una página índice.
+
+    Returns:
+        HTML sintético con los enlaces, o None si no hay bundle.
+    """
+    m = SPA_BUNDLE.search(html)
+    if not m:
+        return None
+    # Las SPA resuelven rutas relativas contra <base href="/">, no contra
+    # la ruta de la página.
+    base = re.search(r"""<base\s+href=["']([^"']+)["']""", html, re.IGNORECASE)
+    bundle_url = urljoin(urljoin(base_url, base.group(1)) if base else base_url, m.group(1))
+    if urlparse(bundle_url).netloc != urlparse(base_url).netloc:
+        return None
+    content = fetch(bundle_url)
+    if not content:
+        return None
+    paths = dict.fromkeys(EMBEDDED_DOC_PATH.findall(content.decode("utf-8", "ignore")))
+    return "".join(f'<a href="{p}"></a>' for p in paths)
 
 
 def download_bytes(url: str) -> bytes:
@@ -713,14 +763,22 @@ def candidate_documents(
     others = tuple(
         k for c, ks in INDEX_KEYWORDS.items() if c != code and keywords for k in ks
     )
+    def fetch_bundle(url: str) -> bytes | None:
+        # El bundle no se guarda en raw/indices (pesa varios MB).
+        if url not in cache:
+            cache[url] = try_download(url, downloader)
+        return cache[url]
+
     for index in info["indices"]:
         html = fetch_index(index)
         if html:
-            own.extend(u for u in astro_file_links(html) if u not in own)
-            own.extend(
-                u for u in discover_document_links(html, index, keywords, others)
-                if u not in own
-            )
+            found = astro_file_links(html)
+            found += discover_document_links(html, index, keywords, others)
+            if not found:
+                bundle_html = spa_bundle_links(html, index, fetch_bundle)
+                if bundle_html:
+                    found = discover_document_links(bundle_html, index, keywords, others)
+            own.extend(u for u in found if u not in own)
     own.extend(u for u in info["urls"] if u not in own)
     for template in info["url_templates"]:
         for y, m in months:
@@ -767,8 +825,9 @@ def process_document(
     best: dict[str, Any] | None = None
     injection: dict[str, Any] | None = None
     row_hint = DISTRIBUIDORAS.get(code, {}).get("fila_tarifa")
+    injection_hint = DISTRIBUIDORAS.get(code, {}).get("fila_inyeccion")
     for member, text in texts:
-        parsed = parse_tariff_text(text, row_hint)
+        parsed = parse_tariff_text(text, row_hint, injection_hint)
         # Un ZIP puede traer el precio de inyección en otro archivo
         # ("Tarifas de Inyección de Generación Distribuida").
         if parsed["tarifa_inyeccion_kwh"] is not None and (

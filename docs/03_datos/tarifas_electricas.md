@@ -47,7 +47,8 @@ flowchart TD
    subsidiadas, de media y alta tensión, peaje, alumbrado, ≥ 300 kW y las
    tarifas mayoristas a cooperativas. Cuando un cuadro no permite reconocer
    la categoría por contexto, el registro indica la fila exacta
-   (`fila_tarifa`): EPE, APE y EMSA.
+   (`fila_tarifa` y, para la inyección, `fila_inyeccion`): EPE, APE, EMSA y
+   EPEC.
 3. **Vigencia.** Se toma la fecha declarada en el documento ("vigente a
    partir del 1° de mayo de 2026"); si no hay, la del nombre del archivo.
 4. **Elegir el cuadro.** Entre los documentos del mes más reciente se elige
@@ -109,7 +110,6 @@ Los valores vigentes en cada momento están en el último
 
 | Distribuidora | Provincia | Motivo | Cómo completarla |
 |---|---|---|---|
-| EPEC | Córdoba | El sitio responde 403 fuera de Argentina y el portal nacional no publica archivos de EPEC. El ente regulador (`ersep.cba.gov.ar`) está fuera de la lista de dominios permitidos. | Carga manual, o habilitar `ersep.cba.gov.ar` y correr desde Argentina |
 | ESJ | San Juan | El portal nacional enlaza archivos que no existen (404). | Carga manual, o habilitar `energiasanjuan.com.ar` |
 | SPSE | Santa Cruz | Igual que ESJ; el sitio propio no responde. | Carga manual, o habilitar `spse.gob.ar` |
 | DPE | Tierra del Fuego | Sólo publica resoluciones escaneadas (sin texto). | Carga manual |
@@ -124,8 +124,8 @@ Para una distribuidora que bloquea la descarga automática:
 
 1. Descargar el cuadro tarifario oficial (PDF, XLSX, XLS o ZIP).
 2. Guardarlo en `data/reference/cuadros_manuales/<CÓDIGO>/`, con el código
-   del registro (p.ej. `EPEC`), y con año y mes en el nombre:
-   `cuadros_manuales/EPEC/cuadro_tarifario_2026_09.pdf`.
+   del registro (p.ej. `EDET`), y con año y mes en el nombre:
+   `cuadros_manuales/EDET/cuadro_tarifario_2026_09.pdf`.
 3. Correr el extractor (o el ETL completo). El cuadro se procesa como
    cualquier otro, con `fuente_tipo = "manual"`, y queda en el historial.
 
@@ -148,9 +148,13 @@ tarifas; `--skip-tarifas` lo saltea y usa el último JSON.
 Todo está en `etl/reference/distribuidoras.py`:
 
 - `slug`: nombre de la página en el portal nacional.
-- `indices`: páginas propias donde se buscan enlaces a cuadros.
+- `indices`: páginas propias donde se buscan enlaces a cuadros. Si la
+  página se arma en el navegador (Angular, como la de EPEC), los enlaces se
+  buscan en su bundle JS (`main.<hash>.js`).
 - `urls` / `url_templates`: archivos directos (con `{ym}` para el mes).
-- `fila_tarifa`: fila exacta cuando el parser no puede deducirla.
+- `fila_tarifa` / `fila_inyeccion`: fila exacta de compra / inyección
+  cuando el parser no puede deducirla (anclas encadenadas: sección →
+  apartado → fila; ver `tariff_parser.find_hinted_row`).
 - `provincia_a_distribuidora` / `departamento_a_distribuidora`: qué
   distribuidora corresponde a cada lugar.
 

@@ -225,7 +225,16 @@ def _fake_extractor(content: bytes, name: str) -> list[tuple[str, str]]:
     return [(name, content.decode("latin1").split("\n", 1)[1])]
 
 
-def test_run_extractor_end_to_end_con_historial(tmp_path: Path) -> None:
+def _sin_filas_fijas(monkeypatch: pytest.MonkeyPatch, code: str) -> None:
+    """Usa el parser genérico: los cuadros sintéticos no tienen el formato real."""
+    monkeypatch.setitem(st.DISTRIBUIDORAS[code], "fila_tarifa", None)
+    monkeypatch.setitem(st.DISTRIBUIDORAS[code], "fila_inyeccion", None)
+
+
+def test_run_extractor_end_to_end_con_historial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _sin_filas_fijas(monkeypatch, "EPEC")
     from etl.loaders.tariff_history import load_history, tariff_series
     from etl.reference.distribuidoras import NATIONAL_FILES_BASE, NATIONAL_PAGE_BASE
 
@@ -411,7 +420,8 @@ def test_vigencia_explicita(texto: str, esperado: str) -> None:
     assert st.vigencia_explicit(texto) == esperado
 
 
-def test_cuadro_manual_se_usa_sin_red(tmp_path: Path) -> None:
+def test_cuadro_manual_se_usa_sin_red(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _sin_filas_fijas(monkeypatch, "EPEC")
     """Cuadros bajados a mano (fuentes que bloquean la descarga)."""
     manual = tmp_path / "ref" / st.MANUAL_DIR_NAME / "EPEC"
     manual.mkdir(parents=True)
@@ -445,3 +455,40 @@ def test_epe_enlaces_astro_y_vigencia() -> None:
     ]
     assert st.vigencia_from_name(links[0]) == "2026-09"
     assert "x-api-key" in st.HOST_HEADERS["epe.santafe.gov.ar"]
+
+
+def test_enlaces_de_spa_desde_el_bundle_js() -> None:
+    """EPEC arma la lista de cuadros en el navegador: los enlaces están en el JS."""
+    page = "https://www.epec.com.ar/informacion-comercial/grandes-clientes"
+    html = '<html><head><base href="/"></head><script src="main.abc123.js"></script></html>'
+    bundle = (
+        b'u(5,0,"a",[["routerLink","/docs/cuadro-tarifario/'
+        b'cuadro-tarifario-publicado-02102026-aplicacion-011026.pdf"]]),'
+        b'l(n,6,0,"_blank","/docs/cuadro-tarifario/'
+        b'cuadro-tarifario-publicado-29092026-aplicacion-011026.pdf")'
+    )
+    pedidos: list[str] = []
+
+    def fetch(url: str) -> bytes:
+        pedidos.append(url)
+        return bundle
+
+    links = st.discover_document_links(st.spa_bundle_links(html, page, fetch), page)
+    assert pedidos == ["https://www.epec.com.ar/main.abc123.js"]  # respeta <base href>
+    assert links[0] == (
+        "https://www.epec.com.ar/docs/cuadro-tarifario/"
+        "cuadro-tarifario-publicado-02102026-aplicacion-011026.pdf"
+    )
+    assert len(links) == 2
+
+
+@pytest.mark.parametrize(
+    ("nombre", "vigencia"),
+    [
+        ("cuadro-tarifario-publicado-30062026-aplicacion-010726.pdf", "2026-07"),
+        ("cuadro-tarifario-publicado-311025-aplicacion-011125.pdf", "2025-11"),
+        ("tarifa_n3c20240308.pdf", "2024-03"),
+    ],
+)
+def test_vigencia_de_nombres_epec(nombre: str, vigencia: str) -> None:
+    assert st.vigencia_from_name(f"https://www.epec.com.ar/docs/{nombre}") == vigencia
