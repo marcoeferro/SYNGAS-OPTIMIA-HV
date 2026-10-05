@@ -169,7 +169,7 @@ def injection_ratio(cfg: dict[str, Any]) -> float:
         estados = info.get("estado_campos", {})
         compra, iny = info.get("tarifa_compra_kwh"), info.get("tarifa_inyeccion_kwh")
         if (
-            compra and iny and 0 < iny < compra
+            compra and iny and 0 < iny <= compra
             and estados.get("tarifa_inyeccion_kwh") in ("extraido", "parsed_pdf")
         ):
             ratios.append(float(iny) / float(compra))
