@@ -8,6 +8,22 @@ El dashboard se abre en el navegador, por defecto en
 izquierda tiene las páginas; debajo aparecen los **filtros** de la página
 actual. Un filtro vacío significa "todos".
 
+## Supuestos del cálculo (⚙️)
+
+En la barra lateral, **⚙️ Supuestos del cálculo** permite cambiar los
+supuestos más inciertos. Afecta a todas las páginas; si se modifica algo,
+aparece un aviso de que los valores ya no son los de referencia, y el botón
+**Volver a los valores del ETL** los restaura.
+
+| Control | Qué cambia | Valor de referencia |
+|---|---|---|
+| Autoconsumo (%) | Qué parte de la energía se consume en el lugar (vale la tarifa de compra); el resto se inyecta | 60 % |
+| Inyección donde no hay precio publicado | **Conservador**: 0 (sólo ahorro). **Central**: compra × ratio mediano (0,915). **Alto**: igual a la compra. Las distribuidoras que publican su tarifa de inyección usan siempre el valor real | Central |
+| Consumo específico del PP30 | 1,0 kg de materia seca por kWh (ficha del fabricante) o 1,1 (conservador) | 1,0 |
+| Fracción del rastrojo que se retira (%) | Cuánto rastrojo se saca del lote; energía y dinero son proporcionales | 50 % |
+
+Por qué esos valores: [metodología §6](../02_metodologia/metodologia.md#6-escenarios-dashboard).
+
 ## Páginas
 
 ### 🌾 Inicio
@@ -46,7 +62,8 @@ La vista principal.
 - **Historial de tarifas**: evolución del precio de compra de las
   distribuidoras elegidas (hasta 8).
 
-Las provincias sin tarifa (Córdoba y Chubut, entre otras) no suman dinero
+Las provincias sin tarifa (Tucumán, Santa Cruz, Tierra del Fuego y
+Chubut) no suman dinero
 aunque tengan energía.
 
 ### 🔍 Exploración

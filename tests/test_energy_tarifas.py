@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -225,7 +226,16 @@ def _fake_extractor(content: bytes, name: str) -> list[tuple[str, str]]:
     return [(name, content.decode("latin1").split("\n", 1)[1])]
 
 
-def test_run_extractor_end_to_end_con_historial(tmp_path: Path) -> None:
+def _sin_filas_fijas(monkeypatch: pytest.MonkeyPatch, code: str) -> None:
+    """Usa el parser genérico: los cuadros sintéticos no tienen el formato real."""
+    monkeypatch.setitem(st.DISTRIBUIDORAS[code], "fila_tarifa", None)
+    monkeypatch.setitem(st.DISTRIBUIDORAS[code], "fila_inyeccion", None)
+
+
+def test_run_extractor_end_to_end_con_historial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _sin_filas_fijas(monkeypatch, "EPEC")
     from etl.loaders.tariff_history import load_history, tariff_series
     from etl.reference.distribuidoras import NATIONAL_FILES_BASE, NATIONAL_PAGE_BASE
 
@@ -411,7 +421,8 @@ def test_vigencia_explicita(texto: str, esperado: str) -> None:
     assert st.vigencia_explicit(texto) == esperado
 
 
-def test_cuadro_manual_se_usa_sin_red(tmp_path: Path) -> None:
+def test_cuadro_manual_se_usa_sin_red(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _sin_filas_fijas(monkeypatch, "EPEC")
     """Cuadros bajados a mano (fuentes que bloquean la descarga)."""
     manual = tmp_path / "ref" / st.MANUAL_DIR_NAME / "EPEC"
     manual.mkdir(parents=True)
@@ -445,3 +456,135 @@ def test_epe_enlaces_astro_y_vigencia() -> None:
     ]
     assert st.vigencia_from_name(links[0]) == "2026-09"
     assert "x-api-key" in st.HOST_HEADERS["epe.santafe.gov.ar"]
+
+
+def test_enlaces_de_spa_desde_el_bundle_js() -> None:
+    """EPEC arma la lista de cuadros en el navegador: los enlaces están en el JS."""
+    page = "https://www.epec.com.ar/informacion-comercial/grandes-clientes"
+    html = '<html><head><base href="/"></head><script src="main.abc123.js"></script></html>'
+    bundle = (
+        b'u(5,0,"a",[["routerLink","/docs/cuadro-tarifario/'
+        b'cuadro-tarifario-publicado-02102026-aplicacion-011026.pdf"]]),'
+        b'l(n,6,0,"_blank","/docs/cuadro-tarifario/'
+        b'cuadro-tarifario-publicado-29092026-aplicacion-011026.pdf")'
+    )
+    pedidos: list[str] = []
+
+    def fetch(url: str) -> bytes:
+        pedidos.append(url)
+        return bundle
+
+    links = st.discover_document_links(st.spa_bundle_links(html, page, fetch), page)
+    assert pedidos == ["https://www.epec.com.ar/main.abc123.js"]  # respeta <base href>
+    assert links[0] == (
+        "https://www.epec.com.ar/docs/cuadro-tarifario/"
+        "cuadro-tarifario-publicado-02102026-aplicacion-011026.pdf"
+    )
+    assert len(links) == 2
+
+
+@pytest.mark.parametrize(
+    ("nombre", "vigencia"),
+    [
+        ("cuadro-tarifario-publicado-30062026-aplicacion-010726.pdf", "2026-07"),
+        ("cuadro-tarifario-publicado-311025-aplicacion-011125.pdf", "2025-11"),
+        ("tarifa_n3c20240308.pdf", "2024-03"),
+        # Número de expediente de OCEBA: no es una fecha.
+        ("ct202507/IF-2025-20821026-GDEBA-GMOCEBA.pdf", "2025-07"),
+    ],
+)
+def test_vigencia_de_nombres_epec(nombre: str, vigencia: str) -> None:
+    assert st.vigencia_from_name(f"https://www.epec.com.ar/docs/{nombre}") == vigencia
+
+
+def test_enlaces_de_tarjetas_getfile_ordenados_por_resolucion() -> None:
+    """EJESA: descargas sin extensión ni fecha; el orden sale de la resolución."""
+    base = "https://www.ejesa.com.ar/info/pwa/institucional/costos-del-servicio"
+    html = """
+    <div class="info-container-card"><p>Cuadro tarifario 2025 Resolución N°476-SUSEPU/2025</p>
+      <a href="/info/pwa/alerts/GetFile?fileId=AAA="><div class="costs-btn-box">DESCARGAR</div></a></div>
+    <div class="info-container-card"><p>Cuadro Tarif. RES N°297/2026</p>
+      <a href="/info/pwa/blog/GetFile?fileId=BBB="><div class="costs-btn-box">DESCARGAR</div></a></div>
+    <div class="info-container-card"><p>Cuadro tarifario 2026 Resolución N°105-SUSEPU/2026</p>
+      <a href="/info/pwa/alerts/GetFile?fileId=CCC="><div class="costs-btn-box">DESCARGAR</div></a></div>
+    <div class="info-container-card"><p>Formulario de reclamo</p>
+      <a href="/info/pwa/alerts/GetFile?fileId=DDD="></a></div>
+    """
+    links = st.card_file_links(html, base)
+    assert [u.split("#")[0].rsplit("=", 2)[-2][-3:] for u in links] == ["BBB", "CCC", "AAA"]
+    assert links[0].startswith("https://www.ejesa.com.ar/info/pwa/blog/GetFile?fileId=BBB=#")
+
+
+@pytest.mark.parametrize(
+    ("nombre", "vigencia"),
+    [
+        ("CT-01-09-2026-al-30-09-2026-ESJ.pdf", "2026-09"),
+        ("CT-01-05-2026-al-31-07-2026-ESJ.pdf", "2026-05"),   # rango: vale el inicio
+        ("CT-20250801-20251031-Res-EPRE-1200.pdf", "2025-08"),
+    ],
+)
+def test_vigencia_de_rangos_de_fechas(nombre: str, vigencia: str) -> None:
+    url = f"https://www.naturgysj.com.ar/wp-content/uploads/2026/09/{nombre}"
+    assert st.vigencia_from_name(url) == vigencia
+
+
+def test_inyeccion_de_un_documento_aparte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La compra sale del cuadro; la inyección, de una resolución aparte."""
+    cuadro = "https://www.edesur.com.ar/cuadro_2026_05.pdf"
+    resolucion = "https://servicios.infoleg.gob.ar/res-iny.pdf"
+    monkeypatch.setitem(st.DISTRIBUIDORAS["EDESUR"], "indices", [])
+    monkeypatch.setitem(st.DISTRIBUIDORAS["EDESUR"], "urls", [cuadro])
+    monkeypatch.setitem(st.DISTRIBUIDORAS["EDESUR"], "urls_inyeccion", [resolucion])
+    monkeypatch.setitem(st.DISTRIBUIDORAS["EDESUR"], "slug_nacional", [])
+    monkeypatch.setitem(st.DISTRIBUIDORAS["EDESUR"], "dir_nacional", None)
+    textos = {
+        cuadro: "CUADRO TARIFARIO\nT3 - Grandes demandas BT < 300 kW\n"
+                "Cargo Variable Resto | $/kWh | 107,91\n",
+        resolucion: "Tarifas de Inyección de Generación Distribuida - $/kwh\n"
+                    "vigentes a partir del 1° de mayo de 2026\n"
+                    "Tarifa 3 - BT <300\nCargo Variable Resto 105.100\n",
+    }
+
+    def downloader(url: str) -> bytes:
+        if url in textos:
+            return b"%PDF-1.4 " + url.encode()
+        raise httpx.ConnectError("sin red")
+
+    def extractor(content: bytes, name: str) -> list[tuple[str, str]]:
+        return [("", textos[content.decode().removeprefix("%PDF-1.4 ")])]
+
+    chosen, processed = st.fetch_distribuidora(
+        "EDESUR", datetime(2026, 10, 5), downloader=downloader, text_extractor=extractor,
+    )
+    assert chosen is not None
+    assert chosen["tarifa_compra_kwh"] == pytest.approx(107.91)
+    assert chosen["tarifa_inyeccion_kwh"] == pytest.approx(105.1)
+    assert chosen["documento_inyeccion_url"] == resolucion
+    assert all(not p.get("solo_inyeccion") for p in processed)  # no va al historial
+
+
+def test_vigencia_de_columnas_por_mes_abreviado() -> None:
+    """EJESA: el cuadro trae dos meses en columnas ("Agos-26", "Sept-26")."""
+    assert st.vigencia_from_text("Cargo por Uso de Red Sept-26Agos-26") == "2026-09"
+    assert st.vigencia_from_text("vigente desde marzo-2026") is None
+
+
+def test_consumo_especifico_en_base_seca_ficha_apl() -> None:
+    """Ficha APL: 1,0 kg de materia seca por kWh; 22 kW a 50 Hz."""
+    cfg = {
+        **CFG,
+        "parametros_pp30": {
+            "consumo_especifico_seco_kg_kwh": 1.0,
+            "humedad_pct_default": 12.0,
+            "factor_autoconsumo_default": 0.6,
+            "potencia_nominal_kw": 22.0,
+            "disponibilidad": 0.8,
+        },
+    }
+    df = pd.DataFrame({"Provincia": ["cordoba"], "Residuo Recuperable (Tn)": [1.0]})
+    out = add_energy_finance_columns(df, config=cfg)
+    assert out[COL_KWH_TOTALES].iloc[0] == pytest.approx(1000.0)   # 1 t MS → 1000 kWh
+    assert out["masa_alimentada_kg"].iloc[0] == pytest.approx(1000 / 0.88)
+    assert out[COL_EQUIPOS].iloc[0] == pytest.approx(1000 / 22 / (8760 * 0.8))

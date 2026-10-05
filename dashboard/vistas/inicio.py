@@ -16,7 +16,7 @@ st.title("Biomasa residual agrícola — Argentina")
 st.markdown(
     """
 Potencial de la **biomasa residual agrícola** (rastrojos) para generar
-electricidad con gasificadores **All Power Labs PP30** (25 kW) y su valor
+electricidad con gasificadores **All Power Labs PP30** (22 kW a 50 Hz) y su valor
 económico a las tarifas eléctricas vigentes de cada distribuidora.
 
 | Página | Contenido |
@@ -30,12 +30,19 @@ económico a las tarifas eléctricas vigentes de cada distribuidora.
 **Cadena de cálculo.** Producción (MAGyP + Bolsa de Cereales de Córdoba,
 reconciliadas) → residuo en materia seca (índice de cosecha y materia seca
 por cultivo) → residuo recuperable (fracción que se puede retirar del
-lote) → energía (consumo específico del PP30 a humedad operativa) →
+lote) → energía (1,0 kg de materia seca por kWh, ficha del PP30) →
 dinero (autoconsumo × tarifa de compra + inyección × tarifa de inyección,
 Ley 27.424).
 
 Los montos son **beneficio bruto** a tarifas vigentes: no descuentan
-inversión, operación ni el costo de recolectar y transportar el rastrojo.
+inversión, operación ni el costo de recolectar, acondicionar (triturar o
+pelletizar) y transportar el rastrojo. Es un **potencial técnico**: el PP30
+está aprobado por el fabricante para chips de madera, cáscaras y marlo; el
+rastrojo requeriría acondicionamiento y ensayos.
+
+En **⚙️ Supuestos del cálculo** (barra lateral) se puede cambiar el
+autoconsumo, el escenario de inyección, el consumo específico y la fracción
+de rastrojo que se retira.
 """
 )
 

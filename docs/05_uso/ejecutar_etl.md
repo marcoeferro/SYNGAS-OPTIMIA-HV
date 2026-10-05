@@ -94,6 +94,12 @@ Detalle de columnas: [contratos de artefactos](../03_datos/contratos_de_artefact
 - En **Auditoría de datos → Alertas de calidad** no hay alertas, o las que
   hay tienen explicación (por ejemplo, una suba de tarifa real).
 
+## Avisos
+
+Si se configura un webhook (Slack, Discord, Teams, Google Chat) o un bot de
+Telegram, el ETL manda un mensaje cuando falla o cuando genera alertas de
+calidad. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
+
 ## Logs
 
 - Archivo: `logs/pipeline.log` (rota a los 10 MB, guarda 5 anteriores).

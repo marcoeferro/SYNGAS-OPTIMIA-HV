@@ -74,6 +74,43 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | `DASHBOARD_PORT` | `8501` | Puerto del dashboard en la máquina |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria del horario del ETL |
 | `EPE_API_KEY` | clave pública del sitio de EPE | Sólo si EPE cambia la clave de su API de descargas |
+| `NOTIFY_WEBHOOK_URL` | (vacío) | Webhook para avisos (Slack, Discord, Teams, Google Chat). Ver [avisos](#avisos) |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | (vacío) | Avisos por un bot de Telegram |
+| `NOTIFY_ON_SUCCESS` | (vacío) | `1` para avisar también las corridas sin problemas |
+| `DATOS_VIEJOS_HORAS` | `48` | Horas sin datos nuevos a partir de las cuales el dashboard muestra un aviso |
+
+## Avisos
+
+El ETL avisa por mensaje cuando:
+
+| Situación | Aviso |
+|---|---|
+| La corrida falla (fuente caída sin descarga previa, invariante rota, error de código) | 🔴 con la causa |
+| Hay alertas de calidad (salto de tarifa, cambio grande de totales) | 🟠 con la lista de alertas; en modo `--estricto` aclara que no se publicaron los datos nuevos |
+| Todo salió bien | 🟢 sólo si `NOTIFY_ON_SUCCESS=1` |
+
+Canales (se puede usar uno, varios o ninguno), configurados en el archivo
+`.env` junto a `docker-compose.yml`:
+
+```ini
+# Slack / Discord / Teams / Google Chat: URL del "webhook entrante" del canal
+NOTIFY_WEBHOOK_URL=https://hooks.slack.com/services/...
+
+# Telegram: crear un bot con @BotFather (da el token) y obtener el id del chat
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHAT_ID=123456789
+```
+
+Después de cambiar `.env`: `docker compose up -d` (recrea el worker con las
+variables nuevas). Un aviso que no se puede enviar no hace fallar el ETL;
+queda en el log. Las URL y tokens son secretos: no subir `.env` al
+repositorio.
+
+**Si el ETL directamente no corre** (scheduler detenido, servidor
+apagado), no hay quién mande el aviso. Para eso, el dashboard muestra un
+cartel en todas las páginas cuando los datos tienen más de
+`DATOS_VIEJOS_HORAS` horas (48 por defecto: dos corridas diarias
+perdidas). El código está en `etl/notifications.py` y `dashboard/app.py`.
 
 ## Recursos
 
@@ -114,10 +151,12 @@ servidor o la red filtran el tráfico, deben estar permitidos.
 | `oceba.gba.gov.ar` | EDEN, EDEA, EDES, EDELAP |
 | `www.epe.santafe.gov.ar`, `epe.santafe.gov.ar` | EPE (página y API de descargas) |
 | `www.edenor.com`, `www.edesur.com.ar`, `www.edeaweb.com.ar`, `www.ecsapem.com.ar`, `www.secheep.gob.ar`, `www.epec.com.ar`, `www.dpec.com.ar`, `www.enersa.com.ar`, `recursosyenergia.com.ar`, `www.ejesa.com.ar`, `susepu.jujuy.gob.ar`, `www.edelar.com.ar`, `www.edemsa.com`, `epremendoza.gob.ar`, `energia.misiones.gob.ar`, `www.energiademisiones.com.ar`, `www.epen.gov.ar`, `www.edersa.com.ar`, `www.eprern.gov.ar`, `www.edesa.com.ar`, `oficinavirtualedesal.com.ar`, `epresanjuan.gob.ar`, `spse.ar`, `www.edese.com.ar`, `www.dpe.com.ar`, `www.edetsa.com`, `epre.gov.ar` | Sitios propios de distribuidoras y entes reguladores |
-| Opcionales: `ersep.cba.gov.ar`, `energiasanjuan.com.ar`, `spse.gob.ar` | Podrían cubrir EPEC, ESJ y SPSE (hoy sin dato) |
+| `www.naturgysj.com.ar` | Energía San Juan (Naturgy) |
+| `servicios.infoleg.gob.ar` | Resoluciones del ENRE con la tarifa de inyección de EDENOR y EDESUR |
+| Opcional: `spse.gob.ar` | Podría cubrir SPSE (hoy sin dato) |
 
-Algunos sitios (EPEC, por ejemplo) bloquean pedidos desde fuera de
-Argentina: un servidor en el país tiene mejores chances.
+Algunos sitios bloquean o limitan pedidos desde fuera de Argentina (EPEC
+lo hizo durante un tiempo): un servidor en el país tiene mejores chances.
 
 El **navegador** de quien abre el dashboard necesita acceso a
 `cdn.plot.ly` (cartografía base de los mapas); sin él, los mapas quedan

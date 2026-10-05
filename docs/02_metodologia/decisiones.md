@@ -11,7 +11,8 @@
 | [POL-MISSING-001](#pol-missing-001--valores-faltantes) | Los faltantes no se convierten en cero ni se borran en silencio | versión inicial |
 | [POL-GEO-001](#pol-geo-001--alias-de-departamento-entre-fuentes) | Alias para nombres de departamento que difieren entre fuentes | 2026-10 |
 | [POL-PERIOD-001](#pol-period-001--período-de-referencia-anual) | Resultados por año: promedio de las 5 últimas campañas completas | 2026-10 |
-| [POL-ENERGY-001](#pol-energy-001--conversión-a-energía-apl-pp30) | Energía con el gasificador PP30 sobre el residuo recuperable | 2026-10 |
+| [POL-ENERGY-001](#pol-energy-001--conversión-a-energía-apl-pp30) | Energía con la ficha del PP30: 1,0 kg MS/kWh, 22 kW a 50 Hz | 2026-10 |
+| [POL-RECOVERY-001](#pol-recovery-001--fracción-de-rastrojo-retirada) | Se retira el 50 % del rastrojo (límite superior sostenible) | 2026-10 |
 | [POL-TARIFF-001](#pol-tariff-001--tarifa-de-compra-representativa) | Tarifa de compra: medianas/grandes demandas, baja tensión, banda Resto | 2026-10 |
 | [POL-TARIFF-002](#pol-tariff-002--tarifa-de-inyección-faltante) | Inyección faltante: compra × ratio observado | 2026-10 |
 | [POL-QA-001](#pol-qa-001--tests-y-controles-de-calidad-de-datos) | Tests en CI; controles de datos y alertas en cada corrida | 2026-10 |
@@ -103,11 +104,42 @@ magnitud física, y la campaña en curso subestimaría el resultado.
 
 ## POL-ENERGY-001 — Conversión a energía (APL PP30)
 
-**Regla**: residuo recuperable (50 % del residuo) → masa a humedad
-operativa (12 %) → energía con un consumo específico de 1,1 kg/kWh. La
-humedad se aplica **una sola vez**: el residuo ya está en materia seca.
+**Regla**: residuo recuperable (t de materia seca) → energía con el
+consumo específico de la **ficha técnica del fabricante: 1,0 kg de materia
+seca por kWh**. La humedad operativa (12 %) sólo se usa para calcular la
+masa que se carga al equipo; no cambia los kWh. Potencia de referencia
+para los equipos equivalentes: **22 kW** (PP30 a 50 Hz conectado a red).
 
-**Código**: `etl/transformers/energy_finance.py`.
+**Fundamento**: All Power Labs publica el consumo en base seca (1,0 kg/kWh)
+y su ajuste por humedad (1,1 / 1,2 / 1,3 kg/kWh con 10 / 20 / 30 %). Como el
+residuo del modelo ya está en materia seca, se usa el valor seco directo.
+
+**Antes** (hasta 2026-10): 1,1 kg/kWh sobre material al 12 % (≈ 0,968 kg
+MS/kWh) y 25 kW. El cambio bajó la energía un 3,2 %.
+
+**Escenario**: el dashboard permite usar 1,1 kg MS/kWh (conservador).
+
+**Código**: `etl/transformers/energy_finance.py`. Detalle:
+[metodología §3](metodologia.md#3-energía-gasificador-apl-pp30).
+
+---
+
+## POL-RECOVERY-001 — Fracción de rastrojo retirada
+
+**Regla**: se retira el **50 %** del rastrojo (residuo recuperable); el
+resto queda en el lote.
+
+**Fundamento**: es un supuesto, elegido como límite superior de lo que la
+bibliografía considera sostenible (Wilhelm et al. 2007: la materia
+orgánica del suelo exige dejar más rastrojo que el control de erosión;
+Agronomy Journal 2021: no más de 25–40 % en maíz con rendimientos altos).
+Es optimista; 30–40 % es más prudente.
+
+**Escenario**: el dashboard permite variarlo entre 20 % y 70 %; el ETL lo
+acepta con `--fraccion-recuperable`.
+
+**Código**: `etl/transformers/biomass.py` (`add_recoverable_residue`).
+Detalle: [metodología §2](metodologia.md#2-residuo-recuperable).
 
 ---
 
@@ -126,6 +158,9 @@ por contexto, el registro de distribuidoras fija la fila (`fila_tarifa`):
 - EPE: T2, fila "2 B1".
 - APE: T2I, costo de compra + VAD del excedente.
 - EMSA: industrial 3.b.
+- EPEC: Tarifa 3, baja tensión, < 300 kW, apartado a.1.2 (no clubes de
+  barrio), banda "Horas Restantes"; la inyección sale de la misma
+  categoría en la sección de generación distribuida (`fila_inyeccion`).
 
 **Código**: `etl/extractors/tariff_parser.py`, `etl/reference/distribuidoras.py`.
 Detalle: [tarifas eléctricas](../03_datos/tarifas_electricas.md).
@@ -134,13 +169,48 @@ Detalle: [tarifas eléctricas](../03_datos/tarifas_electricas.md).
 
 ## POL-TARIFF-002 — Tarifa de inyección faltante
 
-**Regla**: donde la distribuidora no publica precio de inyección (Ley
-27.424), se estima como **tarifa de compra × ratio mediano
-inyección/compra** de las distribuidoras que publican ambos (≈ 0,75 en
-octubre de 2026). El registro queda marcado `tarifa_inyeccion_estimada`.
+**Contexto**: por la Ley 27.424 (generación distribuida) la distribuidora
+reconoce cada kWh que el usuario-generador entrega a la red. Su
+reglamentación fija ese precio en función del **costo de compra de la
+energía por la distribuidora en el mercado mayorista** (precio estacional
+más pérdidas reconocidas), sin el valor agregado de distribución. Así lo
+dice, por ejemplo, el régimen de Tarifa 5 de Naturgy San Juan: "bonificación
+por la energía inyectada a la red, valorizada según el precio de compra de
+la energía por la distribuidora en cada banda horaria, incluyendo pérdidas
+reconocidas".
 
-**Fundamento**: sin estimación, el beneficio de esas provincias quedaba
-vacío y sólo dos provincias sumaban dinero.
+**Regla**: donde el cuadro no publica el precio de inyección, se estima
+como **tarifa de compra × ratio mediano inyección/compra** de las
+distribuidoras que publican ambos valores (ver la tabla en
+[tarifas eléctricas](../03_datos/tarifas_electricas.md)). El registro queda
+marcado `tarifa_inyeccion_estimada`. El ratio se recalcula en cada corrida
+con los valores reales disponibles.
+
+**Fundamento**:
+
+- Como la inyección se paga al precio de la energía y la compra incluye
+  además la distribución, la inyección siempre es menor o igual que la
+  compra. El ratio observado depende de cómo está armada la tarifa:
+  - en categorías con cargo por potencia aparte (T3 de grandes demandas),
+    el cargo de energía de compra ya es casi sólo energía: ratio entre
+    0,9 y 1 (OCEBA, ENRE, EPEC, San Juan);
+  - en categorías con cargo de energía único (medianas demandas), la
+    compra incluye la distribución: ratio entre 0,6 y 0,8 (EJESA, ENERSA,
+    SECHEEP, EDELAR).
+- La mediana de los valores reales es un supuesto explícito, auditable y
+  que se corrige solo a medida que se consiguen más cuadros.
+- Sin estimación, el beneficio de esas provincias quedaba subvaluado (como
+  si la energía inyectada no valiera nada).
+
+**Cómo leerlo**: la inyección es el 40 % de la energía. Con el rango
+observado de ratios (≈ 0,63 a 1) y un ratio central de ≈ 0,9, el
+beneficio de una provincia con inyección estimada podría ser entre ≈ 12 %
+menor y ≈ 4 % mayor que el calculado (beneficio ∝ 0,6 + 0,4 × ratio). En el dashboard las distribuidoras con inyección estimada están
+marcadas como tales.
+
+**Alternativa** (pendiente): estimar la inyección con el precio estacional
+de la energía que publica la Secretaría de Energía, que es la base legal
+del precio de inyección y es uniforme para todo el país.
 
 ---
 

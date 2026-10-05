@@ -15,7 +15,7 @@ departamento:
 1. **¿Cuánta biomasa residual queda después de cada cosecha?**
 2. **¿Cuánta electricidad se podría generar con ella?** Se supone que se
    usa un *gasificador* comercial pequeño (el *PP30* de All Power Labs, de
-   25 kW): convierte el rastrojo en un gas combustible (*syngas*) que mueve
+   22 kW en la red argentina de 50 Hz): convierte el rastrojo en un gas combustible (*syngas*) que mueve
    un motor generador.
 3. **¿Cuánto dinero representa esa electricidad?** Se valoriza con las
    tarifas eléctricas vigentes de cada provincia: lo que el productor deja
@@ -70,8 +70,10 @@ proteger el suelo. El sistema supone que se puede retirar **la mitad**
 
 ### 4. Se calcula la energía
 
-El gasificador PP30 consume alrededor de 1,1 kg de rastrojo por cada kWh
-de electricidad. Con el residuo recuperable se calcula:
+Según la ficha del fabricante, el gasificador PP30 consume 1 kg de
+biomasa seca por cada kWh de electricidad (con algo de humedad, un poco
+más: 1,1 kg si tiene 10 % de agua). El rastrojo tiene que estar triturado o
+pelletizado para que el equipo lo acepte. Con el residuo recuperable se calcula:
 
 - Cuánta electricidad se generaría por año (en kWh, GWh o TWh).
 - Cuántos equipos PP30 harían falta para procesar todo ese rastrojo.
@@ -114,8 +116,9 @@ Limitaciones que conviene tener presentes:
 - La relación grano/rastrojo es un promedio por cultivo; en la realidad varía
   según la variedad, el manejo y el clima.
 - Algunas distribuidoras no publican sus tarifas en un formato legible
-  automáticamente. Hoy faltan Córdoba, San Juan, Santa Cruz, Tierra del Fuego
-  y Tucumán; en esas provincias no se calcula dinero. El detalle está en
+  automáticamente. Hoy faltan Santa Cruz, Tierra del Fuego y Tucumán;
+  en esas provincias no se calcula dinero. Y no todas publican el precio
+  de inyección: donde falta, se estima a partir de las que sí lo publican. El detalle está en
   [tarifas eléctricas](../03_datos/tarifas_electricas.md).
 
 Detalle de cálculos y supuestos: [metodología](../02_metodologia/metodologia.md).
@@ -127,8 +130,8 @@ Promedio anual de las campañas 2020/21 a 2024/25:
 | Indicador | Valor |
 |---|---|
 | Biomasa residual | ~154 millones de toneladas de materia seca por año |
-| Electricidad generable (con la mitad del rastrojo) | ~79 TWh por año |
-| Beneficio bruto (provincias con tarifa) | ~7,5 billones de pesos por año, a tarifas de 2026 |
+| Electricidad generable (con la mitad del rastrojo) | ~77 TWh por año |
+| Beneficio bruto (provincias con tarifa) | ~10,6 billones de pesos por año, a tarifas de 2026 (~9,2 si la inyección estimada valiera cero) |
 
 Son cifras de referencia: cambian con cada actualización de datos y
 tarifas. Los valores vigentes se ven en el dashboard.

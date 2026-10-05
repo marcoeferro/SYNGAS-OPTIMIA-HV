@@ -40,6 +40,33 @@ NATIONAL_FILES_BASE: Final[str] = (
 NATIONAL_EXTENSIONS: Final[tuple[str, ...]] = ("pdf", "xlsx", "zip")
 OCEBA_INDEX: Final[str] = "https://oceba.gba.gov.ar/nueva_web/s.php?i=17"
 
+# ENRE: tarifas de inyección de EDENOR y EDESUR (Ley 27.424), un anexo por
+# resolución; T3 BT < 300 kW, cargo variable Resto. Formato "105.100".
+ENRE_INYECCION: Final[dict[str, Any]] = {
+    "anclas": [r"Tarifas\s+de\s+Inyecci[oó]n", r"Tarifa\s+3\s*-\s*BT\s*<\s*300"],
+    "filas": [(r"Cargo\s+Variable\s+Resto", 0)],
+}
+ENRE_INYECCION_URLS: Final[list[str]] = [
+    # Vigente desde el 1° de mayo de 2026 (EX-2026-39929983-APN-SD#ENRE).
+    "https://servicios.infoleg.gob.ar/infolegInternet/anexos/425000-429999/425422/res244-5.pdf",
+]
+
+
+def _oceba_inyeccion(columna: int) -> dict[str, Any]:
+    """
+    Fila del "CUADRO TARIFARIO DE INYECCIÓN EXCEDENTES" de OCEBA.
+
+    T3BT entre 50 y 300 kW, energía en Resto. El cuadro de EDEA, EDEN y
+    EDES trae una columna por empresa (en ese orden); el de EDELAP, una.
+    """
+    return {
+        "anclas": [
+            r"CUADRO\s+TARIFARIO\s+DE\s+INYECCI",
+            r"^T3BT\b.*entre\s+50\s+y\s+300",
+        ],
+        "filas": [(r"ENERG[IÍ]A\s+EN\s+RESTO", columna)],
+    }
+
 
 def _dist(
     nombre: str,
@@ -50,7 +77,9 @@ def _dist(
     indices: list[str] | None = None,
     urls: list[str] | None = None,
     url_templates: list[str] | None = None,
-    fila_tarifa: tuple[str, int] | None = None,
+    fila_tarifa: tuple[str, int] | dict[str, Any] | None = None,
+    fila_inyeccion: dict[str, Any] | None = None,
+    urls_inyeccion: list[str] | None = None,
     nota: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -62,6 +91,9 @@ def _dist(
     ``fila_tarifa`` fija la fila del cuadro de la que sale la tarifa de
     compra cuando el contexto no alcanza para reconocer la categoría:
     (regex de la fila, índice del importe tras la coincidencia).
+    ``fila_inyeccion`` hace lo mismo con la tarifa de inyección (ver
+    ``tariff_parser.find_hinted_row``). ``urls_inyeccion`` son documentos
+    que sólo traen la tarifa de inyección (p.ej. resoluciones del ENRE).
     """
     slugs = [slug] if isinstance(slug, str) else list(slug or [])
     base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
@@ -74,6 +106,8 @@ def _dist(
         "urls": urls or [],
         "url_templates": url_templates or [],
         "fila_tarifa": fila_tarifa,
+        "fila_inyeccion": fila_inyeccion,
+        "urls_inyeccion": urls_inyeccion or [],
         "nota": nota,
     }
 
@@ -88,12 +122,16 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "CABA (norte) y GBA norte/oeste",
         "edenor",
         url_templates=["https://www.edenor.com/files/{ym}/Cuadro-Tarifario.pdf"],
+        fila_inyeccion=ENRE_INYECCION,
+        urls_inyeccion=ENRE_INYECCION_URLS,
     ),
     "EDESUR": _dist(
         "Empresa Distribuidora Sur S.A.",
         "CABA (sur) y GBA sur",
         "edesur",
         indices=["https://www.edesur.com.ar/tarifas-cuadro-tarifario/"],
+        fila_inyeccion=ENRE_INYECCION,
+        urls_inyeccion=ENRE_INYECCION_URLS,
     ),
     # --- Provincia de Buenos Aires (OCEBA) ---
     "EDELAP": _dist(
@@ -104,6 +142,7 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         # no el cuadro final: se usa OCEBA.
         None,
         indices=[OCEBA_INDEX],
+        fila_inyeccion=_oceba_inyeccion(0),
     ),
     "EDEA": _dist(
         "Empresa Distribuidora de Energía Atlántica S.A.",
@@ -116,18 +155,21 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
             "https://www.edeaweb.com.ar/wp-content/uploads/{year}/{month}/"
             "Edea_CuadroTarifario_{mes}-1.pdf",
         ],
+        fila_inyeccion=_oceba_inyeccion(0),
     ),
     "EDEN": _dist(
         "Empresa Distribuidora de Energía Norte S.A.",
         "Buenos Aires (norte y centro)",
         None,
         indices=[OCEBA_INDEX],
+        fila_inyeccion=_oceba_inyeccion(1),
     ),
     "EDES": _dist(
         "Empresa Distribuidora de Energía Sur S.A.",
         "Buenos Aires (sur)",
         None,
         indices=[OCEBA_INDEX],
+        fila_inyeccion=_oceba_inyeccion(2),
     ),
     # --- Resto de las provincias ---
     "ECSAPEM": _dist(
@@ -146,7 +188,22 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Empresa Provincial de Energía de Córdoba",
         "Córdoba",
         ["epec-0", "epec"],
-        indices=["https://www.epec.com.ar/docs/cuadro-tarifario/"],
+        # Página Angular: los enlaces a los cuadros están en el bundle JS
+        # (ver ``spa_bundle_links``). Un PDF por mes con todas las tarifas.
+        indices=["https://www.epec.com.ar/informacion-comercial/grandes-clientes"],
+        # Tarifa 3 (> 40 kW), baja tensión, < 300 kW, apartado a.1.2 (no
+        # clubes de barrio), banda "Horas Restantes". El texto del PDF
+        # pone la banda en una línea y el importe en la siguiente.
+        fila_tarifa={
+            "anclas": [r"^3\.1\.1\.\s*BAJA\s+TENSI", r"^a\.1\.2\."],
+            "filas": [(r"Horas\s+Restantes", 0)],
+        },
+        # Generación distribuida (Ley 27.424 y Ley provincial 10.604),
+        # misma categoría: "3.1. BAJA TENSION" → a.1.2 → Horas Restantes.
+        fila_inyeccion={
+            "anclas": [r"^3\.1\.\s+BAJA\s+TENSI", r"^a\.1\.2\..*inyectad"],
+            "filas": [(r"Horas\s+Restantes", 0)],
+        },
     ),
     "DPEC": _dist(
         "Dirección Provincial de Energía de Corrientes",
@@ -174,9 +231,30 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Jujuy",
         "ejesa",
         indices=[
+            # Tarjetas con enlaces ".../GetFile?fileId=..." (ver
+            # ``card_file_links``); el título dice la resolución SUSEPU.
             "https://www.ejesa.com.ar/info/pwa/institucional/costos-del-servicio",
             "https://susepu.jujuy.gob.ar/cuadros_tarifarios/",
         ],
+        # T3 BT (>= 50 kW), comercios e industrias < 300 kW: fila
+        # "Cargo fijo  $/kW  punta resto valle (mes 1)  punta resto valle
+        # (mes 2)"; índice 4 = Resto del segundo mes (el más reciente). La
+        # primera fila de ese formato después del cuadro de usuario
+        # generador es la T3 BT < 300 kW (el texto del PDF sale desordenado).
+        fila_tarifa={
+            "anclas": [r"USUARIO\s+GENERADOR\s+Energ"],
+            "filas": [(r"^\s*\d{1,3}\.\d{3}\s+\d{1,3}\.\d{3}(?=\s+\d{2,3},\d{4})", 4)],
+        },
+        # Usuario generador, "Servicios No Residenciales (T1G - T2 - T3)":
+        # tercera fila de dos importes (mes 1 | mes 2), índice 1.
+        fila_inyeccion={
+            "anclas": [
+                r"USUARIO\s+GENERADOR\s+Energ",
+                r"^\s*\d{2,3},\d{4}\s+\d{2,3},\d{4}\s*$",
+                r"^\s*\d{2,3},\d{4}\s+\d{2,3},\d{4}\s*$",
+            ],
+            "filas": [(r"^\s*(?=\d{2,3},\d{4}\s+\d{2,3},\d{4}\s*$)", 1)],
+        },
     ),
     "APE": _dist(
         "Administración Provincial de Energía de La Pampa",
@@ -257,7 +335,29 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Energía San Juan S.A.",
         "San Juan",
         ["esj-0", "esj"],
-        indices=["https://epresanjuan.gob.ar/"],
+        # Energía San Juan hoy opera como Naturgy San Juan; el cuadro
+        # mensual (PDF) está en la página de cuadros tarifarios de hogares.
+        indices=[
+            "https://www.naturgysj.com.ar/hogar/cuadro-tarifario/",
+            "https://epresanjuan.gob.ar/",
+        ],
+        # T3 grandes demandas (>= 50 kW), BT, potencias < 300 kW, horas
+        # restantes (primera columna = BT).
+        fila_tarifa={
+            "anclas": [r"^Unidad\s+BT\s+MT", r"Potencias\s+menores\s+a\s+300"],
+            "filas": [(r"En\s+horas\s+restantes", 0)],
+        },
+        # "Valores Tarifarios a Reconocer al Usuario Generador": misma
+        # tabla con cargos fijos en cero (el texto la ubica antes del
+        # título). El EPRE reconoce el mismo cargo de energía de la T3.
+        fila_inyeccion={
+            "anclas": [
+                r"Cargo\s+fijo.*\$/bimestre\s+0\.0000",
+                r"^Unidad\s+BT\s+MT",
+                r"Potencias\s+menores\s+a\s+300",
+            ],
+            "filas": [(r"En\s+horas\s+restantes", 0)],
+        },
     ),
     "EDESAL": _dist(
         "Empresa Distribuidora San Luis S.A.",

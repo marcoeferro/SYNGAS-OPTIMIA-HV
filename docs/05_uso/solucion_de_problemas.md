@@ -20,8 +20,10 @@ se reconstruyó la imagen, el ETL sigue corriendo la versión anterior.
 Después recargar la página. En **Inicio → Archivos de datos** se ve si la
 fecha de los archivos cambió.
 
-### Los datos no se actualizan
+### Los datos no se actualizan (o aparece "Los datos tienen N días")
 
+- El cartel aparece cuando el ETL no publicó resultados en las últimas 48
+  horas (`DATOS_VIEJOS_HORAS`).
 - Ver la fecha en **Inicio → Archivos de datos**.
 - Si es vieja, revisar que el scheduler esté corriendo
   (`docker compose ps`) y el log (`logs/pipeline.log`).
@@ -41,8 +43,8 @@ de mapas**; sus valores sí cuentan en los totales y tablas.
 
 ### Una provincia tiene energía pero no dinero
 
-Su distribuidora no tiene tarifa (Córdoba, San Juan, Santa Cruz, Tierra
-del Fuego, Tucumán, Chubut). Ver [tarifas eléctricas](../03_datos/tarifas_electricas.md#distribuidoras-sin-dato)
+Su distribuidora no tiene tarifa (Santa Cruz, Tierra del Fuego,
+Tucumán, Chubut). Ver [tarifas eléctricas](../03_datos/tarifas_electricas.md#distribuidoras-sin-dato)
 y la carga manual de cuadros.
 
 ## ETL

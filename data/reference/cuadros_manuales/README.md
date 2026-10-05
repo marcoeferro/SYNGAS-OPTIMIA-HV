@@ -14,13 +14,13 @@ procesa como cualquier otro.
    **año y mes** de vigencia en el nombre (`AAAA_MM`):
 
    ```
-   cuadros_manuales/EPEC/cuadro_tarifario_2026_09.pdf
+   cuadros_manuales/EDET/cuadro_tarifario_2026_09.pdf
    ```
 
 3. Correr el extractor de tarifas o el ETL completo:
 
    ```bash
-   python -m etl.extractors.scrape_tarifas --solo EPEC
+   python -m etl.extractors.scrape_tarifas --solo EDET
    ```
 
 4. Verificar en el dashboard (**Dinero → Tarifas por distribuidora**) que
@@ -30,9 +30,7 @@ procesa como cualquier otro.
 
 | Código | Provincia | Motivo |
 |---|---|---|
-| `EPEC` | Córdoba | El sitio bloquea pedidos desde fuera de Argentina |
-| `ESJ` | San Juan | El portal nacional enlaza archivos inexistentes |
-| `SPSE` | Santa Cruz | Igual que ESJ; el sitio propio no responde |
+| `SPSE` | Santa Cruz | El portal nacional enlaza archivos inexistentes; el sitio propio no responde |
 | `DPE` | Tierra del Fuego | Sólo resoluciones escaneadas |
 | `EDET` | Tucumán | Cuadros escaneados |
 

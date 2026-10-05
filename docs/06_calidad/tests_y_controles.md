@@ -33,7 +33,7 @@ Unos 120 tests, todos rápidos (menos de 5 segundos), sin acceso a Internet.
 | `test_tariff_parser.py` | Lectura de cuadros tarifarios con fragmentos de documentos reales de cada distribuidora |
 | `test_etl_fixes.py` | Casos de errores corregidos (para que no vuelvan) y reintentos de descarga |
 | `test_data_checks.py` | Controles de datos y modo estricto |
-| `test_dashboard.py` | Carga de datos del dashboard y estructura de las páginas |
+| `test_dashboard.py` | Carga de datos del dashboard, claves de los mapas y escenarios de supuestos (inyección, autoconsumo, consumo específico, fracción retirada) |
 
 `tests/conftest.py` tiene datos de ejemplo compartidos (*fixtures*) que
 pytest pasa automáticamente a los tests que los piden por nombre.
@@ -96,8 +96,9 @@ sospechosos (`etl/transformers/data_checks.py`):
 | `cambio_provincia` | La energía de una provincia cambia más de **50 %** (sólo provincias con ≥ 1 % del total) | Falta un departamento o cambió un nombre |
 
 Las alertas se escriben en el log (nivel WARNING), en
-`data/audit/alertas_calidad.parquet` y en el dashboard (**Auditoría de
-datos → Alertas de calidad**). La primera corrida no tiene con qué
+`data/audit/alertas_calidad.parquet`, en el dashboard (**Auditoría de
+datos → Alertas de calidad**) y, si hay un canal configurado, se avisan por
+mensaje (ver [avisos](../04_arquitectura/despliegue.md#avisos)). La primera corrida no tiene con qué
 comparar y no genera alertas de cambio.
 
 Por defecto el ETL **publica igual** y deja la alerta. Con `--estricto`,

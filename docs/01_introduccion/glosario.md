@@ -14,7 +14,7 @@ orden alfabético.
 | **Campaña** | Ciclo agrícola, escrito como `2023/24` (siembra en 2023, cosecha en 2024). |
 | **Campaña de referencia** | Las últimas 5 campañas completas. Los resultados anuales son su promedio. La campaña en curso se excluye porque sus datos están incompletos. |
 | **CI (integración continua)** | Ejecución automática de los tests en GitHub cada vez que se propone un cambio. |
-| **Consumo específico** | Kilogramos de biomasa que consume el gasificador para generar 1 kWh (1,1 kg/kWh para el PP30). |
+| **Consumo específico** | Kilogramos de biomasa que consume el gasificador para generar 1 kWh. Para el PP30, 1,0 kg de materia seca por kWh según la ficha del fabricante. |
 | **Cuadro tarifario** | Documento oficial con los precios de la electricidad de una distribuidora, por categoría de usuario y vigencia mensual. |
 | **Dashboard** | Tablero web con mapas y gráficos de los resultados. Ver [guía del dashboard](../05_uso/dashboard.md). |
 | **Departamento / partido** | División administrativa de una provincia (en Buenos Aires se llaman partidos). Es la unidad geográfica más chica del análisis. |
@@ -34,7 +34,7 @@ orden alfabético.
 | **Materia seca (MS)** | Peso de un material sin su agua. La producción de grano se informa con humedad comercial; MS es la fracción seca (p.ej. 0,855 en maíz). |
 | **OCEBA** | Organismo de Control de Energía Eléctrica de la Provincia de Buenos Aires. Publica los cuadros tarifarios de EDEN, EDEA, EDES y EDELAP. |
 | **Parquet** | Formato de archivo para tablas de datos, compacto y rápido de leer. Los resultados del ETL se guardan así. |
-| **PP30 (Power Pallet 30)** | Gasificador de biomasa de All Power Labs de 25 kW eléctricos. Es el equipo de referencia del proyecto. |
+| **PP30 (Power Pallet 30)** | Gasificador de biomasa de All Power Labs: 22 kW eléctricos conectado a una red de 50 Hz como la argentina (25 kW a 60 Hz). Acepta chips de madera, cáscaras y marlo; el rastrojo debe triturarse o pelletizarse. Es el equipo de referencia del proyecto. |
 | **Reconciliación** | Paso que resuelve los casos en que dos fuentes informan el mismo lugar, cultivo y campaña: se conserva el de mayor producción. |
 | **Residuo recuperable** | Rastrojo que se puede retirar del lote: biomasa residual × fracción recuperable. Es lo que se usa para calcular la energía. |
 | **Scraper / extractor** | Programa que descarga y lee automáticamente información de un sitio web o documento. |

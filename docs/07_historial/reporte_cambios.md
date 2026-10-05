@@ -644,3 +644,43 @@ El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen l
 - README raíz reescrito: qué es, cómo se usa, mapa de la documentación y una sección para asistentes de IA; `llms.txt` en la raíz con el mismo mapa.
 - Referencias a rutas viejas de `docs/` actualizadas en el código (`crop_taxonomy.py`, página de Auditoría).
 
+---
+
+## 16. EPEC, avisos del ETL (2026-10-05)
+
+**EPEC (Córdoba)**. Era la distribuidora sin tarifa de mayor peso (≈ 26 % de la energía). El sitio ahora responde, pero la página de cuadros (`informacion-comercial/grandes-clientes`) es una aplicación Angular: el HTML no trae los enlaces, que están compilados dentro del bundle `main.<hash>.js`. El extractor ahora, si un índice no tiene enlaces, busca el bundle (respetando `<base href>`) y toma de ahí las rutas a documentos. El cuadro mensual de EPEC trae en un mismo PDF la tarifa de compra y la de generación distribuida; el texto pone la banda horaria en una línea y el importe en la siguiente. Se agregaron filas fijas con anclas encadenadas (`3.1.1. BAJA TENSION` → `a.1.2.` → `Horas Restantes`) y `fila_inyeccion` para la inyección. Resultado (2026-10): compra 140,23 $/kWh, inyección 137,40 $/kWh; historial desde 2025-01. Sin tarifa queda ≈ 1 % de la energía y el beneficio anual pasó de ≈ 7,5 a ≈ 10,5 billones de pesos (el control `cambio_total` lo marcó como alerta, como corresponde).
+
+**Avisos (M3)**. `etl/notifications.py` avisa por webhook (Slack, Discord, Teams, Google Chat) o Telegram cuando el ETL falla o genera alertas de calidad. Para el caso en que el ETL directamente no corre, el dashboard muestra un cartel si los datos tienen más de 48 horas. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
+
+---
+
+## 17. San Juan, Jujuy y tarifas de inyección (2026-10-05)
+
+Con fuentes aportadas por el usuario:
+
+- **ESJ (San Juan)**: Energía San Juan opera como Naturgy San Juan; los cuadros mensuales están en `naturgysj.com.ar/hogar/cuadro-tarifario/`. Se toma la T3 BT < 300 kW (horas restantes) y los "valores a reconocer al usuario generador", que en San Juan coinciden con el cargo de energía (2026-09: 153,27 $/kWh ambos). La validación que exigía inyección < compra pasó a ≤. Historial desde 2025-01.
+- **EJESA (Jujuy)**: la página "costos del servicio" lista los cuadros como tarjetas con enlaces `GetFile?fileId=...`, sin nombre ni fecha; se ordenan por número de resolución SUSEPU. El cuadro trae dos meses en columnas ("Agos-26", "Sept-26"): se toma el más reciente. 2026-09: compra 191,58 y inyección (usuario generador no residencial) 121,54 $/kWh.
+- **EDENOR y EDESUR**: la inyección sale de la resolución del ENRE con las "Tarifas de Inyección de Generación Distribuida" (vigente desde 2026-05: 105,10 $/kWh en T3 BT < 300 kW, Resto). Usa punto decimal con tres decimales; se agregó esa detección.
+- **EDEA, EDEN, EDES y EDELAP**: OCEBA publica un "Cuadro tarifario de inyección excedentes" conjunto (una columna por empresa). El extractor descartaba los documentos que nombran a varias distribuidoras; ahora esos documentos van a una fuente "inyección" que sólo aporta ese precio.
+- **Documentos sólo de inyección**: no compiten por la tarifa de compra ni van al historial; el JSON registra `documento_inyeccion_url` y `vigencia_inyeccion`.
+- **Error corregido en la misma ronda**: un número de expediente de OCEBA ("IF-2025-20821026") se leyó como fecha (2082-10) y EDELAP tomó un cuadro viejo; las fechas de 8 dígitos ahora exigen años 2015–2040.
+
+**Resultado**: 25 de 28 distribuidoras con tarifa de compra; 12 con inyección real. El ratio mediano inyección/compra pasó de 0,75 (3 valores) a 0,915 (12 valores), y la inyección estimada cubre ≈ 31 % de la energía (antes ≈ 65 %). Beneficio anual ≈ 10,9 billones de pesos. El fundamento de la estimación quedó documentado en POL-TARIFF-002.
+
+---
+
+## 18. Revisión contra las guías de la cátedra y la ficha del fabricante (2026-10-05)
+
+Se revisaron dos guías entregadas por la cátedra (cálculo energético y módulo tarifario del PP30) y la documentación oficial de All Power Labs. Comparación completa en [metodología §7](../02_metodologia/metodologia.md#7-comparación-con-las-guías-de-la-cátedra).
+
+**Cambios en el modelo**:
+- **Consumo específico**: ahora 1,0 kg de materia seca por kWh, tomado de la ficha técnica del PP30 ("Biomass Consumption: 1.0 kg/kWh (dry basis)"). Antes: 1,1 kg/kWh sobre material al 12 % (≈ 0,968 kg MS/kWh). Energía −3,2 % (≈ 77 TWh/año).
+- **Potencia de referencia**: 22 kW (PP30 a 50 Hz conectado a red con CHP); antes 25 kW, que es el valor a 60 Hz. Sólo cambia los equipos equivalentes (+14 %).
+- **Parámetros del PP30**: los fija el código y pisan los del JSON anterior.
+
+**Dashboard**: barra lateral "⚙️ Supuestos del cálculo" con autoconsumo, tres escenarios de inyección para las distribuidoras sin precio publicado (conservador 0, central compra × 0,915, alto = compra), consumo específico (1,0 o 1,1 kg MS/kWh) y fracción de rastrojo retirada (20–70 %). Se recalcula sobre los Parquet sin correr el ETL. Beneficio anual: ≈ 10,6 billones (central) y ≈ 9,2 billones (conservador).
+
+**Documentado**: justificación y fuentes de la fracción recuperable del 50 % (POL-RECOVERY-001; es un límite superior), restricción de material del fabricante (rastrojo suelto no aprobado; requiere acondicionamiento, no costeado), coeficientes de trigo y sorgo a revisar, tarifas sin impuestos.
+
+**Sobre las guías**: la estructura de cálculo coincide con la del modelo. Difieren en: fracción retirada (100 % en las guías), consumo específico (1,1 kg MS/kWh, conservador frente a la ficha), coeficientes de trigo y sorgo, y tarifas de referencia (la inyección de las guías es 3 a 4 veces menor que la de los cuadros oficiales).
+

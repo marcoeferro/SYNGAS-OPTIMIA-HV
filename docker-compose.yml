@@ -35,6 +35,11 @@ services:
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
+      - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
     restart: unless-stopped
 
   # -----------------------------------------------------------
@@ -54,6 +59,11 @@ services:
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
+      - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
     profiles:
       - etl
     restart: "no"
@@ -100,4 +110,5 @@ services:
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      - DATOS_VIEJOS_HORAS=${DATOS_VIEJOS_HORAS:-48}
     restart: unless-stopped

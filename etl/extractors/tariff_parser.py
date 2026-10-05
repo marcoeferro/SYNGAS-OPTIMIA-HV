@@ -118,7 +118,8 @@ INJECTION_LINE: Final[re.Pattern[str]] = re.compile(
 # repiten la palabra "inyección" (p.ej. APE: "Código | Demanda | ... |
 # Tarifa de inyección").
 INJECTION_CONTEXT: Final[re.Pattern[str]] = re.compile(
-    r"tarifas?\s+de\s+inyecci|entregada\s+al\s+sistema|energ[ií]a\s+inyectada",
+    r"tarifas?\s+de\s+inyecci|tarifario\s+de\s+inyecci|entregada\s+al\s+sistema|"
+    r"energ[ií]a\s+inyectada",
     re.IGNORECASE,
 )
 INJECTION_CONTEXT_LINES: Final[int] = 8
@@ -165,6 +166,11 @@ def detect_english_format(text: str) -> bool:
     ar = 3 * len(re.findall(r"\d\.\d{3},\d", text)) + len(
         re.findall(r"(?<![\d.,])\d+,(?:\d{1,2}|\d{4,})(?![\d.,])", text)
     )
+    if en == 0 and ar == 0:
+        # Sin evidencia de ninguno de los dos: importes con punto y tres
+        # decimales y ninguna coma decimal en todo el documento ("105.100",
+        # resoluciones del ENRE) son decimales, no miles.
+        return bool(re.search(r"(?<![\d.,])\d{1,3}\.\d{3}(?![\d.,])", text)) and not re.search(r"\d,\d", text)
     return en > ar
 
 
@@ -491,23 +497,40 @@ def find_hinted_row(lines: list[str], row_hint: RowHint) -> tuple[float, str] | 
     - ``{"ancla": regex, "filas": [(regex, índice), ...]}``: se busca cada
       fila después de la línea ancla (encabezado de la categoría) y se
       suman los importes (APE: costo de compra de energía + VAD).
+    - ``{"anclas": [regex, ...], "filas": [...]}``: anclas encadenadas,
+      cada una buscada después de la anterior (EPEC: sección "3.1.1. BAJA
+      TENSION" → apartado "a.1.2." → fila "Horas Restantes").
+
+    Si la línea de la fila no trae importes, se toma el de la línea
+    siguiente (cuadros de EPEC: la banda horaria en una línea y el importe
+    en letras y números en la de abajo).
     """
     if isinstance(row_hint, tuple):
         start, rows = 0, [row_hint]
     else:
-        anchor = re.compile(row_hint["ancla"], re.IGNORECASE)
-        start = next((i for i, ln in enumerate(lines) if anchor.search(ln)), None)
-        if start is None:
-            return None
+        anchors = row_hint.get("anclas") or [row_hint["ancla"]]
+        start = 0
+        for pattern in anchors:
+            anchor = re.compile(pattern, re.IGNORECASE)
+            found = next(
+                (i for i in range(start, len(lines)) if anchor.search(lines[i])), None
+            )
+            if found is None:
+                return None
+            start = found + 1 if len(anchors) > 1 else found
         rows = list(row_hint["filas"])
     total, used = 0.0, []
     for pattern, index in rows:
         regex = re.compile(pattern, re.IGNORECASE)
-        for line in lines[start:]:
+        for k in range(start, len(lines)):
+            line = lines[k]
             m = regex.search(line)
             if not m:
                 continue
             values = _numbers(KWH_UNIT.sub(" ", line[m.end():]))
+            if not values and k + 1 < len(lines):
+                line = f"{line.strip()} {lines[k + 1].strip()}"
+                values = _numbers(KWH_UNIT.sub(" ", lines[k + 1]))
             if len(values) > index:
                 total += values[index]
                 used.append(line.strip())
@@ -519,12 +542,17 @@ def find_hinted_row(lines: list[str], row_hint: RowHint) -> tuple[float, str] | 
     return total, " + ".join(used)
 
 
-def parse_tariff_text(text: str, row_hint: RowHint | None = None) -> dict[str, Any]:
+def parse_tariff_text(
+    text: str,
+    row_hint: RowHint | None = None,
+    injection_hint: RowHint | None = None,
+) -> dict[str, Any]:
     """
     Extrae tarifa de compra, de inyección y cargo fijo de un cuadro.
 
     Si se indica ``row_hint`` (ver ``find_hinted_row``) la tarifa de compra
-    sale sólo de esa fila: un documento sin ella no aporta compra.
+    sale sólo de esa fila: un documento sin ella no aporta compra. Igual
+    con ``injection_hint`` para la tarifa de inyección.
 
     Returns:
         Diccionario con ``tarifa_compra_kwh``, ``tarifa_inyeccion_kwh``,
@@ -555,11 +583,22 @@ def parse_tariff_text(text: str, row_hint: RowHint | None = None) -> dict[str, A
         and not re.match(r"\s*TARIFA\b", ln, re.IGNORECASE)
     )
     injection_document = bool(INJECTION_CONTEXT.search(title)) and bool(
-        re.search(r"kwh", title, re.IGNORECASE)
+        re.search(r"kwh|cuadro\s+tarifario\s+de\s+inyecci", title, re.IGNORECASE)
     )
     result["documento_especial"] = bool(SPECIAL_DOCUMENT.search(title))
     result["documento_inyeccion"] = injection_document
+    if injection_hint is not None:
+        hinted_iny = find_hinted_row(lines, injection_hint)
+        if hinted_iny is not None:
+            result["tarifa_inyeccion_kwh"] = round(hinted_iny[0], 5)
+            result["valores_inyeccion_detectados"] = [hinted_iny[0]]
+            result["lineas_inyeccion"] = [hinted_iny[1][:200]]
+            result["inyeccion_por_fila"] = True
+
     if injection_document:
+        if injection_hint is not None:
+            # La fila indicada manda: sin ella el documento no aporta.
+            return result
         cands = [c for c in find_purchase_candidates(lines, True) if c.score >= MIN_SCORE]
         if cands:
             best_score = max(c.score for c in cands)
@@ -568,8 +607,13 @@ def parse_tariff_text(text: str, row_hint: RowHint | None = None) -> dict[str, A
             result["valores_inyeccion_detectados"] = best.values
             result["lineas_inyeccion"] = [best.line[:200]]
         return result
-    if result["documento_especial"]:
-        # Cuadro de un régimen especial: no representa la tarifa plena.
+    if result["documento_especial"] and (
+        row_hint is None or re.search(r"proyecto\s+de\s+cuadro", title, re.IGNORECASE)
+    ):
+        # Cuadro de un régimen especial: no representa la tarifa plena. Con
+        # una fila indicada en el registro manda la fila (EJESA abre el PDF
+        # con la tabla de conexiones, que menciona la tarifa social); un
+        # proyecto de cuadro nunca es vigente.
         return result
 
     if row_hint is not None:
@@ -593,7 +637,7 @@ def parse_tariff_text(text: str, row_hint: RowHint | None = None) -> dict[str, A
         result["lineas_compra"] = [c.line[:200] for c in cands if c.score == best_score][:5]
         result["cargo_fijo_mensual"] = find_fixed_charge(lines, best.index)
 
-    iny, used = find_injection_values(lines)
+    iny, used = find_injection_values(lines) if injection_hint is None else ([], [])
     if iny:
         result["tarifa_inyeccion_kwh"] = round(statistics.median(iny), 5)
         result["valores_inyeccion_detectados"] = iny
