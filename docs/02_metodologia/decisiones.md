@@ -137,13 +137,48 @@ Detalle: [tarifas eléctricas](../03_datos/tarifas_electricas.md).
 
 ## POL-TARIFF-002 — Tarifa de inyección faltante
 
-**Regla**: donde la distribuidora no publica precio de inyección (Ley
-27.424), se estima como **tarifa de compra × ratio mediano
-inyección/compra** de las distribuidoras que publican ambos (≈ 0,75 en
-octubre de 2026). El registro queda marcado `tarifa_inyeccion_estimada`.
+**Contexto**: por la Ley 27.424 (generación distribuida) la distribuidora
+reconoce cada kWh que el usuario-generador entrega a la red. Su
+reglamentación fija ese precio en función del **costo de compra de la
+energía por la distribuidora en el mercado mayorista** (precio estacional
+más pérdidas reconocidas), sin el valor agregado de distribución. Así lo
+dice, por ejemplo, el régimen de Tarifa 5 de Naturgy San Juan: "bonificación
+por la energía inyectada a la red, valorizada según el precio de compra de
+la energía por la distribuidora en cada banda horaria, incluyendo pérdidas
+reconocidas".
 
-**Fundamento**: sin estimación, el beneficio de esas provincias quedaba
-vacío y sólo dos provincias sumaban dinero.
+**Regla**: donde el cuadro no publica el precio de inyección, se estima
+como **tarifa de compra × ratio mediano inyección/compra** de las
+distribuidoras que publican ambos valores (ver la tabla en
+[tarifas eléctricas](../03_datos/tarifas_electricas.md)). El registro queda
+marcado `tarifa_inyeccion_estimada`. El ratio se recalcula en cada corrida
+con los valores reales disponibles.
+
+**Fundamento**:
+
+- Como la inyección se paga al precio de la energía y la compra incluye
+  además la distribución, la inyección siempre es menor o igual que la
+  compra. El ratio observado depende de cómo está armada la tarifa:
+  - en categorías con cargo por potencia aparte (T3 de grandes demandas),
+    el cargo de energía de compra ya es casi sólo energía: ratio entre
+    0,9 y 1 (OCEBA, ENRE, EPEC, San Juan);
+  - en categorías con cargo de energía único (medianas demandas), la
+    compra incluye la distribución: ratio entre 0,6 y 0,8 (EJESA, ENERSA,
+    SECHEEP, EDELAR).
+- La mediana de los valores reales es un supuesto explícito, auditable y
+  que se corrige solo a medida que se consiguen más cuadros.
+- Sin estimación, el beneficio de esas provincias quedaba subvaluado (como
+  si la energía inyectada no valiera nada).
+
+**Cómo leerlo**: la inyección es el 40 % de la energía. Con el rango
+observado de ratios (≈ 0,63 a 1) y un ratio central de ≈ 0,9, el
+beneficio de una provincia con inyección estimada podría ser entre ≈ 12 %
+menor y ≈ 4 % mayor que el calculado (beneficio ∝ 0,6 + 0,4 × ratio). En el dashboard las distribuidoras con inyección estimada están
+marcadas como tales.
+
+**Alternativa** (pendiente): estimar la inyección con el precio estacional
+de la energía que publica la Secretaría de Energía, que es la base legal
+del precio de inyección y es uniforme para todo el país.
 
 ---
 
