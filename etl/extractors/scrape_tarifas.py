@@ -47,7 +47,7 @@ from datetime import datetime
 from html import unescape
 from pathlib import Path
 from typing import Any, Final
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, unquote, urljoin, urlparse
 
 import httpx
 
@@ -116,6 +116,9 @@ _PARSED_ALIASES: Final[frozenset[str]] = frozenset({STATUS_PARSED, "parsed_pdf"}
 SOURCE_NATIONAL: Final[str] = "nacional"
 SOURCE_OWN: Final[str] = "propia"
 SOURCE_MANUAL: Final[str] = "manual"
+# Documentos que sólo aportan la tarifa de inyección (cuadros de inyección
+# conjuntos de OCEBA, resoluciones del ENRE): nunca compiten por la compra.
+SOURCE_INJECTION: Final[str] = "inyeccion"
 
 # EPE Santa Fe: los archivos se bajan de una API con una clave pública que
 # el propio sitio incluye en su JavaScript (``_astro/httpClient.*.js``).
@@ -199,9 +202,17 @@ def vigencia_from_name(url: str) -> str | None:
     de EPE), se usa sólo ese nombre.
     """
     parsed = urlparse(url)
-    path = (parsed.fragment or parsed.path).lower()
+    path = unquote(parsed.fragment or parsed.path).lower()
+    # Rangos "desde al hasta" ("CT-01-05-2026-al-31-07-2026", "20250801-
+    # 20251031"): la vigencia es la fecha de inicio, se descarta el final.
+    date = r"(?:\d{8}|[0-3]\d[-_ ][01]\d[-_ ]20\d{2})"
+    path = re.sub(rf"({date})[-_ ]+(?:al[-_ ]+)?{date}", r"\1", path)
     name = path.rsplit("/", 1)[-1]
     candidates: list[str] = []
+    # DD-MM-AAAA (Naturgy San Juan: "CT-01-09-2026").
+    for m in re.finditer(r"(?<!\d)([0-3]\d)[-_ ]([01]\d)[-_ ](20\d{2})(?!\d)", name):
+        if 1 <= int(m.group(1)) <= 31:
+            candidates.append(_ym(int(m.group(3)), int(m.group(2))) or "")
     for m in re.finditer(r"ct_?(20\d{2})_?(0[1-9]|1[0-2])(?:[0-3]\d)?(?!\d)", path):
         candidates.append(_ym(int(m.group(1)), int(m.group(2))) or "")
     for m in re.finditer(r"(20\d{2})[_-](0[1-9]|1[0-2])(?!\d)", path):
@@ -301,8 +312,10 @@ def validate_parsed(
     Valida los valores extraídos. Devuelve el motivo de rechazo por campo.
 
     Reglas:
-        - Inyección < compra (la energía inyectada se remunera a precio
-          mayorista, inferior a la tarifa de venta al usuario).
+        - Inyección <= compra (la energía inyectada se remunera a precio
+          mayorista; en las tarifas con cargo por potencia, como la T3 de
+          San Juan, el cargo de energía de compra y el de inyección pueden
+          coincidir).
         - Variación respecto del valor previo **extraído** dentro de
           [1/MAX_CHANGE_FACTOR, MAX_CHANGE_FACTOR]. No se compara contra
           valores ``baseline_manual`` (no verificados): un valor real no
@@ -318,9 +331,9 @@ def validate_parsed(
     rejected: dict[str, str] = {}
     compra = parsed.get("tarifa_compra_kwh")
     iny = parsed.get("tarifa_inyeccion_kwh")
-    if compra is not None and iny is not None and iny >= compra:
+    if compra is not None and iny is not None and iny > compra:
         rejected["tarifa_inyeccion_kwh"] = (
-            f"inyección ({iny}) >= compra ({compra})"
+            f"inyección ({iny}) > compra ({compra})"
         )
     if previous:
         estados = previous.get("estado_campos", {})
@@ -395,6 +408,9 @@ def merge_distribuidora(
     if parsed is not None:
         for key in ("documento", "fuente_tipo", "vigencia", "sha256", "seccion_compra"):
             block[key] = parsed.get(key)
+        for key in ("documento_inyeccion_url", "vigencia_inyeccion"):
+            if parsed.get(key):
+                block[key] = parsed[key]
         block["fecha_extraccion"] = fecha
         block["valores_detectados"] = {
             "compra": parsed.get("valores_compra_detectados", []),
@@ -496,6 +512,42 @@ def spa_bundle_links(
         return None
     paths = dict.fromkeys(EMBEDDED_DOC_PATH.findall(content.decode("utf-8", "ignore")))
     return "".join(f'<a href="{p}"></a>' for p in paths)
+
+
+RESOLUTION_NUMBER: Final = re.compile(r"N[°º]\s*(\d+)", re.IGNORECASE)
+
+
+def card_file_links(html: str, base_url: str) -> list[str]:
+    """
+    Descargas sin extensión de portales tipo "costos del servicio" (EJESA).
+
+    Cada cuadro es una tarjeta con un título ("Cuadro tarifario 2026
+    Resolución N°105-SUSEPU/2026") y un enlace ``.../GetFile?fileId=...``
+    sin nombre de archivo ni fecha. Se toman las tarjetas de cuadros
+    tarifarios, se agrega el título como fragmento de la URL (trazabilidad)
+    y se ordenan por año y número de resolución, más recientes primero
+    (la página no las lista en orden).
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    found: list[tuple[tuple[int, int], str]] = []
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"])
+        if "getfile" not in href.lower():
+            continue
+        card = a.find_parent(class_=re.compile(r"card")) or a.parent
+        title = " ".join(card.get_text(" ", strip=True).split()) if card else ""
+        title = re.sub(r"\s*cloud_download\s*DESCARGAR\s*$", "", title, flags=re.IGNORECASE)
+        if not re.search(r"cuadro|tarif", title, re.IGNORECASE):
+            continue
+        years = [int(y) for y in re.findall(r"\b(20\d{2})\b", title)]
+        number = RESOLUTION_NUMBER.search(title)
+        key = (max(years) if years else 0, int(number.group(1)) if number else 0)
+        url = urljoin(base_url, href) + "#" + quote(title)
+        if url not in [u for _, u in found]:
+            found.append((key, url))
+    return [u for _, u in sorted(found, key=lambda x: x[0], reverse=True)]
 
 
 def download_bytes(url: str) -> bytes:
@@ -769,11 +821,20 @@ def candidate_documents(
             cache[url] = try_download(url, downloader)
         return cache[url]
 
+    injection: list[str] = []
     for index in info["indices"]:
         html = fetch_index(index)
         if html:
-            found = astro_file_links(html)
+            found = astro_file_links(html) + card_file_links(html, index)
             found += discover_document_links(html, index, keywords, others)
+            if keywords:
+                # Documentos conjuntos de varias distribuidoras del mismo
+                # índice (OCEBA: "CUADRO TARIFARIO DE INYECCIÓN" de EDEA,
+                # EDEN y EDES, una columna por empresa): sólo para inyección.
+                injection.extend(
+                    u for u in discover_document_links(html, index, keywords)
+                    if u not in found and u not in injection
+                )
             if not found:
                 bundle_html = spa_bundle_links(html, index, fetch_bundle)
                 if bundle_html:
@@ -785,7 +846,9 @@ def candidate_documents(
             url = format_template(template, y, m)
             if url not in own:
                 own.append(url)
-    return {SOURCE_NATIONAL: national, SOURCE_OWN: own}
+    injection.extend(u for u in info.get("urls_inyeccion", []) if u not in injection)
+    injection.sort(key=_date_score, reverse=True)
+    return {SOURCE_NATIONAL: national, SOURCE_OWN: own, SOURCE_INJECTION: injection}
 
 
 # ====================== PROCESAMIENTO DE DOCUMENTOS ======================
@@ -853,6 +916,22 @@ def process_document(
         # tarifa más alta: la plena, sin bonificaciones.
         if best is None or _doc_rank(parsed) > _doc_rank(best):
             best = parsed
+    if best is None and injection is not None and (
+        injection.get("documento_inyeccion") or injection.get("inyeccion_por_fila")
+    ):
+        # Documento que sólo trae la tarifa de inyección: no aporta compra.
+        member, text = texts[0] if texts else ("", "")
+        injection.update({
+            "solo_inyeccion": True,
+            "documento": url,
+            "fuente_tipo": fuente_tipo,
+            "sha256": sha,
+            "vigencia": (
+                vigencia_explicit(text) or vigencia_from_name(url) or vigencia_from_text(text)
+            ),
+            "fecha_extraccion": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        return injection
     if best is None:
         logger.debug("[tarifas] %s: %s sin cargos $/kWh reconocibles", code, url)
         return None
@@ -923,6 +1002,7 @@ def fetch_distribuidora(
         return p.get("vigencia") or ""
 
     processed: list[dict[str, Any]] = []
+    injection_docs: list[dict[str, Any]] = []
     best_by_source: dict[str, dict[str, Any]] = {}
     seen_sha: set[str] = set()
     # Cuadros cargados a mano (siempre se procesan todos).
@@ -939,6 +1019,9 @@ def fetch_distribuidora(
                                code, path.name)
                 continue
             seen_sha.add(parsed["sha256"])
+            if parsed.get("solo_inyeccion"):
+                injection_docs.append(parsed)
+                continue
             processed.append(parsed)
             best = best_by_source.get(SOURCE_MANUAL)
             if best is None or (vig(parsed), _doc_rank(parsed)) > (vig(best), _doc_rank(best)):
@@ -954,6 +1037,8 @@ def fetch_distribuidora(
             if desde is not None and name_vig is not None and name_vig < desde:
                 continue
             best = best_by_source.get(fuente)
+            if fuente == SOURCE_INJECTION:
+                best = max(injection_docs, key=vig, default=None)
             # En modo normal se siguen procesando sólo documentos de la misma
             # vigencia (varios anexos por mes: pleno, con subsidio, ...); los
             # más antiguos no pueden ganar.
@@ -968,6 +1053,11 @@ def fetch_distribuidora(
             if parsed is None or parsed["sha256"] in seen_sha:
                 continue
             seen_sha.add(parsed["sha256"])
+            if parsed.get("solo_inyeccion"):
+                injection_docs.append(parsed)
+                continue
+            if fuente == SOURCE_INJECTION:
+                continue  # documentos conjuntos: nunca aportan la compra
             processed.append(parsed)
             if best is None or (vig(parsed), _doc_rank(parsed)) > (vig(best), _doc_rank(best)):
                 best_by_source[fuente] = parsed
@@ -975,6 +1065,17 @@ def fetch_distribuidora(
         logger.warning("[tarifas] %s: sin cuadro tarifario reconocible", code)
         return None, []
     chosen = max(best_by_source.values(), key=lambda p: (vig(p), _doc_rank(p)))
+    if injection_docs and chosen.get("tarifa_inyeccion_kwh") is None:
+        # Inyección de un documento aparte (el más reciente).
+        iny = max(injection_docs, key=vig)
+        chosen = {
+            **chosen,
+            "tarifa_inyeccion_kwh": iny["tarifa_inyeccion_kwh"],
+            "valores_inyeccion_detectados": iny.get("valores_inyeccion_detectados", []),
+            "lineas_inyeccion": iny.get("lineas_inyeccion", []),
+            "documento_inyeccion_url": iny["documento"],
+            "vigencia_inyeccion": iny.get("vigencia"),
+        }
     logger.info(
         "[tarifas] %s: compra=%s inyección=%s vigencia=%s (%s) %s",
         code, chosen["tarifa_compra_kwh"], chosen["tarifa_inyeccion_kwh"],

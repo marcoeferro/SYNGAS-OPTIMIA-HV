@@ -118,7 +118,8 @@ INJECTION_LINE: Final[re.Pattern[str]] = re.compile(
 # repiten la palabra "inyección" (p.ej. APE: "Código | Demanda | ... |
 # Tarifa de inyección").
 INJECTION_CONTEXT: Final[re.Pattern[str]] = re.compile(
-    r"tarifas?\s+de\s+inyecci|entregada\s+al\s+sistema|energ[ií]a\s+inyectada",
+    r"tarifas?\s+de\s+inyecci|tarifario\s+de\s+inyecci|entregada\s+al\s+sistema|"
+    r"energ[ií]a\s+inyectada",
     re.IGNORECASE,
 )
 INJECTION_CONTEXT_LINES: Final[int] = 8
@@ -165,6 +166,11 @@ def detect_english_format(text: str) -> bool:
     ar = 3 * len(re.findall(r"\d\.\d{3},\d", text)) + len(
         re.findall(r"(?<![\d.,])\d+,(?:\d{1,2}|\d{4,})(?![\d.,])", text)
     )
+    if en == 0 and ar == 0:
+        # Sin evidencia de ninguno de los dos: importes con punto y tres
+        # decimales y ninguna coma decimal en todo el documento ("105.100",
+        # resoluciones del ENRE) son decimales, no miles.
+        return bool(re.search(r"(?<![\d.,])\d{1,3}\.\d{3}(?![\d.,])", text)) and not re.search(r"\d,\d", text)
     return en > ar
 
 
@@ -577,11 +583,22 @@ def parse_tariff_text(
         and not re.match(r"\s*TARIFA\b", ln, re.IGNORECASE)
     )
     injection_document = bool(INJECTION_CONTEXT.search(title)) and bool(
-        re.search(r"kwh", title, re.IGNORECASE)
+        re.search(r"kwh|cuadro\s+tarifario\s+de\s+inyecci", title, re.IGNORECASE)
     )
     result["documento_especial"] = bool(SPECIAL_DOCUMENT.search(title))
     result["documento_inyeccion"] = injection_document
+    if injection_hint is not None:
+        hinted_iny = find_hinted_row(lines, injection_hint)
+        if hinted_iny is not None:
+            result["tarifa_inyeccion_kwh"] = round(hinted_iny[0], 5)
+            result["valores_inyeccion_detectados"] = [hinted_iny[0]]
+            result["lineas_inyeccion"] = [hinted_iny[1][:200]]
+            result["inyeccion_por_fila"] = True
+
     if injection_document:
+        if injection_hint is not None:
+            # La fila indicada manda: sin ella el documento no aporta.
+            return result
         cands = [c for c in find_purchase_candidates(lines, True) if c.score >= MIN_SCORE]
         if cands:
             best_score = max(c.score for c in cands)
@@ -590,16 +607,14 @@ def parse_tariff_text(
             result["valores_inyeccion_detectados"] = best.values
             result["lineas_inyeccion"] = [best.line[:200]]
         return result
-    if result["documento_especial"]:
-        # Cuadro de un régimen especial: no representa la tarifa plena.
+    if result["documento_especial"] and (
+        row_hint is None or re.search(r"proyecto\s+de\s+cuadro", title, re.IGNORECASE)
+    ):
+        # Cuadro de un régimen especial: no representa la tarifa plena. Con
+        # una fila indicada en el registro manda la fila (EJESA abre el PDF
+        # con la tabla de conexiones, que menciona la tarifa social); un
+        # proyecto de cuadro nunca es vigente.
         return result
-
-    if injection_hint is not None:
-        hinted_iny = find_hinted_row(lines, injection_hint)
-        if hinted_iny is not None:
-            result["tarifa_inyeccion_kwh"] = round(hinted_iny[0], 5)
-            result["valores_inyeccion_detectados"] = [hinted_iny[0]]
-            result["lineas_inyeccion"] = [hinted_iny[1][:200]]
 
     if row_hint is not None:
         hinted = find_hinted_row(lines, row_hint)

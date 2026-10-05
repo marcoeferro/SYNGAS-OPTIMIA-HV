@@ -429,3 +429,100 @@ def test_epec_tarifa_3_baja_tension_compra_e_inyeccion() -> None:
     # (36,04) ni la de grandes usuarios ≥ 300 kW (159,04).
     assert out["tarifa_compra_kwh"] == pytest.approx(140.2307)
     assert out["tarifa_inyeccion_kwh"] == pytest.approx(137.40168)
+
+
+# Cuadro de inyección conjunto de OCEBA: una columna por empresa
+# (EDEA | EDEN | EDES).
+OCEBA_INYECCION = """\
+ ANEXO 83
+CUADRO TARIFARIO DE INYECCIÓN EXCEDENTES S/RESOLUCIÓN MIYSP N° 463/23
+T3 - GRANDES DEMANDAS
+T3BT - SUMINISTROS EN BAJA TENSIÓN USUARIOS FINALES (Suministros entre 50 y 300 KW)
+PRECIO VARIABLE POR ENERGÍA EN PICO $/kWh 127,4117 126,9041 126,9041
+PRECIO VARIABLE POR ENERGÍA EN RESTO $/kWh 124,5188 124,0227 124,0227
+T3BT - SUMINISTROS EN BAJA TENSIÓN USUARIOS FINALES (Suministros >= 300 KW)
+PRECIO VARIABLE POR ENERGÍA EN RESTO $/kWh 138,3487 137,7976 137,7976
+"""
+
+# Resolución del ENRE (EDENOR y EDESUR): sólo inyección, punto decimal.
+ENRE_INYECCION = """\
+Tarifas de Inyección de Generación Distribuida - $/kwh
+vigentes a partir del 1° de mayo de 2026
+General 105.100
+Tarifa 3 - BT <300
+Cargo Variable Pico 108.335
+Cargo Variable Resto 105.100
+Tarifa 3 - BT >300
+Cargo Variable Resto 105.320
+"""
+
+
+@pytest.mark.parametrize(
+    ("codigo", "texto", "esperado"),
+    [
+        ("EDEA", OCEBA_INYECCION, 124.5188),
+        ("EDEN", OCEBA_INYECCION, 124.0227),
+        ("EDESUR", ENRE_INYECCION, 105.1),
+    ],
+)
+def test_documentos_solo_de_inyeccion(codigo: str, texto: str, esperado: float) -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS[codigo]
+    out = parse_tariff_text(texto, info["fila_tarifa"], info["fila_inyeccion"])
+    assert out["documento_inyeccion"]
+    assert out["tarifa_compra_kwh"] is None
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(esperado)
+
+
+def test_punto_decimal_con_tres_decimales_sin_comas() -> None:
+    assert detect_english_format(ENRE_INYECCION)
+    assert not detect_english_format("Cargo fijo 1.234,56 $/mes\nEnergía 105,1 $/kWh")
+
+
+# Naturgy San Juan (ESJ) 2026-09: T3 BT < 300 kW y el cuadro de valores a
+# reconocer al usuario generador (cargos fijos en cero) con la misma tabla.
+ESJ = """\
+Cargo fijo (haya o no consumo) $/bimestre 4557.54 15737.24 23463.07
+Unidad BT MT 13,2 R MT 13,2 B MT 33 AT
+Potencias menores a 300 kW-mes
+En horas de punta $/kWh 157.9653 139.2069 138.8110 135.1750
+En horas restantes $/kWh 153.2696 135.0688 134.6847 131.1568
+Potencias mayores o iguales a 300 kW-mes
+En horas restantes $/kWh 173.1618 152.5989 152.1649 148.1791
+Cargo fijo (haya o no consumo) $/bimestre 0.0000 0.0000 0.0000
+Unidad BT MT 13,2 R MT 13,2 B MT 33 AT
+Potencias menores a 300 kW-mes
+En horas restantes $/kWh 150.0000 135.0688 134.6847 131.1568
+Valores Tarifarios a Reconocer al Usuario Generador por la
+Energía Inyectada
+"""
+
+# EJESA (Jujuy) 2026-08/09: texto desordenado; la fila T3 BT < 300 kW es la
+# primera "cargo fijo | $/kW | 6 importes" después del cuadro de generador.
+EJESA = """\
+CUADRO TARIFARIO
+117.308 159,9846             181,0471               177,7814            177,3984                   196,3388                  191,5834                 190,4561
+USUARIO GENERADOR Energía Entregada a la Red
+   99,1230                                                      100,6320
+   42,5448                                                      35,7765
+   107,6080                                                      121,5400
+   120,5300                                                     138,2140
+199.424 38.411        181,0471                 177,7814                   177,3984               196,3388                     191,5834                  190,4561
+199.424 38.411        197,1112                 193,3936           192,9587               217,2224                     211,7287                  210,4263
+"""
+
+
+@pytest.mark.parametrize(
+    ("codigo", "texto", "compra", "inyeccion"),
+    [("ESJ", ESJ, 153.2696, 150.0), ("EJESA", EJESA, 191.5834, 121.54)],
+)
+def test_filas_de_compra_e_inyeccion(
+    codigo: str, texto: str, compra: float, inyeccion: float
+) -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS[codigo]
+    out = parse_tariff_text(texto, info["fila_tarifa"], info["fila_inyeccion"])
+    assert out["tarifa_compra_kwh"] == pytest.approx(compra)
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(inyeccion)
