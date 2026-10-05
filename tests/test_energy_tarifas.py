@@ -561,3 +561,9 @@ def test_inyeccion_de_un_documento_aparte(
     assert chosen["tarifa_inyeccion_kwh"] == pytest.approx(105.1)
     assert chosen["documento_inyeccion_url"] == resolucion
     assert all(not p.get("solo_inyeccion") for p in processed)  # no va al historial
+
+
+def test_vigencia_de_columnas_por_mes_abreviado() -> None:
+    """EJESA: el cuadro trae dos meses en columnas ("Agos-26", "Sept-26")."""
+    assert st.vigencia_from_text("Cargo por Uso de Red Sept-26Agos-26") == "2026-09"
+    assert st.vigencia_from_text("vigente desde marzo-2026") is None

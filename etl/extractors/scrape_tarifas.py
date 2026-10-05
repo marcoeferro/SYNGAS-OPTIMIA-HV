@@ -154,6 +154,10 @@ MESES: Final[dict[str, int]] = {
     "junio": 6, "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9,
     "octubre": 10, "noviembre": 11, "diciembre": 12,
 }
+MESES_ABREV: Final[dict[str, int]] = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7,
+    "ago": 8, "sep": 9, "set": 9, "oct": 10, "nov": 11, "dic": 12,
+}
 MES_NOMBRE: Final[dict[int, str]] = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
     7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre",
@@ -284,7 +288,7 @@ def vigencia_from_text(text: str) -> str | None:
     Vigencia AAAA-MM a partir del texto del cuadro.
 
     Reconoce "a partir del 1° de septiembre de 2026", "Periodo: OCTUBRE
-    2025", "vigencia: 01/09/2026". Se toma la fecha más alta encontrada en
+    2025", "vigencia: 01/09/2026" y columnas "Agos-26 | Sept-26". Se toma la fecha más alta encontrada en
     los primeros 3000 caracteres (el encabezado).
     """
     head = text[:3000].lower()
@@ -294,6 +298,10 @@ def vigencia_from_text(text: str) -> str | None:
             found.append(_ym(int(m.group(1)), num) or "")
     for m in re.finditer(r"(?<!\d)([0-3]?\d)/([01]?\d)/(20\d{2})(?!\d)", head):
         found.append(_ym(int(m.group(3)), int(m.group(2))) or "")
+    # Columnas por mes abreviado ("Agos-26", "Sept-26": EJESA).
+    for m in re.finditer(r"(?<![a-z])(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)"
+                         r"[a-z]{0,3}-(\d{2})(?!\d)", head):
+        found.append(_ym(2000 + int(m.group(2)), MESES_ABREV[m.group(1)]) or "")
     found = [f for f in found if f]
     return max(found) if found else None
 
