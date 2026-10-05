@@ -151,8 +151,8 @@ with tab_geo:
               f"{faltan[COL_BIOMASA].sum() / total:.2%}")
     st.markdown(
         "Incluye los registros con departamento **\"sin definir\"** en la fuente y "
-        "departamentos creados después de los límites de GADM 4.1 (p.ej. Lezama y Punta "
-        "Indio en Buenos Aires, 2 de Abril en Chaco, San Salvador en Entre Ríos). Esos "
+        "departamentos sin polígono en GADM 4.1 (Lezama y Punta Indio en Buenos Aires, "
+        "2 de Abril en Chaco, San Salvador en Entre Ríos, 9 de Julio en San Juan). Esos "
         "valores sí cuentan en los totales y en los mapas por provincia."
     )
     st.dataframe(

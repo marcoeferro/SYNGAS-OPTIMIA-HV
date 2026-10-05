@@ -1,32 +1,37 @@
+# Ciclo de vida de los artefactos
+
+```mermaid
 graph LR
-    subgraph Immutable["Inmutables"]
-        R[raw/]
-        REF[reference/]
+    subgraph Fuente["Descargados (versionados por fecha)"]
+        R["raw/<br/>YYYYMMDDHHMMSS_*.csv"]
+        T["reference/<br/>YYYYMMDDHHMMSS_tarifas.json"]
+        H["reference/<br/>tarifas_historial.csv<br/>(solo se agrega)"]
     end
-
-    subgraph Derived["Derivados"]
-        I[interim/]
-        P[processed/]
-        A[audit/]
+    subgraph Manual["Mantenidos a mano"]
+        IC["reference/ic_fr.csv"]
+        CM["reference/cuadros_manuales/"]
     end
-
-    subgraph Output["Consumibles"]
+    subgraph Derivados["Derivados (regenerables)"]
+        P["processed/"]
+        A["audit/"]
+    end
+    subgraph Consumo["Consumidores"]
         D[Dashboard]
-        N[Notebooks]
+        N[Notebook main.ipynb]
     end
 
-    R --> I
-    REF --> I
-    I --> P
-    I --> A
+    R --> P
+    IC --> P
+    T --> P
+    CM --> T
+    T --> H
     P --> D
+    A --> D
+    T --> D
+    H --> D
     P --> N
-    A --> N
+    R --> A
+```
 
-    R -.Regenerable desde.-> I
-    I -.Regenerable desde raw.-> P
-    P -.Regenerable desde raw.-> D
-
-    style Immutable fill:#e1f5ff
-    style Derived fill:#fff3e0
-    style Output fill:#e8f5e9
+- `processed/` y `audit/` se regeneran con `run_etl --skip-extract --skip-tarifas`.
+- El historial de tarifas deduplica por (distribuidora, SHA-256 del documento).

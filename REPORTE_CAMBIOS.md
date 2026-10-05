@@ -460,3 +460,68 @@ Cada corrección se verificó volviendo a parsear los ~1.800 documentos descarga
 ### 10.7 Otros errores encontrados
 
 - `notebooks/main.ipynb` en `main` tenía **marcadores de conflicto de merge sin resolver** (`<<<<<<< HEAD` en un `execution_count`, del merge `f0c74a1`). El archivo no era JSON válido y Jupyter no lo abría. Se resolvió y el notebook se reejecutó completo sin errores.
+
+---
+
+## 11. Segunda ronda: tarifas restantes, dashboard y documentación (2026-10-05)
+
+### 11.1 Tarifas
+
+Con `epe.santafe.gov.ar` habilitado se probó de nuevo cada distribuidora sin dato.
+
+| Distribuidora | Antes | Ahora | Qué se hizo |
+|---|---|---|---|
+| EPE (Santa Fe) | sin dato | **146,77 $/kWh** (2026-09) | Los cuadros `CUT_T2/T4/T6` se descargan por la API del sitio. La tensión sólo figura en el código de fila ("2 B1" = baja tensión, < 300 kW), así que la fila se fija en el registro (`fila_tarifa`), con la banda Resto de las columnas Pico/Resto/Valle. |
+| APE (La Pampa) | sin dato | **169,40 $/kWh** (2025-12) | El cuadro separa costo de compra de energía y VAD. Un PP30 en autoconsumo es T2I (> 4000 kWh/mes, < 50 kW): compra 110,87 + VAD del excedente 58,53. `fila_tarifa` admite ahora un ancla de categoría y la suma de componentes. |
+| EMSA (Misiones) | sin dato | **204,06 $/kWh** (2025-09) | No hay categoría por demanda en BT: se toma el cargo de energía de industrial 3.b (> 4000 kWh/mes) del "CT Pleno". El "Proyecto de cuadro … de referencia" del mismo ZIP se trata como documento no vigente. Vigencia "a partir del Período 09/2025" reconocida. |
+| EPEC (Córdoba) | sin dato | sin dato | El sitio propio responde 403 y el portal nacional no tiene ningún archivo de EPEC (se probaron todos los meses de 2025–2026). El ente regulador (`ersep.cba.gov.ar`) está bloqueado por el proxy. Queda la carga manual. |
+| ESJ (San Juan), SPSE (Santa Cruz) | sin dato | sin dato | El portal nacional enlaza `2026_06_ESJ.pdf` y `2026_06_SPSE.xlsx`, pero ambos dan 404. Los sitios propios (`energiasanjuan.com.ar`, `spse.gob.ar`) están bloqueados por el proxy. |
+| EDET (Tucumán) | sin dato | sin dato | Tanto el portal nacional como el sitio propio publican PDF **escaneados** (sin capa de texto, 15–20 MB). Requeriría OCR, una dependencia pesada para el 0,8 % de la energía. |
+| DPE (Tierra del Fuego) | sin dato | sin dato | Resolución escaneada con OCR ilegible. Sin producción agrícola relevante. |
+| EJESA (Jujuy) | valor anterior | valor anterior | La página del portal nacional sigue en 404. El sitio propio publica el cuadro vigente (Res. 297/2026), pero el PDF tiene la tabla en columnas que el texto extraído desordena. Queda el último valor (113,09; 0,1 % de la energía). |
+
+Resultado: **22 de 28** distribuidoras con tarifa extraída (antes 19), 1 con valor anterior y 5 sin dato. La energía con tarifa pasó del **53,7 % al 73,0 %**; sólo quedan Córdoba (26,2 %) y Tucumán (0,8 %).
+
+### 11.2 Errores metodológicos encontrados
+
+- **El dinero sólo se calculaba en 2 provincias.** `beneficio = ahorro + crédito por inyección`, y el crédito era NaN donde la distribuidora no publica precio de inyección (19 de 22). El beneficio de esas provincias quedaba en NaN y se sumaba como cero. Ahora la tarifa de inyección faltante se estima como compra × ratio mediano observado (0,752: SECHEEP, ENERSA, EDELAR) y se marca en `tarifa_inyeccion_estimada` (65,5 % de la energía). Beneficio bruto anual: 6,8·10¹¹ → **7,54·10¹² ARS**.
+- **Doble conteo por nombres de departamento.** La Bolsa de Córdoba también cubre San Luis y Santiago del Estero, pero escribe "libertador san martin" y "juan felipe ibarra" donde MAGyP dice "libertador general san martin" y "juan f ibarra". La reconciliación no los cruzaba y sumaba ambas fuentes (p.ej. maíz 2020/21 en Juan F. Ibarra: 450.549 t + 441.084 t). Se agregaron los alias (ETL y notebook) y se revisó que no haya otros pares (sólo había esos dos). Energía anual: 7,964·10¹⁰ → 7,934·10¹⁰ kWh.
+- **Cron del scheduler mal formado.** `config/schedule.ini` tenía `0 6 * * *`, pero la imagen `mcuadros/ofelia:latest` (0.3.x) exige el campo de segundos, así que ese horario no significaba "todos los días a las 06:00". Ahora es `0 0 6 * * *`, válido en 0.3.x y 0.4.x.
+
+### 11.3 Dashboard
+
+Errores encontrados:
+
+- **Fuera de Docker ninguna página funcionaba**: `make dashboard` daba `ModuleNotFoundError: No module named 'dashboard'` en todas las páginas. Docker fija `PYTHONPATH=/app` y lo ocultaba. Además, con una carpeta `pages/` Streamlit usa el modo multipágina anterior, que ejecuta cada página sin pasar por `app.py`. Las páginas pasan a `dashboard/vistas/` y se registran con `st.navigation` en `app.py`, que agrega la raíz del proyecto al `sys.path`. El orden del menú queda fijo, con la auditoría al final.
+- **Provincias invisibles en el mapa**: el coroplético sólo dibujaba los polígonos con dato, y las provincias sin registros (Patagonia, Cuyo, CABA) desaparecían. Ahora una capa base dibuja todas las provincias y departamentos con contorno, en gris neutro si no tienen dato.
+- **Departamentos sin colorear**: 45 de 505 no cruzaban con GADM. Las causas eran números escritos en letras en GADM ("VeinticincodeMayo"), nombres abreviados o truncados ("General Angel V. Peñaloza", "Coronel de Marina L. Rosales"), departamentos renombrados (Dr. Manuel Belgrano → Capital; Juan Martín de Pueyrredón → La Capital) y San Fernando partido en dos polígonos. Ahora faltan 26: 21 son registros "sin definir" de la fuente y 5 son departamentos sin polígono en GADM 4.1 (Lezama, Punta Indio, 2 de Abril, San Salvador y 9 de Julio de San Juan). Representan el 0,83 % de la biomasa y sí cuentan en los totales y en el mapa provincial.
+- Las provincias y cultivos se mostraban en minúsculas (como los normaliza el ETL); ahora se capitalizan para mostrar.
+
+Contenido nuevo:
+
+| Página | Contenido |
+|---|---|
+| Resumen | Selector **biomasa / energía / dinero** para KPIs, rankings y mapas por provincia y departamento. |
+| Energía | Energía anual, equipos PP30 equivalentes, autoconsumo vs. inyección por provincia, energía por cultivo, mapas y parámetros del cálculo. |
+| Dinero | Beneficio bruto (ahorro + inyección) por provincia, mapas, tabla de tarifas por distribuidora (vigencia, fuente, estado, documento) e historial de tarifas. |
+| Exploración | Se suman energía y beneficio a los KPIs, la serie por campaña y la tabla. Una magnitud por gráfico: antes se mezclaban biomasa y producción en un mismo eje. |
+| Auditoría de datos (última) | Descartados y discrepancias (con histograma), estado de cada tarifa, energía sin tarifa, peso de la inyección estimada y de las tarifas promediadas, departamentos sin polígono y campañas incompletas. |
+
+**¿Tiene sentido la auditoría?** Sí. El dinero depende de tres pasos con huecos conocidos: la reconciliación entre fuentes (3.298 registros descartados), tarifas que faltan o se estiman (27 % de la energía sin tarifa, 65 % con inyección estimada) y el cruce con los mapas. Sin esa página, quien lee el Resumen no ve qué parte de cada número es firme. Se agregaron las pestañas de tarifas, cobertura de mapas y campañas, que no existían.
+
+**Verificación**: se levantó Streamlit y se recorrieron todas las páginas con un navegador headless (Playwright). Se probaron el selector de métrica, las pestañas de mapas y las de auditoría, sin excepciones. Los mapas se verificaron aparte, con la cartografía base servida localmente, porque este entorno bloquea `cdn.plot.ly`.
+
+### 11.4 Documentación
+
+- `README.md` reescrito. Se quitaron las instrucciones de Shaper y `.dashboard.sql` (no existen en el proyecto), las marcas `[reference:N]` sueltas, el árbol de carpetas desactualizado y el enlace a un `LICENSE` inexistente. Se agregaron energía y dinero, tarifas, páginas del dashboard, formato del cron y la lista de dominios necesarios.
+- `docs/`: los diagramas eran Mermaid sin bloque de código y GitHub no los renderizaba. Se actualizaron con tarifas, energía, dinero, scheduler y navegación del dashboard (arquitectura, despliegue, flujo detallado, ciclo de vida, modelo de datos y secuencia). `decision_log.md` estaba envuelto en un bloque de código; se corrigió y se agregaron las decisiones POL-GEO-001, POL-PERIOD-001, POL-ENERGY-001, POL-TARIFF-001 y POL-TARIFF-002. `data_sources.md` suma la sección de cuadros tarifarios.
+- `pyproject.toml`: Streamlit en el extra `dev` (los tests del dashboard lo importan) y URLs reales del repositorio.
+
+### 11.5 Tests
+
+111 tests:
+- Parser: filas fijadas por registro (EPE, APE, EMSA) y "proyecto de cuadro".
+- Vigencia: "Período 09/2025".
+- Dinero: estimación de la inyección faltante.
+- Geografía: alias entre fuentes.
+- Dashboard: claves GADM, partidos en dos polígonos y nombres legibles.

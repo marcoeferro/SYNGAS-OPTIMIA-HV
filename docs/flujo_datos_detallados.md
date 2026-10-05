@@ -1,41 +1,34 @@
-architecture-beta
-    %% =============================================================
-    %% Flujo de Datos — Pipeline ETL detallado
-    %% =============================================================
+# Flujo de datos detallado
 
-    %% --- Entrada ---
-    group input(cloud)[Entrada]
-    service cba_in(server)[CBA CSV] in input
-    service magyp_in(server)[MAGYP CSV] in input
+Etapas de `etl/pipelines/run_etl.py`:
 
-    %% --- Transformaciones ---
-    group transforms(server)[Transformaciones]
-    service clean(server)[Normalizar Strings] in transforms
-    service geo(server)[Normalizar Geo] in transforms
-    service taxonomy(server)[Resolver Taxonomia] in transforms
-    service groupby(server)[Agrupar Clave] in transforms
-    service reconcile(server)[Reconciliar Fuentes] in transforms
-    service biomass(server)[Calcular Biomasa] in transforms
-    service flags(server)[Flags Validez] in transforms
+```mermaid
+flowchart TD
+    A1[1a. Extracción agrícola<br/>CBA + MAGyP → data/raw] --> B
+    A2[1b. Extracción de tarifas<br/>→ data/reference/*_tarifas.json<br/>+ tarifas_historial.csv] --> G
+    B[2. Carga y limpieza<br/>strings, geografía, alias de departamento,<br/>taxonomía de cultivos, 'SD' → NaN] --> C
+    C[3. Agrupación por clave natural<br/>Provincia, Departamento, Campaña, Cultivo] --> D
+    D[4. Reconciliación multi-fuente<br/>se conserva la mayor producción] --> E
+    D -->|descartados y discrepancias| AUD[(data/audit)]
+    E[5. Validación de invariantes] --> F
+    F[6. Biomasa residual<br/>Producción × MS × FR;<br/>residuo recuperable] --> G
+    G[7. Energía y dinero por campaña<br/>PP30 + tarifa por distribuidora] --> H
+    H[8. Potencial anual<br/>promedio de las 5 últimas<br/>campañas completas] --> I
+    I[9. Validación de biomasa] --> J
+    J[10. Persistencia Parquet] --> OUT[(data/processed)]
+```
 
-    %% --- Validación ---
-    group validation(database)[Validacion]
-    service invariants(database)[Invariantes] in validation
+## Energía y dinero
 
-    %% --- Salida ---
-    group output(disk)[Salida]
-    service parquet_out(disk)[Parquet] in output
-    service audit_out(disk)[Audit] in output
+| Paso | Fórmula |
+|------|---------|
+| Residuo recuperable | residuo (t MS) × fracción recuperable (0,5) |
+| Masa alimentada | residuo recuperable ÷ (1 − humedad operativa 12 %) |
+| Energía | masa alimentada ÷ consumo específico (1,1 kg/kWh) |
+| Equipos PP30 | energía ÷ (25 kW × 8760 h × disponibilidad 0,8) |
+| Ahorro | energía × 0,6 (autoconsumo) × tarifa de compra |
+| Inyección | energía × 0,4 × tarifa de inyección (si falta: compra × ratio observado) |
 
-    %% --- Flujo ---
-    cba_in:R --> L:clean
-    magyp_in:R --> L:clean
-    clean:R --> L:geo
-    geo:R --> L:taxonomy
-    taxonomy:R --> L:groupby
-    groupby:R --> L:reconcile
-    reconcile:R --> L:invariants
-    invariants:R --> L:biomass
-    biomass:R --> L:flags
-    flags:R --> L:parquet_out
-    flags:R --> L:audit_out
+La tarifa se asigna por distribuidora: excepción por departamento (EDESTE,
+EDELAP) → distribuidora de la provincia → promedio si la provincia tiene
+varias (Buenos Aires: EDEN, EDEA, EDES).

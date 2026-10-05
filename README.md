@@ -1,14 +1,15 @@
 # ETL Biomasa Residual Agrícola
 
-Pipeline ETL para estimación de biomasa residual agrícola en Argentina
-a partir de fuentes oficiales, con dashboard interactivo **SQL-first**
-sobre DuckDB.
+Pipeline ETL que estima la **biomasa residual agrícola** de Argentina por
+departamento, la convierte en **energía eléctrica** generable con
+gasificadores APL PP30 y la valoriza en **dinero** con las tarifas
+eléctricas vigentes de cada distribuidora. Incluye un dashboard
+Streamlit sobre los Parquet del pipeline (vía DuckDB).
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 [![DuckDB](https://img.shields.io/badge/duckdb-1.0%2B-yellow)](https://duckdb.org/)
 [![Streamlit](https://img.shields.io/badge/dashboard-streamlit-FF4B4B)](https://streamlit.io/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
 
@@ -21,8 +22,11 @@ sobre DuckDB.
 - [Stack tecnológico](#stack-tecnológico)
 - [Instalación](#instalación)
 - [Uso](#uso)
+- [Tarifas eléctricas](#tarifas-eléctricas)
+- [Dashboard](#dashboard)
 - [Despliegue con Docker](#despliegue-con-docker)
-- [Dashboard con Streamlit](#dashboard-con-streamlit)
+- [Programación del ETL](#programación-del-etl-sin-make-windows-incluido)
+- [Dominios necesarios](#dominios-necesarios)
 - [Tests](#tests)
 - [Decisiones metodológicas](#decisiones-metodológicas)
 
@@ -30,94 +34,88 @@ sobre DuckDB.
 
 ## Descripción
 
-Este proyecto implementa un pipeline ETL que integra dos fuentes oficiales
-de datos agrícolas de Argentina y calcula la **biomasa residual** generada
-por los principales cultivos extensivos a nivel departamental.
-
-La biomasa residual (en materia seca) se estima como:
+El pipeline integra dos fuentes oficiales de producción agrícola por
+departamento y calcula la biomasa residual en **materia seca**:
 
 $$
-\text{Biomasa Residual} = \text{Producción} \times \text{MS} \times \text{FR}
+\text{Biomasa residual} = \text{Producción} \times \text{MS} \times \text{FR},
+\qquad \text{FR} = \frac{1 - \text{IC}}{\text{IC}}
 $$
 
 donde MS es la fracción de materia seca del producto cosechado (la
-producción se informa a humedad comercial o en fresco),
+producción se informa a humedad comercial) e IC el índice de cosecha del
+cultivo (`data/reference/ic_fr.csv`).
 
-donde el factor de residuo se deriva del índice de cosecha:
+Sobre esa biomasa:
 
-$$
-\text{FR} = \frac{1 - \text{IC}}{\text{IC}}
-$$
+1. **Residuo recuperable**: 50 % del residuo (el resto queda en el lote).
+2. **Energía**: el residuo, llevado a humedad operativa (12 %), alimenta
+   gasificadores PP30 de 25 kW con un consumo específico de 1,1 kg/kWh.
+3. **Dinero** (balance neto, Ley 27.424): 60 % de la energía se
+   autoconsume y ahorra la tarifa de compra; 40 % se inyecta a la red a la
+   tarifa de inyección. Es **beneficio bruto**: no descuenta inversión,
+   operación ni recolección y flete del rastrojo.
 
-El residuo **recuperable** (50 % por defecto) se convierte a energía con
-un gasificador APL PP30 y se valoriza bajo balance neto (Ley 27.424). Los
-resultados energéticos y económicos se expresan **por año**, como
-promedio de las últimas 5 campañas completas. Ver
-[`REPORTE_CAMBIOS.md`](REPORTE_CAMBIOS.md) para el detalle metodológico.
-
-Los resultados se exponen mediante un **dashboard Streamlit** multipágina
-que lee directamente los archivos Parquet generados por el pipeline
-(vía DuckDB).
+Energía y dinero se expresan **por año**, como promedio de las 5 últimas
+campañas completas. El detalle de la metodología y de cada corrección
+está en [`REPORTE_CAMBIOS.md`](REPORTE_CAMBIOS.md).
 
 **Fuentes**:
-- Bolsa de Cereales de Córdoba (CBA).
 - Estimaciones Agrícolas del Ministerio de Agricultura, Ganadería y Pesca
-  de la Nación (MAGYP).
+  de la Nación (MAGyP).
+- Bolsa de Cereales de Córdoba (CBA).
+- Cuadros tarifarios de las 28 distribuidoras eléctricas del país
+  (Secretaría de Energía, entes reguladores y sitios de las distribuidoras).
+
+Ver [`docs/data_sources.md`](docs/data_sources.md).
 
 ---
 
 ## Arquitectura
 
-Vista de alto nivel del sistema:
-
 ```mermaid
 graph TB
-    subgraph Sources["Fuentes de Datos (inmutables)"]
-        S1[CBA - CSV]
-        S2[MAGYP - CSV]
+    subgraph Fuentes["Fuentes externas"]
+        S1[MAGyP]
+        S2[Bolsa de Cereales<br/>de Córdoba]
+        S3[Cuadros tarifarios<br/>28 distribuidoras]
     end
 
     subgraph ETL["Pipeline ETL (Python)"]
         E1[Extractores]
         T1[Transformers]
+        T2[Energía y dinero]
         L1[Loaders]
     end
 
-    subgraph Storage["Almacenamiento en disco"]
-        R1[data/raw]
-        R3[data/processed]
-        R4[data/audit]
-    end
-
-    subgraph Serving["Capa de Servicio"]
-        D1[DuckDB]
-        D2[Streamlit]
-    end
-
-    subgraph Consumer["Consumidor"]
-        U1[Usuario Final]
+    subgraph Datos["Almacenamiento"]
+        R1[(data/raw)]
+        R2[(data/reference)]
+        R3[(data/processed)]
+        R4[(data/audit)]
     end
 
     S1 --> E1
     S2 --> E1
+    S3 --> E1
     E1 --> R1
+    E1 --> R2
     R1 --> T1
-    T1 --> R3
-    T1 --> R4
-    R3 --> D1
-    R4 --> D1
-    D1 --> D2
-    D2 --> U1
-
-    classDef source fill:#e1f5ff,stroke:#0277bd
-    classDef transform fill:#fff3e0,stroke:#ef6c00
-    classDef storage fill:#f3e5f5,stroke:#6a1b9a
-    classDef serve fill:#e8f5e9,stroke:#2e7d32
-    class S1,S2 source
-    class E1,T1,L1 transform
-    class R1,R3,R4 storage
-    class D1,D2 serve
+    R2 --> T1
+    T1 --> T2
+    R2 --> T2
+    T2 --> L1
+    L1 --> R3
+    L1 --> R4
+    R3 --> D[Dashboard Streamlit<br/>+ DuckDB]
+    R4 --> D
+    R2 --> D
+    D --> U[Usuario]
 ```
+
+Más diagramas en [`docs/`](docs/): arquitectura detallada, despliegue,
+flujo de datos, ciclo de vida de los artefactos, modelo de datos y
+secuencia del dashboard.
 
 ---
 
@@ -125,19 +123,18 @@ graph TB
 
 ```mermaid
 flowchart TD
-    Start([Inicio]) --> Load[1. Cargar fuentes raw]
-    Load --> Normalize[2. Normalizar strings y geo]
-    Normalize --> Resolve[3. Resolver agregados/componentes]
-    Resolve --> Group[4. Agrupar por clave natural]
-    Group --> Reconcile[5. Reconciliar por mayor produccion]
-    Reconcile --> Biomass[6. Calcular biomasa residual]
-    Biomass --> Flags[7. Aplicar flags de validez]
-    Flags --> Validate[8. Validar invariantes]
-    Validate --> Persist[9. Persistir Parquet]
+    Start([Inicio]) --> Ext[1. Extraer fuentes y tarifas]
+    Ext --> Load[2. Cargar y normalizar strings, geografía y cultivos]
+    Load --> Group[3. Agrupar por clave natural]
+    Group --> Reconcile[4. Reconciliar por mayor producción]
+    Reconcile --> Validate[5. Validar invariantes]
+    Validate --> Biomass[6. Biomasa residual y residuo recuperable]
+    Biomass --> Energy[7. Energía PP30 y dinero por campaña]
+    Energy --> Annual[8. Potencial anual del período de referencia]
+    Annual --> Check[9. Validar biomasa]
+    Check --> Persist[10. Persistir Parquet]
     Persist --> End([Fin])
 
-    style Start fill:#c8e6c9
-    style End fill:#c8e6c9
     style Reconcile fill:#ffe0b2
     style Validate fill:#ffcdd2
     style Persist fill:#b3e5fc
@@ -148,30 +145,33 @@ flowchart TD
 ## Estructura del proyecto
 
 ```
-proyecto-biomasa/
-├── config/                    Configuración YAML
-│   ├── paths.yaml
-│   └── logging.yaml
-├── data/                      Datos
-│   ├── raw/                   Fuentes primarias inmutables
-│   ├── reference/             Tablas de referencia (IC/FR)
-│   ├── interim/               Intermedios regenerables
-│   ├── processed/             Parquet curado
-│   └── audit/                 Artefactos de auditoría
-├── docs/                      Documentación metodológica
-├── etl/                       Código del pipeline
-│   ├── extractors/
-│   ├── reference/
-│   ├── transformers/
-│   ├── loaders/
-│   └── pipelines/
-├── notebooks/                 Análisis exploratorio
-├── dashboard/                 App Streamlit (Resumen / Exploración / Auditoría)
-│   ├── init.sql               SQL de inicialización (vistas)
-│   └── dashboards/            Archivos .dashboard.sql
-├── tests/                     Suite de tests
-├── Dockerfile                 Imagen del pipeline ETL
-├── docker-compose.yml         Orquestación (ETL + Shaper)
+SYNGAS-OPTIMIA-HV/
+├── config/                    paths.yaml, logging.yml, schedule.ini (cron)
+├── data/
+│   ├── raw/                   Descargas versionadas YYYYMMDDHHMMSS_*.csv
+│   ├── reference/             ic_fr.csv, *_tarifas.json, tarifas_historial.csv,
+│   │                          cuadros_manuales/
+│   ├── processed/             biomasa_validos.parquet, potencial_energetico_anual.parquet
+│   └── audit/                 descartados y discrepancias entre fuentes
+├── docs/                      Fuentes, decisiones metodológicas y diagramas
+├── etl/
+│   ├── extractors/            MAGyP, Bolsa de Córdoba, tarifas (scraper + parser)
+│   ├── reference/             Registro de distribuidoras
+│   ├── transformers/          Limpieza, geografía, reconciliación, biomasa,
+│   │                          período de referencia, energía y dinero
+│   ├── loaders/               Parquet e historial de tarifas
+│   └── pipelines/run_etl.py   Orquestación
+├── dashboard/
+│   ├── app.py                 Punto de entrada y navegación
+│   ├── data_loader.py         Carga (DuckDB), agregaciones y claves geográficas
+│   ├── charts.py              Mapas y barras compartidos
+│   ├── vistas/                Inicio, Resumen, Energía, Dinero, Exploración, Auditoría
+│   └── geo/                   Polígonos GADM 4.1 (provincias y departamentos)
+├── notebooks/main.ipynb       Análisis completo paso a paso
+├── scripts/                   PowerShell: Start-Stack, Run-Etl, Stop-Stack
+├── tests/
+├── Dockerfile                 Imagen única para ETL y dashboard
+├── docker-compose.yml         etl_worker, etl_pipeline, scheduler, dashboard
 ├── Makefile
 └── pyproject.toml
 ```
@@ -184,13 +184,12 @@ proyecto-biomasa/
 |------|-----------|
 | Lenguaje | Python 3.11+ |
 | Procesamiento | pandas, numpy |
-| Almacenamiento | Parquet (pyarrow) |
+| Descarga y parseo | httpx, BeautifulSoup, pypdf, openpyxl, xlrd |
+| Almacenamiento | Parquet (pyarrow), CSV, JSON |
 | Motor de consulta | DuckDB |
-| Dashboard | Streamlit + DuckDB |
-| Configuración | PyYAML |
-| Testing | pytest |
-| Linting | ruff, mypy |
-| Despliegue | Docker, Docker Compose |
+| Dashboard | Streamlit + Plotly |
+| Testing / calidad | pytest, ruff, mypy |
+| Despliegue | Docker, Docker Compose, Ofelia (cron) |
 
 ---
 
@@ -199,22 +198,20 @@ proyecto-biomasa/
 ### Local (desarrollo)
 
 ```bash
-git clone <repo-url>
-cd proyecto-biomasa
+git clone https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV.git
+cd SYNGAS-OPTIMIA-HV
 
 python -m venv .venv
 source .venv/bin/activate    # Linux/Mac
 # .venv\Scripts\activate     # Windows
 
-make install-dev
+pip install -e ".[dev]"      # o: make install-dev
 ```
 
-### Con Docker (producción)
+### Con Docker
 
 ```bash
-make docker-build
-make docker-etl
-make docker-up
+docker compose up -d --build   # o: make docker-up
 ```
 
 ---
@@ -224,164 +221,125 @@ make docker-up
 ### Ejecutar el pipeline ETL
 
 ```bash
-# Local
-make etl
-
-# Sin descargar fuentes ni tarifas (usa lo último en disco)
-python -m etl.pipelines.run_etl --skip-extract --skip-tarifas
-
-# Con Docker (job one-shot)
-make docker-etl
+make etl                                                   # completo
+python -m etl.pipelines.run_etl --skip-extract --skip-tarifas  # usa lo último en disco
+make docker-etl                                            # en Docker (job one-shot)
 ```
 
 Genera:
-- `data/processed/biomasa_validos.parquet` — dataset curado por campaña
-  (biomasa, residuo recuperable, kWh, ARS).
-- `data/processed/potencial_energetico_anual.parquet` — potencial
-  energético y económico anual (período de referencia).
-- `data/reference/YYYYMMDDHHMMSS_tarifas.json` — tarifas de las 28
-  distribuidoras del país extraídas de los cuadros tarifarios, con origen
-  por campo (`estado_campos`).
-- `data/reference/tarifas_historial.csv` — historial de cuadros tarifarios
-  procesados (vigencia, valores, documento, SHA-256). Backfill desde 2025:
-  `python -m etl.extractors.scrape_tarifas --historial --desde 2025-01`.
-- `data/reference/cuadros_manuales/<CÓDIGO>/` — cuadros descargados a mano
-  (PDF/XLSX/ZIP) para distribuidoras cuya fuente bloquea la descarga
-  automática (EPEC, ESJ, SPSE, DPE). El extractor los procesa como
-  cualquier otro cuadro. EPE (Santa Fe) requiere habilitar el dominio
-  `epe.santafe.gov.ar` (sin `www`), de donde se bajan sus cuadros.
-- `data/audit/descartados_reconciliacion.parquet` — auditoría.
-- `data/audit/discrepancias_cba_vs_magyp.parquet` — discrepancias.
+- `data/processed/biomasa_validos.parquet`: dataset curado por campaña
+  (biomasa, residuo recuperable, kWh, tarifas y ARS por registro).
+- `data/processed/potencial_energetico_anual.parquet`: potencial
+  energético y económico anual del período de referencia.
+- `data/reference/YYYYMMDDHHMMSS_tarifas.json`: tarifas por distribuidora,
+  con vigencia, documento de origen y estado de cada campo.
+- `data/reference/tarifas_historial.csv`: historial de cuadros tarifarios.
+- `data/audit/descartados_reconciliacion.parquet` y
+  `data/audit/discrepancias_cba_vs_magyp.parquet`: auditoría.
+
+Si un extractor falla (sitio caído o bloqueado), el pipeline usa el
+último archivo descargado de esa fuente y lo registra en el log.
+
+---
+
+## Tarifas eléctricas
+
+`etl/extractors/scrape_tarifas.py` recorre las 28 distribuidoras de
+`etl/reference/distribuidoras.py`, descarga los cuadros (PDF, XLSX, ZIP)
+y extrae la tarifa con `etl/extractors/tariff_parser.py`:
+
+- **Compra**: medianas o grandes demandas en baja tensión (< 300 kW),
+  banda horaria "Resto", sin impuestos, del cuadro pleno vigente.
+- **Inyección**: precio publicado para usuarios-generadores; donde falta
+  se estima como compra × ratio observado y se marca como estimado.
+
+```bash
+python -m etl.extractors.scrape_tarifas                       # vigentes
+python -m etl.extractors.scrape_tarifas --solo EPE EDESAL     # sólo algunas
+python -m etl.extractors.scrape_tarifas --historial --desde 2025-01  # backfill
+```
+
+Para fuentes que bloquean la descarga automática, se puede dejar el
+cuadro bajado a mano en `data/reference/cuadros_manuales/<CÓDIGO>/`
+(p.ej. `EPEC/cuadro_tarifario_2026_09.pdf`); se procesa como cualquier
+otro cuadro.
+
+Estado al 2026-10: 22 distribuidoras con tarifa extraída, EJESA con el
+valor anterior y 5 sin dato (EPEC, ESJ, SPSE, DPE, EDET). El detalle y
+los motivos están en `REPORTE_CAMBIOS.md`.
+
+---
+
+## Dashboard
+
+```bash
+make dashboard            # streamlit run dashboard/app.py
+```
+
+Abrir `http://localhost:8501`. Páginas:
+
+| Página | Contenido |
+|--------|-----------|
+| **Inicio** | Qué se calcula y de dónde salen los datos |
+| **Resumen** | KPIs, rankings y mapas por provincia y departamento; selector biomasa / energía / dinero |
+| **Energía** | Energía generable, equipos PP30, autoconsumo vs. inyección, mapas y parámetros |
+| **Dinero** | Beneficio bruto, mapas, tarifas por distribuidora e historial de tarifas |
+| **Exploración** | Filtros cruzados, series por campaña y tabla descargable |
+| **Auditoría de datos** | Descartados, discrepancias entre fuentes, estado de tarifas, cobertura de mapas y campañas incompletas |
+
+Notas:
+- Las páginas están en `dashboard/vistas/` y se registran en
+  `dashboard/app.py` (`st.navigation`). Para agregar una página, crear el
+  archivo en `vistas/` y sumarlo a la lista de `app.py`. No usar una
+  carpeta `pages/`: Streamlit activa el modo multipágina anterior y las
+  páginas dejan de pasar por `app.py`.
+- Los mapas usan los polígonos GADM 4.1 de `dashboard/geo/` y la
+  cartografía base de Plotly, que el navegador descarga de `cdn.plot.ly`.
+- Los datos se leen de `data/processed`, `data/audit` y `data/reference`;
+  ejecutar el ETL antes de abrir el dashboard.
 
 ---
 
 ## Despliegue con Docker
 
-### Arquitectura de despliegue
-
 ```mermaid
 graph LR
-    subgraph Host["Host de Despliegue"]
-        subgraph Docker["Docker Engine"]
-            subgraph C1["Contenedor: Streamlit"]
-                App["Streamlit<br/>:8501"]
-            end
-            subgraph C2["Contenedor: ETL<br/>(job one-shot)"]
-                ETL["run_etl.py"]
-            end
-        end
-        V1[(Volume: data/processed)]
-        V2[(data audit+processed)]
-    end
-
-    subgraph Externo["Externo"]
-        User[Navegador]
-    end
-
-    User -->|HTTP/HTTPS| App
-    App -.ro.-> V1
-    App -.rw.-> V2
-    ETL -.rw.-> V1
-
-    style App fill:#e8f5e9
-    style ETL fill:#fff3e0
-    style V1 fill:#f3e5f5
-    style V2 fill:#f3e5f5
+    U[Navegador] -->|HTTP 8501| DASH[dashboard<br/>Streamlit]
+    SCH[scheduler<br/>Ofelia] -->|cron| W[etl_worker]
+    W -.rw.-> V[(./data)]
+    DASH -.ro.-> V
 ```
-
-### Comandos principales
 
 | Comando | Descripción |
 |---------|-------------|
-| `make docker-build` | Construye la imagen del ETL |
+| `make docker-build` | Construye la imagen (ETL + dashboard) |
 | `make docker-up` / `docker compose up -d --build` | Levanta worker + scheduler + dashboard |
 | `make docker-down` | Detiene y elimina los contenedores |
 | `make docker-logs` | Sigue los logs del dashboard |
 | `make docker-etl` | Ejecuta el pipeline ETL como job |
 | `make docker-clean` | Elimina imágenes y volúmenes |
 
-### Flujo típico
-
-```bash
-# 1. Construir imagen del ETL
-make docker-build
-
-# 2. Ejecutar el ETL para generar Parquet
-make docker-etl
-
-# 3. Levantar dashboard Streamlit
-make docker-up
-```
-
-Acceder al dashboard en `http://localhost:8501`[reference:3].
-
-### Variables de entorno
-
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `LOG_LEVEL` | `INFO` | Nivel de logging |
-| `DASHBOARD_PORT` | `8501` | Puerto del dashboard Streamlit |
+| `DASHBOARD_PORT` | `8501` | Puerto del dashboard |
+| `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria del cron |
+| `EPE_API_KEY` | clave pública del sitio de EPE | Reemplaza la clave de la API de descargas de EPE si cambia |
 
 ---
-
-## Dashboard con Streamlit
-
-Dashboard multipágina Streamlit de solo lectura sobre Parquet. Los dashboards son
-archivos `.dashboard.sql` versionables en git[reference:4].
-
-### Inicialización
-
-El archivo `dashboard/` se ejecuta al arrancar el contenedor y
-crea las vistas sobre los Parquet:
-
-```sql
-CREATE OR REPLACE VIEW biomasa AS
-SELECT * FROM read_parquet('/data/processed/biomasa_validos.parquet');
-```
-
-DuckDB lee Parquet directamente sin necesidad de importación previa[reference:5].
-
-### Desarrollo local de dashboards
-
-```bash
-make install-dashboard    # instala streamlit vía pip
-make dashboard        # shaper dev (watch mode)
-```
-
-El comando `shaper dev` levanta un preview en el navegador con
-hot-reload de los archivos `.dashboard.sql`[reference:6].
-
-### Crear un dashboard
-
-1. Crear `dashboard/pages/mi_dashboard.dashboard.sql`.
-2. Escribir consultas SQL contra las vistas (`biomasa`, `descartados`).
-3. `shaper dev` detecta el archivo y muestra preview.
-4. Commit y deploy vía CI/CD o `shaper` CLI.
-
----
-
 
 ## Programación del ETL (sin Make, Windows incluido)
 
-El scraper/pipeline corre **dentro de Docker** según el cron definido en:
-
-```text
-config/schedule.ini
-```
-
-Ahí se edita la línea `schedule = ...` (formato cron de 5 campos). Zona horaria: variable `TZ` (por defecto `America/Argentina/Buenos_Aires` en compose / `.env`).
+El pipeline corre **dentro de Docker** según el cron de
+`config/schedule.ini` (línea `schedule = ...`, formato de Ofelia con
+**segundos** al principio: `0 0 6 * * *` = todos los días a las 06:00).
+Zona horaria: variable `TZ`.
 
 ### Arranque del stack (PowerShell + Docker Desktop)
 
 ```powershell
-# Primera vez / siempre que cambie el código de la imagen
-.\scripts\Start-Stack.ps1
-
-# O equivalente:
-docker compose up -d --build
+.\scripts\Start-Stack.ps1      # o: docker compose up -d --build
 ```
-
-Servicios que quedan arriba:
 
 | Servicio | Rol |
 |----------|-----|
@@ -389,13 +347,9 @@ Servicios que quedan arriba:
 | `scheduler` | Ofelia: dispara el ETL según `config/schedule.ini` |
 | `dashboard` | Streamlit en http://localhost:8501 |
 
-Tras cambiar el cron:
+Tras cambiar el cron: `docker compose restart scheduler`.
 
-```powershell
-docker compose restart scheduler
-```
-
-### Ejecución manual del ETL (una vez, sin esperar al cron)
+### Ejecución manual del ETL
 
 ```powershell
 .\scripts\Run-Etl.ps1                       # en Docker; inicia Docker Desktop si está apagado
@@ -406,27 +360,44 @@ docker compose --profile etl run --rm etl_pipeline
 ```
 
 Si aparece `open //./pipe/dockerDesktopLinuxEngine: The system cannot find
-the file specified`, el motor de Docker no está corriendo: abrí Docker
-Desktop (el script lo intenta solo y espera hasta 3 minutos) o usá `-Local`.
+the file specified`, el motor de Docker no está corriendo: abrir Docker
+Desktop (el script lo intenta solo y espera hasta 3 minutos) o usar `-Local`.
 
 ### Detener todo
 
 ```powershell
-.\scripts\Stop-Stack.ps1
-# o:
-docker compose down
+.\scripts\Stop-Stack.ps1       # o: docker compose down
 ```
 
-No se requiere `make` en Windows.
+---
 
+## Dominios necesarios
+
+El ETL necesita salida a Internet hacia:
+
+| Dominio | Uso |
+|---------|-----|
+| `datosestimaciones.magyp.gob.ar` | Estimaciones agrícolas |
+| `bccba.sharepoint.com`, `*.sharepoint.com` | Bolsa de Cereales de Córdoba |
+| `www.argentina.gob.ar`, `www.energia.gob.ar` | Portal nacional de cuadros tarifarios |
+| `oceba.gba.gov.ar` | EDEN, EDEA, EDES, EDELAP |
+| `www.epe.santafe.gov.ar`, `epe.santafe.gov.ar` | EPE (página y API de descargas) |
+| Sitios de distribuidoras y entes: `www.edenor.com`, `www.edesur.com.ar`, `www.edeaweb.com.ar`, `www.ecsapem.com.ar`, `www.secheep.gob.ar`, `www.epec.com.ar`, `www.dpec.com.ar`, `www.enersa.com.ar`, `recursosyenergia.com.ar`, `www.ejesa.com.ar`, `susepu.jujuy.gob.ar`, `www.edelar.com.ar`, `www.edemsa.com`, `epremendoza.gob.ar`, `energia.misiones.gob.ar`, `www.energiademisiones.com.ar`, `www.epen.gov.ar`, `www.edersa.com.ar`, `www.eprern.gov.ar`, `www.edesa.com.ar`, `oficinavirtualedesal.com.ar`, `epresanjuan.gob.ar`, `spse.ar`, `www.edese.com.ar`, `www.dpe.com.ar`, `www.edetsa.com`, `epre.gov.ar` | Fuentes propias de tarifas |
+| Opcionales: `ersep.cba.gov.ar`, `energiasanjuan.com.ar`, `spse.gob.ar` | Hoy fuera de la lista; podrían cubrir EPEC, ESJ y SPSE |
+
+El navegador que abre el dashboard necesita `cdn.plot.ly` para los mapas.
+
+---
 
 ## Tests
 
 ```bash
-make test
+make test                 # pytest tests/ -v
 make test-cov
-pytest tests/test_crop_consolidation.py -v
+pytest tests/test_tariff_parser.py -v
 ```
+
+Los tests del parser de tarifas usan fragmentos de cuadros reales.
 
 ---
 
@@ -437,3 +408,8 @@ Ver [`docs/decision_log.md`](docs/decision_log.md):
 - **POL-CROP-001**: consolidación de `X total` vs componentes.
 - **POL-SOURCE-001**: reconciliación por mayor producción.
 - **POL-MISSING-001**: gestión de valores faltantes en biomasa.
+- **POL-GEO-001**: alias de departamento entre fuentes.
+- **POL-PERIOD-001**: período de referencia anual.
+- **POL-ENERGY-001**: conversión a energía (PP30).
+- **POL-TARIFF-001** y **POL-TARIFF-002**: tarifa de compra representativa
+  y tarifa de inyección faltante.
