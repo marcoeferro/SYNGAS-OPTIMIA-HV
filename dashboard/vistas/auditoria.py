@@ -156,7 +156,7 @@ with tab_tar:
         st.caption(
             "Leyenda: " + " · ".join(dict.fromkeys(f"{i} {t}" for i, t in ESTADOS_TARIFA.values()))
             + f". Archivo: `{path.name}`. El motivo de cada distribuidora sin dato está en "
-            "`REPORTE_CAMBIOS.md`."
+            "`docs/03_datos/tarifas_electricas.md`."
         )
     if pot is not None and not pot.empty:
         tot = pot[COL_KWH].sum()

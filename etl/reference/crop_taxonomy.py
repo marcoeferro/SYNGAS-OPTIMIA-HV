@@ -5,7 +5,7 @@ Este módulo es la fuente de verdad del mapeo entre nombres raw
 reportados por las fuentes y nombres canónicos utilizados en el
 pipeline. Toda modificación requiere:
 
-    1. Justificación documentada en docs/decision_log.md.
+    1. Justificación documentada en docs/02_metodologia/decisiones.md.
     2. Aprobación del steward del dominio.
     3. Actualización de tests si altera contratos existentes.
 
