@@ -44,6 +44,7 @@ from etl.extractors.io_utils import (
     find_latest_raw,
 )
 from etl.loaders.save_processed import save_parquet, save_processed_artifacts
+from etl.loaders.tariff_history import load_history
 from etl.reference.load_ic import load_ic_table
 from etl.transformers.biomass import (
     DEFAULT_FRACCION_RECUPERABLE,
@@ -54,6 +55,7 @@ from etl.transformers.biomass import (
     compute_biomass,
     report_exclusion_impact,
 )
+from etl.transformers.data_checks import run_data_checks
 from etl.transformers.energy_finance import (
     COL_BENEFICIO,
     COL_KWH_TOTALES,
@@ -158,6 +160,26 @@ def run_tarifas_stage(raw_dir: Path, ref_dir: Path) -> Path | None:
     except Exception:
         logger.exception("Extracción de tarifas falló; se usa la referencia previa")
         return None
+
+
+class DataQualityError(RuntimeError):
+    """Alertas de calidad en modo estricto (``--estricto``)."""
+
+
+def quality_gate(df_alertas: pd.DataFrame, estricto: bool, path: Path) -> None:
+    """
+    Corta el pipeline si hay alertas de calidad y el modo es estricto.
+
+    Se llama antes de persistir: los datos publicados quedan como estaban.
+
+    Raises:
+        DataQualityError: Modo estricto con al menos una alerta.
+    """
+    if estricto and not df_alertas.empty:
+        raise DataQualityError(
+            f"{len(df_alertas)} alerta(s) de calidad (ver {path}); "
+            "no se sobrescriben los datos publicados (modo estricto)."
+        )
 
 
 # Espera antes de la segunda pasada sobre las fuentes que fallaron.
@@ -265,6 +287,7 @@ def run(
     tarifas_path: str | Path | None = None,
     n_campanas: int = DEFAULT_N_CAMPANAS,
     fraccion_recuperable: float | None = None,
+    estricto: bool = False,
 ) -> dict:
     """
     Ejecuta el pipeline ETL completo.
@@ -280,9 +303,14 @@ def run(
         fraccion_recuperable: Fracción del residuo retirable del lote.
             Si None, usa ``parametros_pp30.fraccion_recuperable_default``
             del JSON de tarifas (o 0.5).
+        estricto: Si True y los controles de calidad generan alertas, el
+            pipeline se detiene antes de sobrescribir los datos publicados.
 
     Returns:
         Diccionario con paths de los artefactos persistidos.
+
+    Raises:
+        DataQualityError: En modo estricto, si hay alertas de calidad.
     """
     config = load_config(config_path)
     raw_dir = Path(config["data"]["raw"])
@@ -374,6 +402,15 @@ def run(
     # --- 9. Validación de biomasa ---
     validar_biomasa(df_biomasa)
 
+    # --- 9b. Controles de calidad contra la corrida anterior ---
+    path_anual = processed_dir / "potencial_energetico_anual.parquet"
+    df_anual_anterior = pd.read_parquet(path_anual) if path_anual.exists() else None
+    df_alertas = run_data_checks(
+        tarifas_cfg, load_history(ref_dir), df_anual, df_anual_anterior
+    )
+    path_alertas = save_parquet(df_alertas, audit_dir / "alertas_calidad.parquet")
+    quality_gate(df_alertas, estricto, path_alertas)
+
     # --- 10. Persistencia ---
     paths = save_processed_artifacts(
         df_biomasa=df_biomasa_validos,
@@ -385,6 +422,7 @@ def run(
     paths["potencial_anual"] = save_parquet(
         df_anual, processed_dir / "potencial_energetico_anual.parquet"
     )
+    paths["alertas_calidad"] = path_alertas
     logger.info("Pipeline completado. Artefactos: %s", paths)
     return paths
 
@@ -431,6 +469,12 @@ def main() -> int:
         default=None,
         help="Fracción del rastrojo retirable del lote (0, 1]",
     )
+    parser.add_argument(
+        "--estricto",
+        action="store_true",
+        help="Si los controles de calidad generan alertas, no sobrescribe los "
+             "datos publicados y termina con error",
+    )
     args = parser.parse_args()
 
     setup_logging(args.log_config)
@@ -443,6 +487,7 @@ def main() -> int:
             tarifas_path=args.tarifas,
             n_campanas=args.n_campanas,
             fraccion_recuperable=args.fraccion_recuperable,
+            estricto=args.estricto,
         )
     except Exception:
         logger.exception("Fallo en pipeline ETL")

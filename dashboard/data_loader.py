@@ -41,6 +41,7 @@ PATH_POTENCIAL = PROJECT_ROOT / "data" / "processed" / "potencial_energetico_anu
 PATH_DESCARTADOS = PROJECT_ROOT / "data" / "audit" / "descartados_reconciliacion.parquet"
 PATH_DISCREPANCIAS = PROJECT_ROOT / "data" / "audit" / "discrepancias_cba_vs_magyp.parquet"
 PATH_HISTORIAL = REFERENCE_DIR / "tarifas_historial.csv"
+PATH_ALERTAS = PROJECT_ROOT / "data" / "audit" / "alertas_calidad.parquet"
 
 GEO_PROV = GEO_DIR / "gadm41_ARG_1.json"
 GEO_DEPT = GEO_DIR / "gadm41_ARG_2.json"
@@ -291,6 +292,11 @@ def stop_missing_potencial() -> None:
 def load_descartados() -> pd.DataFrame | None:
     """Registros descartados en la reconciliación entre fuentes."""
     return _load(PATH_DESCARTADOS)
+
+
+def load_alertas() -> pd.DataFrame | None:
+    """Alertas de los controles de calidad de la última corrida del ETL."""
+    return _load(PATH_ALERTAS)
 
 
 def load_discrepancias() -> pd.DataFrame | None:

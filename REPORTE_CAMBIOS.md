@@ -570,3 +570,36 @@ Revisión pensando en un VPS chico:
 | Imágenes viejas | Cada `build` con código nuevo deja la imagen anterior sin etiqueta (~1 GB). | `Run-Etl.ps1` y `make docker-etl` borran las imágenes sin etiqueta de este proyecto (`LABEL project=etl-biomasa`), sin tocar las de otros proyectos del servidor. |
 
 El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen levantada con `docker compose up -d --build`.
+
+---
+
+## 14. CI y controles de calidad de datos (2026-10-05)
+
+**Tests vs. controles.** Los tests (`tests/`, pytest) verifican el código con casos fijos y corren antes de mergear. Los controles de datos verifican cada corrida del ETL con datos reales. Ya existían dos controles que cortan el ETL (`validar_reconciliacion`, `validar_biomasa`). Faltaba ejecutar los tests automáticamente y comparar cada corrida con la anterior.
+
+**CI** (`.github/workflows/ci.yml`):
+- En cada PR y push a `main`: pytest y errores reales de lint (`ruff --select E9,F`). El estilo completo de ruff no bloquea, porque el repo tiene ~140 avisos previos de formato de docstrings.
+- Si cambian `Dockerfile`, `pyproject.toml` o `.dockerignore`: build completo de la imagen y prueba de imports del ETL y del dashboard dentro de ella. Así se valida el cambio del Dockerfile de la sección 13, que no se pudo construir en el entorno de desarrollo.
+- Repo privado: se instala sólo lo necesario (sin JupyterLab), se cachea pip y se cancelan corridas viejas de la misma rama.
+- Validado con `actionlint`. El job de tests se simuló en un entorno virtual limpio con las mismas dependencias: 119 tests.
+
+**Controles de datos** (`etl/transformers/data_checks.py`, etapa 9b del pipeline):
+
+| Control | Alerta si |
+|---|---|
+| Salto de tarifa | La tarifa de compra vigente (extraída en la corrida) cambia más de 50 % respecto del cuadro anterior de esa distribuidora en el historial |
+| Cambio total | La energía o el dinero anuales cambian más de 20 % respecto de la corrida anterior |
+| Cambio por provincia | La energía de una provincia con al menos 1 % del total cambia más de 50 % |
+
+- Las alertas van al log (WARNING) y a `data/audit/alertas_calidad.parquet`.
+- El dashboard las muestra en *Auditoría de datos → Alertas de calidad*.
+- Con `--estricto` el ETL termina con error **antes** de sobrescribir los datos publicados.
+
+**Primer hallazgo.** Al correr el ETL con los controles saltó una alerta en ENERSA: 67,28 $/kWh (2025-12) → 130,84 $/kWh (2026-05), +94 %. Al revisarla:
+- **El valor de 2026-05 es correcto**: T3 baja tensión < 300 kW, banda Resto.
+- **Los cuadros de 2025-11 y 2025-12 del historial están mal**: la planilla pone dos tablas lado a lado (T3 y peaje) y el texto las mezcla. La marca "Vinculación Inferior en Baja Tensión" de la tabla de peaje hizo pasar por baja tensión una fila de **media** tensión de la T3. El valor correcto de 2025-12 es 79,32, no 67,28.
+- **El aumento es real**, aunque menor que el de la alerta: +65 %, igual que en media tensión (68,43 → 112,87).
+- **No se corrigió el parser.** La planilla no tiene una columna vacía que separe las tablas (en otras hojas las columnas vacías son espaciadores), y el orden de las columnas de baja tensión cambia entre meses. Un arreglo genérico rompería otros cuadros.
+- **Impacto**: sólo esas dos filas del historial; la tarifa vigente y el dinero no se ven afectados. La alerta va a desaparecer cuando entre al historial el próximo cuadro de ENERSA.
+
+**Tests nuevos**: salto de tarifa contra el cuadro anterior (ignorando valores arrastrados), cambios de energía total y por provincia (ignorando provincias chicas), primera corrida sin alertas y modo estricto.

@@ -27,7 +27,7 @@ Streamlit sobre los Parquet del pipeline (vía DuckDB).
 - [Despliegue con Docker](#despliegue-con-docker)
 - [Programación del ETL](#programación-del-etl-sin-make-windows-incluido)
 - [Dominios necesarios](#dominios-necesarios)
-- [Tests](#tests)
+- [Tests y controles de calidad](#tests-y-controles-de-calidad)
 - [Decisiones metodológicas](#decisiones-metodológicas)
 
 ---
@@ -404,15 +404,45 @@ El navegador que abre el dashboard necesita `cdn.plot.ly` para los mapas.
 
 ---
 
-## Tests
+## Tests y controles de calidad
+
+Hay dos tipos de verificación, con objetivos distintos:
+
+| | Tests (`tests/`) | Controles de datos (en el ETL) |
+|---|---|---|
+| Qué verifican | Que el **código** hace lo que debe | Que los **datos** de cada corrida tienen sentido |
+| Con qué datos | Casos fijos (fragmentos de documentos reales) | Los datos recién descargados |
+| Cuándo corren | En CI en cada push a `main` y en cada PR; a mano con `make test` | En cada ejecución del ETL |
 
 ```bash
 make test                 # pytest tests/ -v
-make test-cov
 pytest tests/test_tariff_parser.py -v
 ```
 
-Los tests del parser de tarifas usan fragmentos de cuadros reales.
+`tests/conftest.py` tiene fixtures compartidas que pytest inyecta solo.
+
+**CI** (`.github/workflows/ci.yml`): corre pytest y los errores reales de
+lint (`ruff --select E9,F`) en cada PR y push a `main`. Si cambian
+`Dockerfile`, `pyproject.toml` o `.dockerignore`, también construye la
+imagen y prueba que el ETL y el dashboard importen dentro de ella.
+
+**Controles de datos del ETL**:
+- `validar_reconciliacion` y `validar_biomasa` cortan el ETL si se rompe
+  un invariante (p.ej. una clave con dos fuentes después de reconciliar).
+- `etl/transformers/data_checks.py` compara contra la corrida anterior y
+  genera **alertas**:
+  - salto de tarifa de más de 50 % respecto del cuadro anterior de la
+    distribuidora;
+  - cambio de más de 20 % en la energía o el dinero totales;
+  - cambio de más de 50 % en la energía de una provincia relevante.
+
+  Las alertas van al log y a `data/audit/alertas_calidad.parquet`, y el
+  dashboard las muestra en *Auditoría de datos → Alertas de calidad*. Con
+  `--estricto` el ETL no publica datos nuevos mientras haya alertas:
+
+  ```bash
+  python -m etl.pipelines.run_etl --estricto
+  ```
 
 ---
 

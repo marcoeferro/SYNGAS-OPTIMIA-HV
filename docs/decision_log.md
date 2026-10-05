@@ -111,3 +111,17 @@ inyección/compra de las distribuidoras que publican ambos (0,75 en
 octubre de 2026) y se marca `tarifa_inyeccion_estimada`. Antes el
 beneficio quedaba en NaN y sólo dos provincias sumaban dinero.
 
+---
+
+## POL-QA-001 — Tests y controles de calidad de datos
+
+**Fecha**: 2026-10-05
+
+**Regla**: los tests verifican el código con casos fijos y corren en CI
+(cada PR y push a `main`); no se ejecutan dentro del ETL. Los controles de
+datos corren en cada ejecución del ETL. Las violaciones de invariantes
+cortan el pipeline. Los cambios sospechosos respecto de la corrida
+anterior (salto de tarifa > 50 %, cambio del total > 20 %, de una
+provincia > 50 %) generan alertas; con `--estricto` también lo cortan
+antes de publicar.
+
