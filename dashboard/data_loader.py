@@ -197,50 +197,131 @@ def _add_geo_keys(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="Cargando biomasa…")
+# Columnas que agrega la etapa de energía y dinero del ETL. Un Parquet sin
+# ellas fue generado por una versión anterior del pipeline.
+REQUIRED_ENERGY_COLS = (COL_KWH, COL_BENEFICIO)
+
+
+def _mtime(path: Path) -> float | None:
+    return path.stat().st_mtime if path.exists() else None
+
+
+def file_info(path: Path) -> str:
+    """Ruta y fecha de modificación de un artefacto (para mensajes)."""
+    mtime = _mtime(path)
+    if mtime is None:
+        return f"`{path.relative_to(PROJECT_ROOT)}` (no existe)"
+    fecha = pd.Timestamp(mtime, unit="s", tz="UTC").tz_convert(
+        "America/Argentina/Buenos_Aires"
+    )
+    return f"`{path.relative_to(PROJECT_ROOT)}` (modificado {fecha:%Y-%m-%d %H:%M})"
+
+
+# La caché se indexa por (ruta, fecha de modificación): cuando el ETL
+# reescribe un Parquet, el dashboard lo vuelve a leer sin reiniciarse.
+# Antes la caché no tenía en cuenta el archivo y, si el dashboard estaba
+# abierto mientras corría el ETL, seguía mostrando los datos viejos (o
+# "archivo inexistente") hasta reiniciar Streamlit.
+@st.cache_data(show_spinner="Cargando datos…")
+def _load_parquet_cached(path: str, mtime: float, geo: bool) -> pd.DataFrame:
+    # ``mtime`` sólo forma parte de la clave de caché (no lleva "_" adelante:
+    # Streamlit excluye de la clave los parámetros que empiezan con "_").
+    del mtime
+    df = _read_parquet(Path(path))
+    return _add_geo_keys(df) if geo else df
+
+
+def _load(path: Path, geo: bool = False) -> pd.DataFrame | None:
+    mtime = _mtime(path)
+    if mtime is None:
+        return None
+    return _load_parquet_cached(str(path), mtime, geo)
+
+
+def _stop_outdated(path: Path, missing: list[str]) -> None:
+    st.error(
+        f"El archivo {file_info(path)} fue generado por una versión anterior del ETL: "
+        f"le faltan las columnas {', '.join(missing)}.\n\n"
+        "Volvé a ejecutar el ETL con el código actual. En Docker la imagen guarda el "
+        "código del ETL, así que hay que reconstruirla antes de correrlo:\n\n"
+        "```\ndocker compose build etl_pipeline\n"
+        "docker compose --profile etl run --rm etl_pipeline\n```\n\n"
+        "(`.\\scripts\\Run-Etl.ps1` y `make docker-etl` ya reconstruyen la imagen.)"
+    )
+    st.stop()
+
+
 def load_biomasa() -> pd.DataFrame:
     """Registros válidos por campaña con biomasa, energía y dinero."""
-    return _add_geo_keys(_read_parquet(_resolve_biomasa_path()))
+    path = _resolve_biomasa_path()
+    df = _load(path, geo=True)
+    missing = [c for c in REQUIRED_ENERGY_COLS if c not in df.columns]
+    if missing:
+        _stop_outdated(path, missing)
+    return df
 
 
-@st.cache_data(show_spinner="Cargando potencial anual…")
 def load_potencial() -> pd.DataFrame | None:
     """Potencial anual (promedio del período de referencia)."""
-    if not PATH_POTENCIAL.exists():
-        return None
-    return _add_geo_keys(_read_parquet(PATH_POTENCIAL))
+    df = _load(PATH_POTENCIAL, geo=True)
+    if df is not None:
+        missing = [c for c in REQUIRED_ENERGY_COLS if c not in df.columns]
+        if missing:
+            _stop_outdated(PATH_POTENCIAL, missing)
+    return df
 
 
-@st.cache_data(show_spinner="Cargando descartados…")
+def stop_missing_potencial() -> None:
+    """Corta la página con un mensaje accionable si falta el potencial anual."""
+    st.error(
+        f"No se encontró {file_info(PATH_POTENCIAL)}.\n\n"
+        "Lo genera el ETL actual (etapa 8, potencial anual). Si ya lo ejecutaste "
+        "en Docker, probablemente corrió con una imagen vieja: la imagen guarda el "
+        "código del ETL y hay que reconstruirla.\n\n"
+        "```\ndocker compose build etl_pipeline\n"
+        "docker compose --profile etl run --rm etl_pipeline\n```\n\n"
+        "Revisá también que el log del ETL termine con \"Pipeline completado\"."
+    )
+    st.stop()
+
+
 def load_descartados() -> pd.DataFrame | None:
     """Registros descartados en la reconciliación entre fuentes."""
-    return _read_parquet(PATH_DESCARTADOS) if PATH_DESCARTADOS.exists() else None
+    return _load(PATH_DESCARTADOS)
 
 
-@st.cache_data(show_spinner="Cargando discrepancias…")
 def load_discrepancias() -> pd.DataFrame | None:
     """Diferencias CBA vs MAGyP de los pares reconciliados."""
-    return _read_parquet(PATH_DISCREPANCIAS) if PATH_DISCREPANCIAS.exists() else None
+    return _load(PATH_DISCREPANCIAS)
 
 
 @st.cache_data
+def _load_json_cached(path: str, mtime: float) -> dict[str, Any]:
+    del mtime  # sólo para la clave de caché
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_tarifas() -> tuple[dict[str, Any] | None, Path | None]:
     """JSON de tarifas más reciente de ``data/reference`` y su ruta."""
     files = sorted(REFERENCE_DIR.glob("*_tarifas.json"))
     if not files:
         return None, None
-    with open(files[-1], encoding="utf-8") as f:
-        return json.load(f), files[-1]
+    return _load_json_cached(str(files[-1]), files[-1].stat().st_mtime), files[-1]
 
 
 @st.cache_data
-def load_tarifas_historial() -> pd.DataFrame | None:
-    """Historial de cuadros tarifarios (un cuadro pleno por mes)."""
-    if not PATH_HISTORIAL.exists():
-        return None
+def _load_historial_cached(mtime: float) -> pd.DataFrame:
+    del mtime  # sólo para la clave de caché
     from etl.loaders.tariff_history import load_history, representative_by_month
 
     return representative_by_month(load_history(REFERENCE_DIR))
+
+
+def load_tarifas_historial() -> pd.DataFrame | None:
+    """Historial de cuadros tarifarios (un cuadro pleno por mes)."""
+    mtime = _mtime(PATH_HISTORIAL)
+    return None if mtime is None else _load_historial_cached(mtime)
 
 
 def tarifas_table(cfg: dict[str, Any]) -> pd.DataFrame:

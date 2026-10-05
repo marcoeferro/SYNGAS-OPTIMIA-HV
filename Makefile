@@ -111,6 +111,8 @@ docker-shell:
 	$(DOCKER_COMPOSE) run --rm --entrypoint /bin/bash dashboard
 
 docker-etl:
+	# La imagen contiene el código del ETL: se reconstruye antes de correrlo.
+	$(DOCKER_COMPOSE) --profile etl build etl_pipeline
 	$(DOCKER_COMPOSE) --profile etl run --rm etl_pipeline
 
 docker-clean:

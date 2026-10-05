@@ -31,6 +31,12 @@ if ($Local) {
     & $python @etlArgs
 } else {
     Start-DockerDesktopIfNeeded
+    # La imagen guarda el código del ETL (no se monta como volumen): sin
+    # reconstruirla se ejecuta la versión del último build. Docker reutiliza
+    # las capas sin cambios, así que si el código no cambió tarda segundos.
+    Write-Host "Actualizando la imagen del ETL..." -ForegroundColor Cyan
+    docker compose --profile etl build etl_pipeline
+    if ($LASTEXITCODE -ne 0) { throw "docker compose build falló con código $LASTEXITCODE" }
     Write-Host "Ejecutando ETL en Docker (one-shot)..." -ForegroundColor Cyan
     docker compose --profile etl run --rm etl_pipeline python @etlArgs
 }
