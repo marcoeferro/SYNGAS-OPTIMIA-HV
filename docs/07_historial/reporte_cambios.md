@@ -644,3 +644,11 @@ El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen l
 - README raíz reescrito: qué es, cómo se usa, mapa de la documentación y una sección para asistentes de IA; `llms.txt` en la raíz con el mismo mapa.
 - Referencias a rutas viejas de `docs/` actualizadas en el código (`crop_taxonomy.py`, página de Auditoría).
 
+---
+
+## 16. EPEC, avisos del ETL (2026-10-05)
+
+**EPEC (Córdoba)**. Era la distribuidora sin tarifa de mayor peso (≈ 26 % de la energía). El sitio ahora responde, pero la página de cuadros (`informacion-comercial/grandes-clientes`) es una aplicación Angular: el HTML no trae los enlaces, que están compilados dentro del bundle `main.<hash>.js`. El extractor ahora, si un índice no tiene enlaces, busca el bundle (respetando `<base href>`) y toma de ahí las rutas a documentos. El cuadro mensual de EPEC trae en un mismo PDF la tarifa de compra y la de generación distribuida; el texto pone la banda horaria en una línea y el importe en la siguiente. Se agregaron filas fijas con anclas encadenadas (`3.1.1. BAJA TENSION` → `a.1.2.` → `Horas Restantes`) y `fila_inyeccion` para la inyección. Resultado (2026-10): compra 140,23 $/kWh, inyección 137,40 $/kWh; historial desde 2025-01. Sin tarifa queda ≈ 1 % de la energía y el beneficio anual pasó de ≈ 7,5 a ≈ 10,5 billones de pesos (el control `cambio_total` lo marcó como alerta, como corresponde).
+
+**Avisos (M3)**. `etl/notifications.py` avisa por webhook (Slack, Discord, Teams, Google Chat) o Telegram cuando el ETL falla o genera alertas de calidad. Para el caso en que el ETL directamente no corre, el dashboard muestra un cartel si los datos tienen más de 48 horas. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
+

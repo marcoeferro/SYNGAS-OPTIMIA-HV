@@ -46,7 +46,8 @@ La vista principal.
 - **Historial de tarifas**: evolución del precio de compra de las
   distribuidoras elegidas (hasta 8).
 
-Las provincias sin tarifa (Córdoba y Chubut, entre otras) no suman dinero
+Las provincias sin tarifa (Tucumán, San Juan, Santa Cruz, Tierra del
+Fuego y Chubut) no suman dinero
 aunque tengan energía.
 
 ### 🔍 Exploración

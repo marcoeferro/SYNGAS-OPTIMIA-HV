@@ -176,5 +176,5 @@ Mismo resultado que `add_energy_finance_columns` del ETL (605,6 millones).
 6. **Potencial técnico, no económico**: no considera logística,
    estacionalidad de la cosecha, almacenamiento ni costos.
 7. **Tarifas**: un único mes; en Buenos Aires es el promedio de tres
-   distribuidoras; la inyección es estimada donde no se publica; 5
-   distribuidoras sin dato (ver [tarifas](../03_datos/tarifas_electricas.md)).
+   distribuidoras; la inyección es estimada donde no se publica (24 de
+   28 distribuidoras); 4 distribuidoras sin dato (ver [tarifas](../03_datos/tarifas_electricas.md)).

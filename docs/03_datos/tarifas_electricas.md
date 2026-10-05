@@ -73,35 +73,40 @@ El dashboard muestra el estado de cada distribuidora en *Dinero* y en
 
 ## Situación actual (octubre de 2026)
 
-**22 de 28** distribuidoras con tarifa extraída, 1 con el valor anterior y 5
-sin dato. Sin tarifa queda alrededor del 27 % de la energía calculada,
-casi toda de Córdoba.
+**23 de 28** distribuidoras con tarifa extraída, 1 con el valor anterior y 4
+sin dato. Sin tarifa queda alrededor del 1 % de la energía calculada (casi
+toda de Tucumán).
 
-| Distribuidora | Provincia / zona | Compra ($/kWh) | Vigencia | Fuente |
-|---|---|---:|---|---|
-| EDENOR | CABA norte y GBA norte/oeste | 108,37 | 2026-06 | Portal nacional |
-| EDESUR | CABA sur y GBA sur | 107,91 | 2026-05 | Portal nacional |
-| EDEN | Buenos Aires (norte y centro) | 135,23 | 2026-09 | OCEBA |
-| EDEA | Buenos Aires (costa atlántica) | 136,44 | 2026-09 | OCEBA |
-| EDES | Buenos Aires (sur) | 137,18 | 2026-09 | OCEBA |
-| EDELAP | Gran La Plata | 148,72 | 2026-09 | OCEBA |
-| ECSAPEM | Catamarca | 106,29 | 2026-05 | Portal nacional |
-| SECHEEP | Chaco | 117,50 | 2026-06 | Portal nacional |
-| DPEC | Corrientes | 109,20 | 2026-04 | Portal nacional |
-| ENERSA | Entre Ríos | 130,84 | 2026-05 | Portal nacional |
-| REFSA | Formosa | 135,28 | 2026-06 | Sitio propio |
-| EJESA | Jujuy | 113,09 | 2025-10 | Valor anterior (página nacional caída) |
-| APE | La Pampa | 169,40 | 2025-12 | Portal nacional |
-| EDELAR | La Rioja | 104,67 | 2026-03 | Portal nacional |
-| EDEMSA | Mendoza | 106,51 | 2026-05 | Portal nacional |
-| EDESTE | Mendoza (zona este) | 106,51 | 2026-05 | Portal nacional |
-| EMSA | Misiones | 283,84 | 2026-09 | Boletín Oficial de Misiones |
-| EPEN | Neuquén | 359,73 | 2026-08 | Sitio propio |
-| EDERSA | Río Negro | 155,26 | 2026-09 | Sitio propio |
-| EDESA | Salta | 266,81 | 2026-06 | Portal nacional |
-| EDESAL | San Luis | 110,76 | 2026-06 | Portal nacional |
-| EPE | Santa Fe | 146,77 | 2026-09 | API del sitio de EPE |
-| EDESE | Santiago del Estero | 156,66 | 2026-09 | Sitio propio |
+**Inyección**: sólo 4 distribuidoras la publican en un formato que el
+lector reconoce (columna *Inyección*). En las demás se estima como compra ×
+ratio mediano (≈ 0,75), lo que alcanza a ≈ 65 % de la energía.
+
+| Distribuidora | Provincia / zona | Compra ($/kWh) | Inyección ($/kWh) | Vigencia | Fuente |
+|---|---|---:|---:|---|---|
+| EDENOR | CABA norte y GBA norte/oeste | 108,37 | estimada | 2026-06 | Portal nacional |
+| EDESUR | CABA sur y GBA sur | 107,91 | estimada | 2026-05 | Portal nacional |
+| EDEN | Buenos Aires (norte y centro) | 135,23 | estimada | 2026-09 | OCEBA |
+| EDEA | Buenos Aires (costa atlántica) | 136,44 | estimada | 2026-09 | OCEBA |
+| EDES | Buenos Aires (sur) | 137,18 | estimada | 2026-09 | OCEBA |
+| EDELAP | Gran La Plata | 148,72 | estimada | 2026-09 | OCEBA |
+| ECSAPEM | Catamarca | 106,29 | estimada | 2026-05 | Portal nacional |
+| EPEC | Córdoba | 140,23 | 137,40 | 2026-10 | Sitio propio (bundle JS de la página de grandes clientes) |
+| SECHEEP | Chaco | 117,50 | 89,99 | 2026-06 | Portal nacional |
+| DPEC | Corrientes | 109,20 | estimada | 2026-04 | Portal nacional |
+| ENERSA | Entre Ríos | 130,84 | 93,55 | 2026-05 | Portal nacional |
+| REFSA | Formosa | 135,28 | estimada | 2026-06 | Sitio propio |
+| EJESA | Jujuy | 113,09 | estimada | 2025-10 | Valor anterior (página nacional caída) |
+| APE | La Pampa | 169,40 | estimada | 2025-12 | Portal nacional |
+| EDELAR | La Rioja | 104,67 | 78,67 | 2026-03 | Portal nacional |
+| EDEMSA | Mendoza | 106,51 | estimada | 2026-05 | Portal nacional |
+| EDESTE | Mendoza (zona este) | 106,51 | estimada | 2026-05 | Portal nacional |
+| EMSA | Misiones | 283,84 | estimada | 2026-09 | Boletín Oficial de Misiones |
+| EPEN | Neuquén | 359,73 | estimada | 2026-08 | Sitio propio |
+| EDERSA | Río Negro | 155,26 | estimada | 2026-09 | Sitio propio |
+| EDESA | Salta | 266,81 | estimada | 2026-06 | Portal nacional |
+| EDESAL | San Luis | 110,76 | estimada | 2026-06 | Portal nacional |
+| EPE | Santa Fe | 146,77 | estimada | 2026-09 | API del sitio de EPE |
+| EDESE | Santiago del Estero | 156,66 | estimada | 2026-09 | Sitio propio |
 
 Los valores vigentes en cada momento están en el último
 `data/reference/*_tarifas.json` y en el dashboard.
@@ -169,6 +174,11 @@ documento real en `tests/test_tariff_parser.py`.
 - **EDEMSA, abril de 2026 (historial)**: el cuadro del sitio propio se leyó
   como 154,57 $/kWh, un cargo residencial ("excedente a 1600 kWh bim"). El
   valor vigente (2026-05, portal nacional) es correcto.
+- **EPEC, historial**: entre 2025-11 y 2026-01 la compra baja a ≈ 69 $/kWh
+  (desde ≈ 79) y el cuadro de reemplazo de 2025-11 difiere del original;
+  falta verificar contra los PDF si es un cambio real o un cambio de formato.
+  La inyección de EPEC sólo se lee desde 2026-03 (los cuadros anteriores
+  tienen otra estructura).
 - **Inyección en EDERSA y ECSAPEM**: el valor detectado corresponde a otra
   categoría y supera la tarifa de compra; la validación lo descarta y se
   usa la estimación.
