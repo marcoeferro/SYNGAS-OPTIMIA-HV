@@ -4,17 +4,21 @@ Cálculo energético y financiero APL PP30 sobre biomasa residual.
 Cadena de cálculo (por registro):
 
     masa_seca_kg        = Residuo Recuperable (t MS) × 1000
-    masa_alimentada_kg  = masa_seca_kg / (1 − H/100)     # a humedad operativa
-    kwh_generados       = masa_alimentada_kg / CE        # CE: kg tal-cual / kWh
+    kwh_generados       = masa_seca_kg / CE_seco         # CE_seco: kg MS / kWh
+    masa_alimentada_kg  = masa_seca_kg / (1 − H/100)     # kg a humedad operativa
     horas_operacion     = kwh_generados / P_nom
     equipos_pp30        = horas_operacion / (8760 × disponibilidad)
 
-El consumo específico del gasificador (≈1.1 kg/kWh) está expresado sobre
-biomasa *tal como se alimenta* (con su humedad operativa, ≤15–20%). La
-versión anterior multiplicaba la masa por (1 − H) y luego dividía por CE,
-descontando la humedad dos veces sobre un residuo que ya estaba en base
-seca. Ahora el residuo (t MS) se lleva a humedad operativa antes de
-aplicar el CE.
+Parámetros de la ficha técnica de All Power Labs (PP30 One Sheet):
+consumo de biomasa **1,0 kg/kWh en base seca** (APL: con 10 % de humedad
+son 1,1 kg/kWh; con 20 %, 1,2) y potencia **22 kW a 50 Hz** conectado a
+red con CHP (25 kW es el valor a 60 Hz). Como el residuo ya está en base
+seca, la energía sale directamente de la masa seca; la humedad sólo
+determina cuánta masa hay que alimentar.
+
+Compatibilidad: un JSON de tarifas viejo que sólo trae
+``consumo_especifico_kg_kwh`` (kg tal cual / kWh) se convierte a base seca
+con la humedad operativa: ``CE_seco = CE × (1 − H/100)``.
 
 Los kWh se valorizan bajo balance neto de facturación (Ley 27.424):
 ahorro por autoconsumo (tarifa de compra) e ingreso por inyección
@@ -252,6 +256,7 @@ def compute_energy_metrics(
     *,
     humedad_pct: float | None = None,
     consumo_especifico_kg_kwh: float | None = None,
+    consumo_especifico_seco_kg_kwh: float | None = None,
     potencia_nominal_kw: float | None = None,
     disponibilidad: float | None = None,
     residuo_col: str | None = None,
@@ -263,8 +268,8 @@ def compute_energy_metrics(
 
     Fórmulas (Guía APL PP30):
         masa_seca_kg       = Residuo_t_MS * 1000
+        kwh_generados      = masa_seca_kg / CE_seco
         masa_alimentada_kg = masa_seca_kg / (1 - H/100)
-        kwh_generados      = masa_alimentada_kg / CE
         horas              = kwh_generados / P_nom
         equipos            = horas / (8760 * disponibilidad)
 
@@ -275,7 +280,10 @@ def compute_energy_metrics(
         df: DataFrame con la columna de residuo (t MS).
         humedad_pct: Humedad operativa del material (%). Si None, usa el
             default del config.
-        consumo_especifico_kg_kwh: kg de biomasa *tal cual* por kWh.
+        consumo_especifico_kg_kwh: kg de biomasa *tal cual* por kWh (se
+            convierte a base seca con la humedad).
+        consumo_especifico_seco_kg_kwh: kg de materia seca por kWh. Tiene
+            prioridad sobre ``consumo_especifico_kg_kwh``.
         potencia_nominal_kw: Potencia continua de referencia (PP30).
         disponibilidad: Factor de disponibilidad anual del equipo (0, 1].
         residuo_col: Columna de residuo a convertir. Si None, usa
@@ -297,7 +305,15 @@ def compute_energy_metrics(
 
     cfg = config if config is not None else load_tarifas_config(tarifas_path)
     h = _resolve_param(cfg, "humedad_pct_default", humedad_pct)
-    ce = _resolve_param(cfg, "consumo_especifico_kg_kwh", consumo_especifico_kg_kwh)
+    params = cfg.get("parametros_pp30", {})
+    if consumo_especifico_seco_kg_kwh is not None:
+        ce = float(consumo_especifico_seco_kg_kwh)
+    elif consumo_especifico_kg_kwh is None and "consumo_especifico_seco_kg_kwh" in params:
+        ce = float(params["consumo_especifico_seco_kg_kwh"])
+    else:
+        # Consumo "tal cual" (JSON viejos u override explícito) → base seca.
+        ce_tal_cual = _resolve_param(cfg, "consumo_especifico_kg_kwh", consumo_especifico_kg_kwh)
+        ce = ce_tal_cual * (1.0 - h / 100.0)
     pnom = _resolve_param(cfg, "potencia_nominal_kw", potencia_nominal_kw)
     if disponibilidad is None:
         disponibilidad = float(
@@ -307,7 +323,7 @@ def compute_energy_metrics(
     if not (0.0 <= h < 100.0):
         raise ValueError(f"humedad_pct fuera de rango [0, 100): {h}")
     if ce <= 0.0:
-        raise ValueError(f"consumo_especifico_kg_kwh debe ser > 0: {ce}")
+        raise ValueError(f"consumo específico debe ser > 0: {ce}")
     if pnom <= 0.0:
         raise ValueError(f"potencia_nominal_kw debe ser > 0: {pnom}")
     if not (0.0 < disponibilidad <= 1.0):
@@ -324,7 +340,7 @@ def compute_energy_metrics(
     residuo = pd.to_numeric(out[residuo_col], errors="coerce")
     out[COL_MASA_SECA_KG] = residuo * KG_PER_TON
     out[COL_MASA_ALIM_KG] = out[COL_MASA_SECA_KG] / (1.0 - h / 100.0)
-    out[COL_KWH_TOTALES] = out[COL_MASA_ALIM_KG] / ce
+    out[COL_KWH_TOTALES] = out[COL_MASA_SECA_KG] / ce
     out[COL_HORAS] = out[COL_KWH_TOTALES] / pnom
     out[COL_EQUIPOS] = out[COL_HORAS] / (HOURS_PER_YEAR * disponibilidad)
     return out

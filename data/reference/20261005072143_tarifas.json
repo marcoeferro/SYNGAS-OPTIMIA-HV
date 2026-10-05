@@ -3,12 +3,12 @@
   "unidad_moneda": "ARS",
   "unidad_tarifas": "ARS/kWh sin impuestos; cargo fijo en ARS/mes",
   "parametros_pp30": {
-    "consumo_especifico_kg_kwh": 1.1,
     "humedad_pct_default": 12.0,
     "factor_autoconsumo_default": 0.6,
-    "potencia_nominal_kw": 25.0,
+    "potencia_nominal_kw": 22.0,
     "disponibilidad": 0.8,
-    "fraccion_recuperable_default": 0.5
+    "fraccion_recuperable_default": 0.5,
+    "consumo_especifico_seco_kg_kwh": 1.0
   },
   "provincia_a_distribuidora": {
     "ciudad autonoma de buenos aires": [

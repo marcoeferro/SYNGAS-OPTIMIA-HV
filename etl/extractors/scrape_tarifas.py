@@ -167,11 +167,15 @@ MES_NOMBRE: Final[dict[int, str]] = {
     11: "Noviembre", 12: "Diciembre",
 }
 
+# Parámetros del PP30 según la ficha técnica de All Power Labs (PP30 One
+# Sheet): 1,0 kg/kWh de biomasa en base seca; 22 kW a 50 Hz conectado a red
+# con CHP (Argentina usa 50 Hz; 25 kW es a 60 Hz). Son constantes del
+# modelo: en cada corrida pisan los del JSON anterior.
 PARAMETROS_PP30_DEFAULT: Final[dict[str, float]] = {
-    "consumo_especifico_kg_kwh": 1.1,
+    "consumo_especifico_seco_kg_kwh": 1.0,
     "humedad_pct_default": 12.0,
     "factor_autoconsumo_default": 0.6,
-    "potencia_nominal_kw": 25.0,
+    "potencia_nominal_kw": 22.0,
     "disponibilidad": 0.8,
     "fraccion_recuperable_default": 0.5,
 }
@@ -1161,9 +1165,13 @@ def build_reference_payload(
     """
     now = ts or datetime.now()
     fecha = now.strftime("%Y-%m-%dT%H:%M:%S")
-    params = dict(PARAMETROS_PP30_DEFAULT)
-    if previous:
-        params.update(previous.get("parametros_pp30", {}))
+    # Los parámetros del código mandan; se conservan claves extra del JSON
+    # anterior, salvo el consumo "tal cual" que reemplaza el de base seca.
+    params = {
+        k: v for k, v in ((previous or {}).get("parametros_pp30") or {}).items()
+        if k != "consumo_especifico_kg_kwh"
+    }
+    params.update(PARAMETROS_PP30_DEFAULT)
     payload: dict[str, Any] = {
         "descripcion": (
             "Tarifas de energía eléctrica por distribuidora (categorías "

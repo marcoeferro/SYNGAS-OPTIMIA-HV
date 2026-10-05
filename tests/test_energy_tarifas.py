@@ -569,3 +569,22 @@ def test_vigencia_de_columnas_por_mes_abreviado() -> None:
     """EJESA: el cuadro trae dos meses en columnas ("Agos-26", "Sept-26")."""
     assert st.vigencia_from_text("Cargo por Uso de Red Sept-26Agos-26") == "2026-09"
     assert st.vigencia_from_text("vigente desde marzo-2026") is None
+
+
+def test_consumo_especifico_en_base_seca_ficha_apl() -> None:
+    """Ficha APL: 1,0 kg de materia seca por kWh; 22 kW a 50 Hz."""
+    cfg = {
+        **CFG,
+        "parametros_pp30": {
+            "consumo_especifico_seco_kg_kwh": 1.0,
+            "humedad_pct_default": 12.0,
+            "factor_autoconsumo_default": 0.6,
+            "potencia_nominal_kw": 22.0,
+            "disponibilidad": 0.8,
+        },
+    }
+    df = pd.DataFrame({"Provincia": ["cordoba"], "Residuo Recuperable (Tn)": [1.0]})
+    out = add_energy_finance_columns(df, config=cfg)
+    assert out[COL_KWH_TOTALES].iloc[0] == pytest.approx(1000.0)   # 1 t MS → 1000 kWh
+    assert out["masa_alimentada_kg"].iloc[0] == pytest.approx(1000 / 0.88)
+    assert out[COL_EQUIPOS].iloc[0] == pytest.approx(1000 / 22 / (8760 * 0.8))
