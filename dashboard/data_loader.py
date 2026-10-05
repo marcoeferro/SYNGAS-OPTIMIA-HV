@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -275,7 +276,7 @@ def load_biomasa() -> pd.DataFrame:
     missing = [c for c in REQUIRED_ENERGY_COLS if c not in df.columns]
     if missing:
         _stop_outdated(path, missing)
-    return df
+    return apply_supuestos(df, get_supuestos())
 
 
 def load_potencial() -> pd.DataFrame | None:
@@ -285,7 +286,105 @@ def load_potencial() -> pd.DataFrame | None:
         missing = [c for c in REQUIRED_ENERGY_COLS if c not in df.columns]
         if missing:
             _stop_outdated(PATH_POTENCIAL, missing)
+        df = apply_supuestos(df, get_supuestos())
     return df
+
+
+# =============================================================
+# Supuestos ajustables (escenarios)
+# =============================================================
+INYECCION_CENTRAL = "central"
+INYECCION_CONSERVADOR = "conservador"
+INYECCION_ALTO = "alto"
+
+
+@dataclass(frozen=True)
+class Supuestos:
+    """
+    Supuestos del cálculo que el usuario puede cambiar en el dashboard.
+
+    Los valores por defecto son los del ETL. Como energía y dinero son
+    lineales en estos parámetros, se recalculan sobre los Parquet sin volver
+    a correr el ETL (ver ``apply_supuestos``).
+    """
+
+    autoconsumo: float = 0.6
+    inyeccion: str = INYECCION_CENTRAL
+    consumo_especifico: float = 1.0      # kg de materia seca por kWh
+    fraccion_recuperable: float = 0.5
+
+
+def supuestos_base() -> Supuestos:
+    """Supuestos con los que corrió el ETL (parámetros del JSON de tarifas)."""
+    cfg, _ = load_tarifas()
+    p = (cfg or {}).get("parametros_pp30", {})
+    ce = p.get("consumo_especifico_seco_kg_kwh")
+    if ce is None and "consumo_especifico_kg_kwh" in p:
+        ce = p["consumo_especifico_kg_kwh"] * (1 - p.get("humedad_pct_default", 12.0) / 100)
+    return Supuestos(
+        autoconsumo=float(p.get("factor_autoconsumo_default", 0.6)),
+        consumo_especifico=float(ce or 1.0),
+        fraccion_recuperable=float(p.get("fraccion_recuperable_default", 0.5)),
+    )
+
+
+SUPUESTOS_KEYS = {
+    "autoconsumo": "sup_autoconsumo",
+    "inyeccion": "sup_inyeccion",
+    "consumo_especifico": "sup_consumo_especifico",
+    "fraccion_recuperable": "sup_fraccion_recuperable",
+}
+
+
+def get_supuestos() -> Supuestos:
+    """Supuestos elegidos en la barra lateral (o los del ETL)."""
+    base = supuestos_base()
+    state = st.session_state
+    return Supuestos(**{
+        campo: state.get(clave, getattr(base, campo))
+        for campo, clave in SUPUESTOS_KEYS.items()
+    })
+
+
+def apply_supuestos(
+    df: pd.DataFrame, sup: Supuestos, base: Supuestos | None = None
+) -> pd.DataFrame:
+    """
+    Recalcula energía y dinero con otros supuestos.
+
+    - Energía ∝ fracción recuperable / consumo específico.
+    - Autoconsumo: reparte la energía entre ahorro (tarifa de compra) e
+      inyección.
+    - Inyección: el escenario sólo cambia las distribuidoras **sin** precio
+      de inyección publicado (``tarifa_inyeccion_estimada``): conservador =
+      0, central = estimación del ETL (compra × ratio mediano), alto =
+      tarifa de compra. Las que publican su precio usan siempre el real.
+    """
+    base = base or supuestos_base()
+    if sup == base:
+        return df
+    out = df.copy()
+    f_rec = sup.fraccion_recuperable / base.fraccion_recuperable
+    f_energia = f_rec * base.consumo_especifico / sup.consumo_especifico
+    for col in (COL_RECUPERABLE, "masa_seca_kg", "masa_alimentada_kg"):
+        if col in out.columns:
+            out[col] = out[col] * f_rec
+    for col in (COL_KWH, "horas_operacion_estimadas", COL_EQUIPOS):
+        if col in out.columns:
+            out[col] = out[col] * f_energia
+    compra = out["tarifa_compra_kwh"]
+    iny = out["tarifa_inyeccion_kwh"]
+    if "tarifa_inyeccion_estimada" in out.columns and sup.inyeccion != INYECCION_CENTRAL:
+        estimada = out["tarifa_inyeccion_estimada"].fillna(False).astype(bool)
+        reemplazo = 0.0 if sup.inyeccion == INYECCION_CONSERVADOR else compra
+        iny = iny.where(~estimada, reemplazo)
+        out["tarifa_inyeccion_kwh"] = iny
+    out[COL_KWH_AUTO] = out[COL_KWH] * sup.autoconsumo
+    out[COL_KWH_INY] = out[COL_KWH] * (1 - sup.autoconsumo)
+    out[COL_AHORRO] = out[COL_KWH_AUTO] * compra
+    out[COL_CREDITO] = out[COL_KWH_INY] * iny
+    out[COL_BENEFICIO] = out[COL_AHORRO] + out[COL_CREDITO]
+    return out
 
 
 def stop_missing_potencial() -> None:

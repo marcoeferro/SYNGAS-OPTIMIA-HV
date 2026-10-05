@@ -109,9 +109,11 @@ with st.expander("Parámetros y método de cálculo"):
     if cfg is not None:
         p = cfg.get("parametros_pp30", {})
         params = pd.DataFrame([
-            ("Consumo específico", p.get("consumo_especifico_kg_kwh"), "kg de biomasa por kWh"),
+            ("Consumo específico", p.get("consumo_especifico_seco_kg_kwh"),
+             "kg de materia seca por kWh (ficha de All Power Labs)"),
             ("Humedad operativa", p.get("humedad_pct_default"), "%"),
-            ("Potencia nominal", p.get("potencia_nominal_kw"), "kW"),
+            ("Potencia de referencia", p.get("potencia_nominal_kw"),
+             "kW (PP30 a 50 Hz, conectado a red)"),
             ("Disponibilidad", p.get("disponibilidad"), "fracción del año"),
             ("Fracción de autoconsumo", p.get("factor_autoconsumo_default"), "resto se inyecta"),
             ("Fracción recuperable", p.get("fraccion_recuperable_default"), "del residuo"),
@@ -120,10 +122,14 @@ with st.expander("Parámetros y método de cálculo"):
     st.markdown(
         """
 - **Residuo recuperable** = residuo (t de materia seca) × fracción recuperable.
-- **Masa alimentada** = residuo recuperable ÷ (1 − humedad): el consumo específico
-  del PP30 está expresado sobre biomasa a humedad operativa.
-- **Energía** = masa alimentada ÷ consumo específico.
-- **Equipos PP30 equivalentes** = energía ÷ (25 kW × 8760 h × disponibilidad).
+- **Energía** = residuo recuperable (kg de materia seca) ÷ consumo específico
+  (1,0 kg MS/kWh según la ficha de All Power Labs).
+- **Masa alimentada** = residuo recuperable ÷ (1 − humedad): lo que efectivamente
+  entra a la tolva, con su humedad.
+- **Equipos PP30 equivalentes** = energía ÷ (22 kW × 8760 h × disponibilidad).
+
+Los valores de esta tabla son los del ETL; los supuestos de la barra lateral
+(⚙️) permiten simular otros. Detalle en `docs/02_metodologia/metodologia.md`.
 """
     )
 

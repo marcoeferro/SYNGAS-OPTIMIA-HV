@@ -59,3 +59,48 @@ def test_cache_relee_el_parquet_cuando_el_etl_lo_reescribe(tmp_path) -> None:
     os.utime(path, (st_.st_atime, st_.st_mtime + 10))
     assert dl._load(path)["a"].tolist() == [2]
     assert dl._load(tmp_path / "no_existe.parquet") is None
+
+
+def _df_escenarios() -> pd.DataFrame:
+    # Fila 0: inyección publicada (real); fila 1: estimada (compra × 0,9).
+    return pd.DataFrame({
+        dl.COL_RECUPERABLE: [1.0, 1.0],
+        dl.COL_KWH: [1000.0, 1000.0],
+        dl.COL_EQUIPOS: [0.01, 0.01],
+        "tarifa_compra_kwh": [100.0, 100.0],
+        "tarifa_inyeccion_kwh": [80.0, 90.0],
+        "tarifa_inyeccion_estimada": [False, True],
+    })
+
+
+BASE = dl.Supuestos(autoconsumo=0.6, consumo_especifico=1.0, fraccion_recuperable=0.5)
+
+
+def test_supuestos_del_etl_no_cambian_nada() -> None:
+    df = _df_escenarios()
+    assert dl.apply_supuestos(df, BASE, BASE) is df
+
+
+@pytest.mark.parametrize(
+    ("escenario", "iny_estimada"),
+    [(dl.INYECCION_CONSERVADOR, 0.0), (dl.INYECCION_CENTRAL, 90.0), (dl.INYECCION_ALTO, 100.0)],
+)
+def test_escenarios_de_inyeccion_solo_cambian_las_estimadas(
+    escenario: str, iny_estimada: float
+) -> None:
+    sup = dl.Supuestos(autoconsumo=0.6, inyeccion=escenario,
+                       consumo_especifico=1.0, fraccion_recuperable=0.5)
+    out = dl.apply_supuestos(_df_escenarios(), sup, dl.Supuestos(autoconsumo=0.5))
+    assert out["tarifa_inyeccion_kwh"].tolist() == [80.0, iny_estimada]
+    # 600 kWh × 100 + 400 kWh × inyección
+    assert out[dl.COL_BENEFICIO].tolist() == pytest.approx(
+        [60_000 + 400 * 80, 60_000 + 400 * iny_estimada]
+    )
+
+
+def test_consumo_especifico_y_fraccion_recuperable_escalan_la_energia() -> None:
+    sup = dl.Supuestos(autoconsumo=0.6, consumo_especifico=1.1, fraccion_recuperable=0.3)
+    out = dl.apply_supuestos(_df_escenarios(), sup, BASE)
+    assert out[dl.COL_KWH].iloc[0] == pytest.approx(1000 * 0.3 / 0.5 / 1.1)
+    assert out[dl.COL_RECUPERABLE].iloc[0] == pytest.approx(0.6)
+    assert out[dl.COL_EQUIPOS].iloc[0] == pytest.approx(0.01 * 0.6 / 1.1)
