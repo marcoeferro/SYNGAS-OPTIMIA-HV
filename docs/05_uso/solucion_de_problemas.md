@@ -43,8 +43,8 @@ de mapas**; sus valores sí cuentan en los totales y tablas.
 
 ### Una provincia tiene energía pero no dinero
 
-Su distribuidora no tiene tarifa (San Juan, Santa Cruz, Tierra del
-Fuego, Tucumán, Chubut). Ver [tarifas eléctricas](../03_datos/tarifas_electricas.md#distribuidoras-sin-dato)
+Su distribuidora no tiene tarifa (Santa Cruz, Tierra del Fuego,
+Tucumán, Chubut). Ver [tarifas eléctricas](../03_datos/tarifas_electricas.md#distribuidoras-sin-dato)
 y la carga manual de cuadros.
 
 ## ETL

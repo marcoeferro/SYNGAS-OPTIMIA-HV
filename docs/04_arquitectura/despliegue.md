@@ -151,7 +151,9 @@ servidor o la red filtran el tráfico, deben estar permitidos.
 | `oceba.gba.gov.ar` | EDEN, EDEA, EDES, EDELAP |
 | `www.epe.santafe.gov.ar`, `epe.santafe.gov.ar` | EPE (página y API de descargas) |
 | `www.edenor.com`, `www.edesur.com.ar`, `www.edeaweb.com.ar`, `www.ecsapem.com.ar`, `www.secheep.gob.ar`, `www.epec.com.ar`, `www.dpec.com.ar`, `www.enersa.com.ar`, `recursosyenergia.com.ar`, `www.ejesa.com.ar`, `susepu.jujuy.gob.ar`, `www.edelar.com.ar`, `www.edemsa.com`, `epremendoza.gob.ar`, `energia.misiones.gob.ar`, `www.energiademisiones.com.ar`, `www.epen.gov.ar`, `www.edersa.com.ar`, `www.eprern.gov.ar`, `www.edesa.com.ar`, `oficinavirtualedesal.com.ar`, `epresanjuan.gob.ar`, `spse.ar`, `www.edese.com.ar`, `www.dpe.com.ar`, `www.edetsa.com`, `epre.gov.ar` | Sitios propios de distribuidoras y entes reguladores |
-| Opcionales: `ersep.cba.gov.ar`, `energiasanjuan.com.ar`, `spse.gob.ar` | Podrían cubrir ESJ y SPSE (hoy sin dato) |
+| `www.naturgysj.com.ar` | Energía San Juan (Naturgy) |
+| `servicios.infoleg.gob.ar` | Resoluciones del ENRE con la tarifa de inyección de EDENOR y EDESUR |
+| Opcional: `spse.gob.ar` | Podría cubrir SPSE (hoy sin dato) |
 
 Algunos sitios bloquean o limitan pedidos desde fuera de Argentina (EPEC
 lo hizo durante un tiempo): un servidor en el país tiene mejores chances.

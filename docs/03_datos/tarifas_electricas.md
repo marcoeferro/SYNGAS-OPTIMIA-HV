@@ -73,29 +73,31 @@ El dashboard muestra el estado de cada distribuidora en *Dinero* y en
 
 ## Situación actual (octubre de 2026)
 
-**23 de 28** distribuidoras con tarifa extraída, 1 con el valor anterior y 4
-sin dato. Sin tarifa queda alrededor del 1 % de la energía calculada (casi
-toda de Tucumán).
+**25 de 28** distribuidoras con tarifa extraída y 3 sin dato. Sin tarifa
+queda menos del 1 % de la energía calculada (casi toda de Tucumán).
 
-**Inyección**: sólo 4 distribuidoras la publican en un formato que el
-lector reconoce (columna *Inyección*). En las demás se estima como compra ×
-ratio mediano (≈ 0,75), lo que alcanza a ≈ 65 % de la energía.
+**Inyección**: 12 distribuidoras la publican en un formato que el lector
+reconoce (columna *Inyección*), en el mismo cuadro o en un documento aparte
+(resolución del ENRE para EDENOR y EDESUR; cuadro de inyección de OCEBA
+para las bonaerenses). En las demás se estima como compra × ratio mediano
+de las reales (0,915), lo que alcanza a ≈ 31 % de la energía. Fundamento:
+[POL-TARIFF-002](../02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
 
 | Distribuidora | Provincia / zona | Compra ($/kWh) | Inyección ($/kWh) | Vigencia | Fuente |
 |---|---|---:|---:|---|---|
-| EDENOR | CABA norte y GBA norte/oeste | 108,37 | estimada | 2026-06 | Portal nacional |
-| EDESUR | CABA sur y GBA sur | 107,91 | estimada | 2026-05 | Portal nacional |
-| EDEN | Buenos Aires (norte y centro) | 135,23 | estimada | 2026-09 | OCEBA |
-| EDEA | Buenos Aires (costa atlántica) | 136,44 | estimada | 2026-09 | OCEBA |
-| EDES | Buenos Aires (sur) | 137,18 | estimada | 2026-09 | OCEBA |
-| EDELAP | Gran La Plata | 148,72 | estimada | 2026-09 | OCEBA |
+| EDENOR | CABA norte y GBA norte/oeste | 108,37 | 105,10 | 2026-06 | Portal nacional (inyección: resolución del ENRE, 2026-05) |
+| EDESUR | CABA sur y GBA sur | 107,91 | 105,10 | 2026-05 | Portal nacional (inyección: resolución del ENRE, 2026-05) |
+| EDEN | Buenos Aires (norte y centro) | 135,23 | 124,02 | 2026-09 | OCEBA (inyección: cuadro de inyección de OCEBA) |
+| EDEA | Buenos Aires (costa atlántica) | 136,44 | 124,52 | 2026-09 | OCEBA (inyección: cuadro de inyección de OCEBA) |
+| EDES | Buenos Aires (sur) | 137,18 | 124,02 | 2026-09 | OCEBA (inyección: cuadro de inyección de OCEBA) |
+| EDELAP | Gran La Plata | 148,72 | 137,70 | 2026-09 | OCEBA (inyección: cuadro de inyección de OCEBA) |
 | ECSAPEM | Catamarca | 106,29 | estimada | 2026-05 | Portal nacional |
 | EPEC | Córdoba | 140,23 | 137,40 | 2026-10 | Sitio propio (bundle JS de la página de grandes clientes) |
 | SECHEEP | Chaco | 117,50 | 89,99 | 2026-06 | Portal nacional |
 | DPEC | Corrientes | 109,20 | estimada | 2026-04 | Portal nacional |
 | ENERSA | Entre Ríos | 130,84 | 93,55 | 2026-05 | Portal nacional |
 | REFSA | Formosa | 135,28 | estimada | 2026-06 | Sitio propio |
-| EJESA | Jujuy | 113,09 | estimada | 2025-10 | Valor anterior (página nacional caída) |
+| EJESA | Jujuy | 191,58 | 121,54 | 2026-09 | Sitio propio (tarjetas "costos del servicio", Res. SUSEPU) |
 | APE | La Pampa | 169,40 | estimada | 2025-12 | Portal nacional |
 | EDELAR | La Rioja | 104,67 | 78,67 | 2026-03 | Portal nacional |
 | EDEMSA | Mendoza | 106,51 | estimada | 2026-05 | Portal nacional |
@@ -104,6 +106,7 @@ ratio mediano (≈ 0,75), lo que alcanza a ≈ 65 % de la energía.
 | EPEN | Neuquén | 359,73 | estimada | 2026-08 | Sitio propio |
 | EDERSA | Río Negro | 155,26 | estimada | 2026-09 | Sitio propio |
 | EDESA | Salta | 266,81 | estimada | 2026-06 | Portal nacional |
+| ESJ | San Juan | 153,27 | 153,27 | 2026-09 | Sitio de Naturgy San Juan |
 | EDESAL | San Luis | 110,76 | estimada | 2026-06 | Portal nacional |
 | EPE | Santa Fe | 146,77 | estimada | 2026-09 | API del sitio de EPE |
 | EDESE | Santiago del Estero | 156,66 | estimada | 2026-09 | Sitio propio |
@@ -115,8 +118,7 @@ Los valores vigentes en cada momento están en el último
 
 | Distribuidora | Provincia | Motivo | Cómo completarla |
 |---|---|---|---|
-| ESJ | San Juan | El portal nacional enlaza archivos que no existen (404). | Carga manual, o habilitar `energiasanjuan.com.ar` |
-| SPSE | Santa Cruz | Igual que ESJ; el sitio propio no responde. | Carga manual, o habilitar `spse.gob.ar` |
+| SPSE | Santa Cruz | El portal nacional enlaza archivos que no existen (404) y el sitio propio no responde. | Carga manual, o habilitar `spse.gob.ar` |
 | DPE | Tierra del Fuego | Sólo publica resoluciones escaneadas (sin texto). | Carga manual |
 | EDET | Tucumán | Sus cuadros son PDF escaneados (imágenes, sin texto). | Carga manual |
 
@@ -174,11 +176,16 @@ documento real en `tests/test_tariff_parser.py`.
 - **EDEMSA, abril de 2026 (historial)**: el cuadro del sitio propio se leyó
   como 154,57 $/kWh, un cargo residencial ("excedente a 1600 kWh bim"). El
   valor vigente (2026-05, portal nacional) es correcto.
-- **EPEC, historial**: entre 2025-11 y 2026-01 la compra baja a ≈ 69 $/kWh
-  (desde ≈ 79) y el cuadro de reemplazo de 2025-11 difiere del original;
-  falta verificar contra los PDF si es un cambio real o un cambio de formato.
-  La inyección de EPEC sólo se lee desde 2026-03 (los cuadros anteriores
-  tienen otra estructura).
+- **EPEC y ESJ, historial**: entre 2025-11 y 2026-01 la compra baja (EPEC
+  ≈ 79 → 69, ESJ ≈ 85 → 75 $/kWh) y vuelve a subir en 2026-02. Que pase en
+  dos distribuidoras distintas sugiere un cambio real de precios
+  mayoristas, no un error de lectura. La inyección de EPEC sólo se lee desde
+  2026-03 (los cuadros anteriores tienen otra estructura).
+- **EJESA, historial**: sólo hay 4 meses (2025-09, 2025-10, 2026-07,
+  2026-09); el salto de 2026-07 (134,6) a 2026-09 (191,6 $/kWh) no está
+  verificado contra el PDF de julio.
+- **EJESA, vigencia**: el cuadro trae dos meses en columnas ("Agos-26",
+  "Sept-26"); se toma el más reciente.
 - **Inyección en EDERSA y ECSAPEM**: el valor detectado corresponde a otra
   categoría y supera la tarifa de compra; la validación lo descarta y se
   usa la estimación.

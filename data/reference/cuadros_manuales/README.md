@@ -30,8 +30,7 @@ procesa como cualquier otro.
 
 | Código | Provincia | Motivo |
 |---|---|---|
-| `ESJ` | San Juan | El portal nacional enlaza archivos inexistentes |
-| `SPSE` | Santa Cruz | Igual que ESJ; el sitio propio no responde |
+| `SPSE` | Santa Cruz | El portal nacional enlaza archivos inexistentes; el sitio propio no responde |
 | `DPE` | Tierra del Fuego | Sólo resoluciones escaneadas |
 | `EDET` | Tucumán | Cuadros escaneados |
 

@@ -122,7 +122,9 @@ impuestos, del cuadro pleno vigente (sin subsidios). Cómo se obtiene:
 
 **Tarifa de inyección faltante**: la mayoría de las distribuidoras no
 publica precio de inyección. Se estima como tarifa de compra × el ratio
-mediano inyección/compra de las que lo publican (≈ 0,75) y se marca
+mediano inyección/compra de las que lo publican (≈ 0,9 con 12
+distribuidoras en octubre de 2026; fundamento en
+[POL-TARIFF-002](decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante)) y se marca
 `tarifa_inyeccion_estimada`.
 
 Los montos están en **pesos del mes de vigencia de cada cuadro** (octubre de
@@ -155,10 +157,11 @@ Un departamento produce **10.000 t de maíz** en una campaña:
 | Energía | 5.478.119 ÷ 1,1 | 4.980.108 kWh ≈ 5,0 GWh |
 | Equipos PP30 | 4.980.108 ÷ (25 × 8760 × 0,8) | ≈ 28 equipos |
 | Ahorro (tarifa de compra 135 $/kWh) | 4.980.108 × 0,6 × 135 | ≈ $ 403 millones |
-| Ingreso (inyección estimada 135 × 0,752 = 101,5 $/kWh) | 4.980.108 × 0,4 × 101,5 | ≈ $ 202 millones |
-| **Beneficio bruto** | | **≈ $ 606 millones por año** |
+| Ingreso (inyección estimada 135 × 0,915 = 123,5 $/kWh) | 4.980.108 × 0,4 × 123,5 | ≈ $ 246 millones |
+| **Beneficio bruto** | | **≈ $ 649 millones por año** |
 
-Mismo resultado que `add_energy_finance_columns` del ETL (605,6 millones).
+Es el mismo cálculo de `add_energy_finance_columns` del ETL (con una
+distribuidora sin precio de inyección publicado y el ratio de octubre de 2026).
 
 ## Limitaciones
 
@@ -176,5 +179,5 @@ Mismo resultado que `add_energy_finance_columns` del ETL (605,6 millones).
 6. **Potencial técnico, no económico**: no considera logística,
    estacionalidad de la cosecha, almacenamiento ni costos.
 7. **Tarifas**: un único mes; en Buenos Aires es el promedio de tres
-   distribuidoras; la inyección es estimada donde no se publica (24 de
-   28 distribuidoras); 4 distribuidoras sin dato (ver [tarifas](../03_datos/tarifas_electricas.md)).
+   distribuidoras; la inyección es estimada donde no se publica (16 de
+   28 distribuidoras); 3 distribuidoras sin dato (ver [tarifas](../03_datos/tarifas_electricas.md)).

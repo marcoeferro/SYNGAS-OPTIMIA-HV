@@ -652,3 +652,18 @@ El ETL programado (Ofelia → `etl_worker`) no reconstruye nada: usa la imagen l
 
 **Avisos (M3)**. `etl/notifications.py` avisa por webhook (Slack, Discord, Teams, Google Chat) o Telegram cuando el ETL falla o genera alertas de calidad. Para el caso en que el ETL directamente no corre, el dashboard muestra un cartel si los datos tienen más de 48 horas. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
 
+---
+
+## 17. San Juan, Jujuy y tarifas de inyección (2026-10-05)
+
+Con fuentes aportadas por el usuario:
+
+- **ESJ (San Juan)**: Energía San Juan opera como Naturgy San Juan; los cuadros mensuales están en `naturgysj.com.ar/hogar/cuadro-tarifario/`. Se toma la T3 BT < 300 kW (horas restantes) y los "valores a reconocer al usuario generador", que en San Juan coinciden con el cargo de energía (2026-09: 153,27 $/kWh ambos). La validación que exigía inyección < compra pasó a ≤. Historial desde 2025-01.
+- **EJESA (Jujuy)**: la página "costos del servicio" lista los cuadros como tarjetas con enlaces `GetFile?fileId=...`, sin nombre ni fecha; se ordenan por número de resolución SUSEPU. El cuadro trae dos meses en columnas ("Agos-26", "Sept-26"): se toma el más reciente. 2026-09: compra 191,58 y inyección (usuario generador no residencial) 121,54 $/kWh.
+- **EDENOR y EDESUR**: la inyección sale de la resolución del ENRE con las "Tarifas de Inyección de Generación Distribuida" (vigente desde 2026-05: 105,10 $/kWh en T3 BT < 300 kW, Resto). Usa punto decimal con tres decimales; se agregó esa detección.
+- **EDEA, EDEN, EDES y EDELAP**: OCEBA publica un "Cuadro tarifario de inyección excedentes" conjunto (una columna por empresa). El extractor descartaba los documentos que nombran a varias distribuidoras; ahora esos documentos van a una fuente "inyección" que sólo aporta ese precio.
+- **Documentos sólo de inyección**: no compiten por la tarifa de compra ni van al historial; el JSON registra `documento_inyeccion_url` y `vigencia_inyeccion`.
+- **Error corregido en la misma ronda**: un número de expediente de OCEBA ("IF-2025-20821026") se leyó como fecha (2082-10) y EDELAP tomó un cuadro viejo; las fechas de 8 dígitos ahora exigen años 2015–2040.
+
+**Resultado**: 25 de 28 distribuidoras con tarifa de compra; 12 con inyección real. El ratio mediano inyección/compra pasó de 0,75 (3 valores) a 0,915 (12 valores), y la inyección estimada cubre ≈ 31 % de la energía (antes ≈ 65 %). Beneficio anual ≈ 10,9 billones de pesos. El fundamento de la estimación quedó documentado en POL-TARIFF-002.
+

@@ -114,9 +114,9 @@ Limitaciones que conviene tener presentes:
 - La relación grano/rastrojo es un promedio por cultivo; en la realidad varía
   según la variedad, el manejo y el clima.
 - Algunas distribuidoras no publican sus tarifas en un formato legible
-  automáticamente. Hoy faltan San Juan, Santa Cruz, Tierra del Fuego y
-  Tucumán; en esas provincias no se calcula dinero. Y casi ninguna publica
-  el precio de inyección: donde falta, se estima. El detalle está en
+  automáticamente. Hoy faltan Santa Cruz, Tierra del Fuego y Tucumán;
+  en esas provincias no se calcula dinero. Y no todas publican el precio
+  de inyección: donde falta, se estima a partir de las que sí lo publican. El detalle está en
   [tarifas eléctricas](../03_datos/tarifas_electricas.md).
 
 Detalle de cálculos y supuestos: [metodología](../02_metodologia/metodologia.md).
@@ -129,7 +129,7 @@ Promedio anual de las campañas 2020/21 a 2024/25:
 |---|---|
 | Biomasa residual | ~154 millones de toneladas de materia seca por año |
 | Electricidad generable (con la mitad del rastrojo) | ~79 TWh por año |
-| Beneficio bruto (provincias con tarifa) | ~10,5 billones de pesos por año, a tarifas de 2026 |
+| Beneficio bruto (provincias con tarifa) | ~10,9 billones de pesos por año, a tarifas de 2026 |
 
 Son cifras de referencia: cambian con cada actualización de datos y
 tarifas. Los valores vigentes se ven en el dashboard.
