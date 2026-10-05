@@ -1,0 +1,52 @@
+# SYNGAS-OPTIMIA-HV
+
+> Sistema ETL + dashboard que estima la biomasa residual agrícola de Argentina por departamento, la convierte en energía eléctrica generable con gasificadores APL PP30 (25 kW) y la valoriza en pesos con las tarifas vigentes de 28 distribuidoras eléctricas. Python 3.11, pandas, Parquet/DuckDB, Streamlit, Docker Compose (Ofelia para el cron). Documentación en español.
+
+Orden de lectura: introducción → metodología → arquitectura → contratos de datos. El índice docs/README.md describe cada documento. El código es la fuente de verdad; docs/07_historial es histórico (lo marcado [Superado] no aplica). No modificar docs/informes/.
+
+## Introducción
+
+- [README](README.md): qué es, inicio rápido, uso diario, estructura del repositorio
+- [Índice de la documentación](docs/README.md): qué contiene cada documento y orden de lectura por objetivo
+- [Cómo funciona](docs/01_introduccion/como_funciona.md): explicación sin tecnicismos y órdenes de magnitud
+- [Glosario](docs/01_introduccion/glosario.md): términos (IC, FR, MS, PP30, campaña, distribuidora…)
+
+## Metodología
+
+- [Metodología](docs/02_metodologia/metodologia.md): fórmulas de biomasa, energía y dinero; coeficientes; ejemplo numérico; limitaciones
+- [Decisiones](docs/02_metodologia/decisiones.md): reglas POL-… citadas en el código
+
+## Datos
+
+- [Fuentes](docs/03_datos/fuentes.md): MAGyP, Bolsa de Cereales de Córdoba, fuentes descartadas
+- [Tarifas eléctricas](docs/03_datos/tarifas_electricas.md): extractor de cuadros tarifarios, estados, carga manual, problemas conocidos
+- [Contratos de artefactos](docs/03_datos/contratos_de_artefactos.md): rutas y columnas de cada archivo generado
+- [Modelo de datos](docs/03_datos/modelo_de_datos.md): diagrama entidad-relación
+
+## Arquitectura
+
+- [Arquitectura](docs/04_arquitectura/arquitectura.md): componentes por carpeta y decisiones de diseño
+- [Flujo de datos](docs/04_arquitectura/flujo_de_datos.md): etapas del ETL → módulo
+- [Ciclo de vida de los datos](docs/04_arquitectura/ciclo_de_vida_de_los_datos.md): qué se conserva y qué se regenera
+- [Despliegue](docs/04_arquitectura/despliegue.md): servicios Docker, cron, recursos, dominios necesarios
+
+## Uso y calidad
+
+- [Instalación](docs/05_uso/instalacion.md)
+- [Ejecutar el ETL](docs/05_uso/ejecutar_etl.md): opciones de línea de comandos, reintentos, logs
+- [Dashboard](docs/05_uso/dashboard.md): páginas y cómo leerlas
+- [Solución de problemas](docs/05_uso/solucion_de_problemas.md)
+- [Tests y controles](docs/06_calidad/tests_y_controles.md): pytest, CI, invariantes y alertas
+
+## Código (puntos de entrada)
+
+- etl/pipelines/run_etl.py: orquestador del ETL
+- etl/extractors/scrape_tarifas.py y tariff_parser.py: tarifas
+- etl/transformers/: biomass.py, energy_finance.py, reference_period.py, reconciliation.py, data_checks.py
+- dashboard/app.py y dashboard/vistas/: dashboard (no usar carpeta pages/)
+- tests/: pytest
+
+## Opcional
+
+- [Reporte de cambios](docs/07_historial/reporte_cambios.md): registro histórico de errores y correcciones
+- [Carga manual de cuadros](data/reference/cuadros_manuales/README.md)
