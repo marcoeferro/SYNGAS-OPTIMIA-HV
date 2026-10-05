@@ -24,6 +24,7 @@ from typing import Final
 import httpx
 import pandas as pd
 
+from etl.extractors.http_retry import request_with_retry
 from etl.extractors.io_utils import (
     RAW_STEM_CBA,
     build_timestamped_filename,
@@ -103,18 +104,17 @@ def download_excel(url: str) -> bytes:
     Returns:
         Contenido binario del archivo descargado.
 
+    SharePoint responde 503 (o 429) cuando limita pedidos aunque el
+    archivo esté disponible: esos códigos y los cortes de red se
+    reintentan con backoff (``etl.extractors.http_retry``).
+
     Raises:
         httpx.HTTPStatusError: Si el servidor devuelve un código HTTP
-            indicando un error.
-        httpx.RequestError: Si ocurre un error durante la solicitud.
+            de error no transitorio o persiste el error transitorio.
+        httpx.RequestError: Si persiste el error de red.
     """
-    response = httpx.get(
-        url,
-        follow_redirects=FOLLOW_REDIRECTS,
-        timeout=REQUEST_TIMEOUT,
-    )
-
-    response.raise_for_status()
+    with httpx.Client(follow_redirects=FOLLOW_REDIRECTS, timeout=REQUEST_TIMEOUT) as client:
+        response = request_with_retry(client, "GET", url)
 
     # SharePoint devuelve HTML (login/consentimiento) con HTTP 200 cuando
     # el enlace deja de ser público: se valida la firma ZIP de XLSX.

@@ -31,6 +31,7 @@ import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
 
+from etl.extractors.http_retry import request_with_retry
 from etl.extractors.io_utils import (
     RAW_STEM_MAGYP,
     build_timestamped_filename,
@@ -75,11 +76,9 @@ HTTP_TIMEOUT: Final[float] = 120.0
 REQUEST_TIMEOUT: Final[float] = HTTP_TIMEOUT
 FOLLOW_REDIRECTS: Final[bool] = True
 
-MAX_RETRIES: Final[int] = 6
-INITIAL_RETRY_DELAY: Final[float] = 2.0
+# Reintentos ante 429/5xx y cortes de red: etl/extractors/http_retry.py.
 REQUEST_RATE_DELAY: Final[float] = 1.5
 RATE_LIMIT_STATUS_CODE: Final[int] = 429
-RETRYABLE_STATUS_CODES: Final[set[int]] = {429, 500, 502, 503, 504}
 
 # Si falla más de esta fracción de departamentos, la extracción se
 # considera inválida (antes se guardaba un dataset parcial en silencio).
@@ -138,60 +137,6 @@ JSONData: type = list[dict[str, Any]]
 
 
 # ====================== HTTP ======================
-
-def request_with_retry(
-    client: httpx.Client,
-    method: str,
-    url: str,
-    **kwargs: Any,
-) -> httpx.Response:
-    """Realiza una solicitud HTTP con reintentos ante HTTP 429.
-
-    Utiliza un backoff exponencial cuando el servidor no proporciona
-    explícitamente un valor mediante el header Retry-After.
-
-    Args:
-        client: Cliente HTTP utilizado para realizar la solicitud.
-        method: Método HTTP, por ejemplo GET o POST.
-        url: URL del recurso solicitado.
-        **kwargs: Argumentos adicionales enviados a client.request().
-
-    Returns:
-        Respuesta HTTP exitosa.
-
-    Raises:
-        httpx.HTTPStatusError: Si la respuesta contiene un código HTTP
-            de error distinto de 429, o si se agotan los reintentos.
-        httpx.RequestError: Si ocurre un error de comunicación.
-    """
-    delay = INITIAL_RETRY_DELAY
-
-    for attempt in range(MAX_RETRIES):
-        response = client.request(method, url, **kwargs)
-
-        if response.status_code not in RETRYABLE_STATUS_CODES:
-            response.raise_for_status()
-            return response
-
-        retry_after = response.headers.get("Retry-After")
-        if retry_after:
-            try:
-                wait = float(retry_after)
-            except ValueError:
-                wait = delay
-        else:
-            wait = delay
-
-        print(
-            f"HTTP {response.status_code} en intento {attempt + 1}/{MAX_RETRIES}. "
-            f"Esperando {wait:.1f}s..."
-        )
-        time.sleep(wait)
-        delay *= 2
-
-    response.raise_for_status()
-    return response
-
 
 # ====================== CATÁLOGOS ======================
 
