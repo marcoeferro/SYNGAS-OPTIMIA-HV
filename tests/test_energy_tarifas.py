@@ -489,6 +489,8 @@ def test_enlaces_de_spa_desde_el_bundle_js() -> None:
         ("cuadro-tarifario-publicado-30062026-aplicacion-010726.pdf", "2026-07"),
         ("cuadro-tarifario-publicado-311025-aplicacion-011125.pdf", "2025-11"),
         ("tarifa_n3c20240308.pdf", "2024-03"),
+        # Número de expediente de OCEBA: no es una fecha.
+        ("ct202507/IF-2025-20821026-GDEBA-GMOCEBA.pdf", "2025-07"),
     ],
 )
 def test_vigencia_de_nombres_epec(nombre: str, vigencia: str) -> None:

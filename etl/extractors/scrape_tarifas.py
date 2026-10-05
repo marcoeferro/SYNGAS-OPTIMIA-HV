@@ -154,6 +154,9 @@ MESES: Final[dict[str, int]] = {
     "junio": 6, "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9,
     "octubre": 10, "noviembre": 11, "diciembre": 12,
 }
+# Rango de años aceptado en fechas sin separadores (AAAAMMDD/DDMMAAAA).
+YEAR_MIN: Final[int] = 2015
+YEAR_MAX: Final[int] = 2040
 MESES_ABREV: Final[dict[str, int]] = {
     "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7,
     "ago": 8, "sep": 9, "set": 9, "oct": 10, "nov": 11, "dic": 12,
@@ -234,13 +237,15 @@ def vigencia_from_name(url: str) -> str | None:
     # Fechas de 8 dígitos: DDMMAAAA (EPEC: "publicado-02102026") y AAAAMMDD
     # (EPEC hasta 2024: "tarifa_n3c20240308"). Sólo una de las dos lecturas
     # da un mes válido.
+    # Años acotados: los números de expediente de OCEBA ("IF-2025-20821026")
+    # también tienen 8 dígitos.
     for m in re.finditer(r"(?<!\d)(\d{8})(?!\d)", name):
         token = m.group(1)
         d, mo, y = int(token[:2]), int(token[2:4]), int(token[4:])
-        if 1 <= d <= 31:
+        if 1 <= d <= 31 and YEAR_MIN <= y <= YEAR_MAX:
             candidates.append(_ym(y, mo) or "")
         y2, mo2, d2 = int(token[:4]), int(token[4:6]), int(token[6:])
-        if 1 <= d2 <= 31:
+        if 1 <= d2 <= 31 and YEAR_MIN <= y2 <= YEAR_MAX:
             candidates.append(_ym(y2, mo2) or "")
     candidates = [c for c in candidates if c]
     return max(candidates) if candidates else None
