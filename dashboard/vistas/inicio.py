@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import streamlit as st
 
-from dashboard.data_loader import load_tarifas
+from dashboard.data_loader import (
+    CANDIDATE_BIOMASA,
+    PATH_DESCARTADOS,
+    PATH_POTENCIAL,
+    file_info,
+    load_tarifas,
+)
 
 st.title("Biomasa residual agrícola — Argentina")
 st.markdown(
@@ -40,3 +46,14 @@ if cfg is not None:
         "Datos leídos de `data/processed`, `data/audit` y `data/reference`; "
         "ejecutá el ETL para actualizarlos."
     )
+
+with st.expander("Archivos de datos"):
+    st.markdown(
+        "\n".join(
+            f"- {file_info(p)}"
+            for p in (CANDIDATE_BIOMASA[0], PATH_POTENCIAL, PATH_DESCARTADOS)
+        )
+        + "\n\nSi las fechas no cambian después de correr el ETL, el ETL no llegó a "
+        "persistir (revisá su log) o corrió con una imagen de Docker vieja."
+    )
+

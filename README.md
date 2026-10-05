@@ -304,7 +304,14 @@ Notas:
 - Los mapas usan los polígonos GADM 4.1 de `dashboard/geo/` y la
   cartografía base de Plotly, que el navegador descarga de `cdn.plot.ly`.
 - Los datos se leen de `data/processed`, `data/audit` y `data/reference`;
-  ejecutar el ETL antes de abrir el dashboard.
+  ejecutar el ETL antes de abrir el dashboard. El dashboard detecta cuando
+  el ETL reescribe un archivo (no hace falta reiniciarlo); en **Inicio →
+  Archivos de datos** se ve la fecha de cada uno.
+- Si una página dice que el archivo "fue generado por una versión anterior
+  del ETL" o que falta el potencial anual, el ETL corrió con código viejo.
+  En Docker el código del ETL está dentro de la imagen: reconstruirla con
+  `docker compose build etl_pipeline` antes de correrlo
+  (`.\scripts\Run-Etl.ps1` y `make docker-etl` ya lo hacen).
 
 ---
 
