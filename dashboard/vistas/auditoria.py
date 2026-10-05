@@ -16,7 +16,10 @@ from dashboard.data_loader import (
     COL_BIOMASA,
     COL_KWH,
     ESTADOS_TARIFA,
+    PATH_ALERTAS,
     dept_geo_coverage,
+    file_info,
+    load_alertas,
     load_biomasa,
     load_descartados,
     load_discrepancias,
@@ -32,13 +35,50 @@ st.caption(
     "`data/audit/`, `data/processed/` y `data/reference/`."
 )
 
-tab_rec, tab_disc, tab_tar, tab_geo, tab_camp = st.tabs([
+tab_alert, tab_rec, tab_disc, tab_tar, tab_geo, tab_camp = st.tabs([
+    "Alertas de calidad",
     "Descartados en reconciliación",
     "Discrepancias CBA vs MAGyP",
     "Tarifas",
     "Cobertura de mapas",
     "Campañas",
 ])
+
+# --- Alertas de calidad ---
+with tab_alert:
+    st.markdown(
+        "Controles que corre el ETL en cada ejecución comparando contra la corrida "
+        "anterior: **salto de tarifa** (la tarifa vigente cambia más de 50 % respecto "
+        "del cuadro anterior) y **cambio de energía o dinero** (el total cambia más de "
+        "20 %, o una provincia relevante más de 50 %). Una alerta no siempre es un "
+        "error: puede ser un aumento tarifario real, pero hay que revisarla."
+    )
+    alertas = load_alertas()
+    if alertas is None:
+        st.info(
+            f"No hay registro de alertas ({file_info(PATH_ALERTAS)}): se genera desde la "
+            "versión del ETL con controles de calidad."
+        )
+    elif alertas.empty:
+        st.success(f"✅ Sin alertas en la última corrida ({file_info(PATH_ALERTAS)}).")
+    else:
+        st.warning(f"⚠️ {len(alertas)} alerta(s) en la última corrida ({file_info(PATH_ALERTAS)}).")
+        st.dataframe(
+            alertas.rename(columns={
+                "control": "Control", "entidad": "Entidad", "valor_anterior": "Anterior",
+                "valor_actual": "Actual", "variacion": "Variación", "umbral": "Umbral",
+                "detalle": "Qué revisar", "fecha": "Corrida",
+            }).style.format(
+                {"Anterior": "{:,.2f}", "Actual": "{:,.2f}", "Variación": "{:+.0%}",
+                 "Umbral": "{:.0%}"},
+                na_rep="—",
+            ),
+            hide_index=True, use_container_width=True,
+        )
+        st.caption(
+            "Con `python -m etl.pipelines.run_etl --estricto` el ETL no publica datos "
+            "nuevos mientras haya alertas."
+        )
 
 # --- Reconciliación ---
 with tab_rec:
@@ -116,7 +156,7 @@ with tab_tar:
         st.caption(
             "Leyenda: " + " · ".join(dict.fromkeys(f"{i} {t}" for i, t in ESTADOS_TARIFA.values()))
             + f". Archivo: `{path.name}`. El motivo de cada distribuidora sin dato está en "
-            "`REPORTE_CAMBIOS.md`."
+            "`docs/03_datos/tarifas_electricas.md`."
         )
     if pot is not None and not pot.empty:
         tot = pot[COL_KWH].sum()

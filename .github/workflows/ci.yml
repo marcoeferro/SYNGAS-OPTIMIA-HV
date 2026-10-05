@@ -1,0 +1,80 @@
+# Integración continua: tests y chequeos en cada push y pull request.
+#
+# - tests: pytest + errores reales de lint (pyflakes y sintaxis). El resto
+#   del estilo (ruff completo) no bloquea: el repo tiene avisos previos.
+# - imagen: construye la imagen Docker sólo si cambian Dockerfile,
+#   pyproject.toml o .dockerignore (es el paso más largo).
+#
+# El repo es privado: Actions cobra minutos (2000 gratis por mes). Por eso
+# se instala sólo lo necesario, se cachea pip y se cancelan las corridas
+# viejas de la misma rama.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dashboard]" pytest ruff
+
+      - name: Lint (errores reales)
+        run: ruff check --select E9,F etl dashboard tests
+
+      - name: Tests
+        run: pytest -q
+
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ¿Cambió la imagen?
+        id: cambios
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if git diff --quiet "$base" HEAD -- Dockerfile pyproject.toml .dockerignore 2>/dev/null; then
+            echo "construir=false" >> "$GITHUB_OUTPUT"
+            echo "Sin cambios en la imagen: se omite el build."
+          else
+            echo "construir=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build de la imagen
+        if: steps.cambios.outputs.construir == 'true'
+        run: docker build -t etl-biomasa:ci .
+
+      - name: Humo (imports dentro de la imagen)
+        if: steps.cambios.outputs.construir == 'true'
+        run: |
+          docker run --rm etl-biomasa:ci python -c "import etl.pipelines.run_etl, etl.transformers.data_checks; print('ETL ok')"
+          docker run --rm etl-biomasa:ci python -c "import streamlit, dashboard.data_loader; print('dashboard ok')"

@@ -1,5 +1,16 @@
 # Modelo de datos
 
+> Las tablas que produce el sistema y cómo se relacionan. Las columnas
+> completas de cada archivo están en
+> [contratos de artefactos](contratos_de_artefactos.md).
+
+Cada fila de **BIOMASA_VALIDOS** es un cultivo en un departamento en una
+campaña. Usa los coeficientes de su cultivo (**IC_FR**) y la tarifa de la
+distribuidora del lugar (**DISTRIBUIDORA**). **POTENCIAL_ANUAL** es el
+promedio anual de BIOMASA_VALIDOS en el período de referencia. Las demás
+tablas sirven para auditar.
+
+
 ```mermaid
 erDiagram
     IC_FR {
@@ -68,14 +79,31 @@ erDiagram
         string sha256 PK
     }
 
+    ALERTAS_CALIDAD {
+        string control "salto_tarifa / cambio_total / cambio_provincia"
+        string entidad "distribuidora, total o provincia"
+        float valor_anterior
+        float valor_actual
+        float variacion
+        float umbral
+        string fecha
+    }
+
     IC_FR ||--o{ BIOMASA_VALIDOS : "biomasa"
     DISTRIBUIDORA ||--o{ BIOMASA_VALIDOS : "tarifa"
     DISTRIBUIDORA ||--o{ TARIFAS_HISTORIAL : "cuadros"
     BIOMASA_VALIDOS ||--o{ POTENCIAL_ANUAL : "promedio anual"
     BIOMASA_VALIDOS ||--o{ DESCARTADOS : "reconciliación"
+    POTENCIAL_ANUAL ||--o{ ALERTAS_CALIDAD : "controles"
+    TARIFAS_HISTORIAL ||--o{ ALERTAS_CALIDAD : "salto de tarifa"
 ```
 
 - `BIOMASA_VALIDOS` y `POTENCIAL_ANUAL`: `data/processed/*.parquet`.
-- `DESCARTADOS` y discrepancias: `data/audit/*.parquet`.
+- `DESCARTADOS`, discrepancias y `ALERTAS_CALIDAD`: `data/audit/*.parquet`.
 - `DISTRIBUIDORA`: bloques `distribuidoras` de `data/reference/*_tarifas.json`.
 - `TARIFAS_HISTORIAL`: `data/reference/tarifas_historial.csv`.
+- `IC_FR`: `data/reference/ic_fr.csv`.
+
+Clave natural de los registros agrícolas: `(Provincia, Departamento,
+Campaña, Cultivo)`. Provincia y departamento están normalizados
+(minúsculas, sin tildes).
