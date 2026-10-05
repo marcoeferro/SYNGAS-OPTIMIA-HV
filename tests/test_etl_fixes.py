@@ -175,9 +175,78 @@ def test_extraccion_fallida_usa_raw_en_disco(tmp_path) -> None:
 
     (tmp_path / "datos_bolsa_granos_cba.csv").write_text("x\n")
     (tmp_path / "datos_estimaciones.csv").write_text("x\n")
-    with mock.patch.object(r.extract_cba, "run_extractor", side_effect=RuntimeError("403")), \
+    cba = mock.Mock(side_effect=RuntimeError("403"))
+    with mock.patch.object(r.extract_cba, "run_extractor", cba), \
             mock.patch.object(r.extract_magyp, "run_extractor",
                               return_value=tmp_path / "nuevo.csv"):
-        paths = r.run_extract_stage(tmp_path)
+        paths = r.run_extract_stage(tmp_path, retry_wait=0)
+    assert cba.call_count == 2          # intento inicial + segunda pasada
     assert paths["cba"] == tmp_path / "datos_bolsa_granos_cba.csv"
     assert paths["magyp"] == tmp_path / "nuevo.csv"
+
+
+def test_segunda_pasada_recupera_la_fuente(tmp_path) -> None:
+    """Una fuente con 503 al principio se recupera al final de la etapa."""
+    from unittest import mock
+
+    import etl.pipelines.run_etl as r
+
+    nuevo = tmp_path / "cba_nuevo.csv"
+    cba = mock.Mock(side_effect=[RuntimeError("503"), nuevo])
+    with mock.patch.object(r.extract_cba, "run_extractor", cba), \
+            mock.patch.object(r.extract_magyp, "run_extractor",
+                              return_value=tmp_path / "magyp.csv"):
+        paths = r.run_extract_stage(tmp_path, retry_wait=0)
+    assert paths["cba"] == nuevo
+
+
+def _transport(respuestas: list):
+    """Transporte httpx que devuelve las respuestas (o excepciones) en orden."""
+    import httpx
+
+    pedidos = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        pedidos.append(request)
+        r = respuestas.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    return httpx.MockTransport(handler), pedidos
+
+
+def test_reintenta_503_y_cortes_de_red(monkeypatch) -> None:
+    import httpx
+
+    from etl.extractors import http_retry
+
+    esperas: list[float] = []
+    monkeypatch.setattr(http_retry.time, "sleep", esperas.append)
+    transport, pedidos = _transport([
+        httpx.Response(503, headers={"Retry-After": "7"}),
+        httpx.ConnectError("reset"),
+        httpx.Response(200, content=b"ok"),
+    ])
+    with httpx.Client(transport=transport) as client:
+        r = http_retry.request_with_retry(client, "GET", "https://x/archivo.xls")
+    assert r.content == b"ok"
+    assert len(pedidos) == 3
+    assert esperas == [7.0, 4.0]       # Retry-After y luego backoff (2 → 4)
+
+
+def test_no_reintenta_404_y_agota_503(monkeypatch) -> None:
+    import httpx
+
+    from etl.extractors import http_retry
+
+    monkeypatch.setattr(http_retry.time, "sleep", lambda _s: None)
+    transport, pedidos = _transport([httpx.Response(404)])
+    with httpx.Client(transport=transport) as client, pytest.raises(httpx.HTTPStatusError):
+        http_retry.request_with_retry(client, "GET", "https://x/")
+    assert len(pedidos) == 1
+
+    transport, pedidos = _transport([httpx.Response(503) for _ in range(3)])
+    with httpx.Client(transport=transport) as client, pytest.raises(httpx.HTTPStatusError):
+        http_retry.request_with_retry(client, "GET", "https://x/", max_retries=3)
+    assert len(pedidos) == 3

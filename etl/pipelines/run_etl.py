@@ -28,7 +28,9 @@ import argparse
 import logging
 import logging.config
 import sys
+import time
 from pathlib import Path
+from typing import Final
 
 import pandas as pd
 import yaml
@@ -158,16 +160,30 @@ def run_tarifas_stage(raw_dir: Path, ref_dir: Path) -> Path | None:
         return None
 
 
-def run_extract_stage(raw_dir: Path) -> dict[str, Path]:
+# Espera antes de la segunda pasada sobre las fuentes que fallaron.
+EXTRACT_RETRY_WAIT_SECONDS: Final[float] = 60.0
+
+
+def run_extract_stage(
+    raw_dir: Path,
+    retry_wait: float = EXTRACT_RETRY_WAIT_SECONDS,
+) -> dict[str, Path]:
     """
     Ejecuta los extractors de CBA y MAGYP.
 
-    Cada extractor escribe un CSV timestamped en ``raw_dir`` y devuelve
-    la ruta del artefacto generado. Si un extractor falla se usa el raw
-    más reciente de esa fuente ya presente en disco.
+    Ciclo de vida de cada fuente:
+
+    1. Cada pedido HTTP se reintenta ante 429/5xx y cortes de red con
+       backoff exponencial (``etl.extractors.http_retry``).
+    2. Si aun así la fuente falla, se sigue con las demás y, al terminar,
+       se hace una **segunda pasada** sobre las que fallaron (tras
+       ``retry_wait`` segundos), por si el servicio se recuperó.
+    3. Si vuelve a fallar se usa el raw más reciente de esa fuente en
+       disco y queda registrado en el log.
 
     Args:
         raw_dir: Directorio ``data/raw``.
+        retry_wait: Segundos de espera antes de la segunda pasada.
 
     Returns:
         Diccionario ``{"cba": Path, "magyp": Path}``.
@@ -180,16 +196,34 @@ def run_extract_stage(raw_dir: Path) -> dict[str, Path]:
         "magyp": (extract_magyp, RAW_STEM_MAGYP),
     }
     paths: dict[str, Path] = {}
-    for name, (module, stem) in sources.items():
+    failed: list[str] = []
+    for name, (module, _stem) in sources.items():
         logger.info("Extract %s → %s", name.upper(), raw_dir)
         try:
             paths[name] = module.run_extractor(output_dir=raw_dir)
         except Exception:
-            # Una fuente caída (p.ej. el enlace de SharePoint de la BCCBA
-            # exige login) no debe frenar todo el pipeline: se usa el raw
-            # más reciente en disco y queda registrado en el log.
             logger.exception(
-                "Falló la extracción de %s; se usa el raw más reciente en disco",
+                "Falló la extracción de %s; se reintentará al final de la etapa",
+                name.upper(),
+            )
+            failed.append(name)
+
+    if failed:
+        logger.info(
+            "Segunda pasada sobre %s en %.0f s", ", ".join(n.upper() for n in failed),
+            retry_wait,
+        )
+        time.sleep(retry_wait)
+    for name in failed:
+        module, stem = sources[name]
+        try:
+            paths[name] = module.run_extractor(output_dir=raw_dir)
+            logger.info("Extract %s recuperado en la segunda pasada", name.upper())
+        except Exception:
+            # Una fuente caída no debe frenar todo el pipeline: se usa el
+            # raw más reciente en disco y queda registrado en el log.
+            logger.exception(
+                "Falló de nuevo la extracción de %s; se usa el raw más reciente en disco",
                 name.upper(),
             )
             paths[name] = find_latest_raw(raw_dir, stem)

@@ -237,8 +237,16 @@ Genera:
 - `data/audit/descartados_reconciliacion.parquet` y
   `data/audit/discrepancias_cba_vs_magyp.parquet`: auditoría.
 
-Si un extractor falla (sitio caído o bloqueado), el pipeline usa el
-último archivo descargado de esa fuente y lo registra en el log.
+Si una fuente falla:
+
+1. Cada pedido HTTP se reintenta ante 429/500/502/503/504 y cortes de red,
+   con backoff exponencial (2, 4, 8… s, hasta 6 intentos) o el tiempo que
+   indique `Retry-After` (`etl/extractors/http_retry.py`). SharePoint, por
+   ejemplo, responde 503 cuando limita pedidos aunque el archivo exista.
+2. Si aun así falla, el pipeline sigue con las demás fuentes y al final
+   hace una segunda pasada sobre las que fallaron (después de 60 s).
+3. Si vuelve a fallar, usa el último archivo descargado de esa fuente y
+   lo registra en el log.
 
 ---
 

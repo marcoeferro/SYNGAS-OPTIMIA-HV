@@ -525,3 +525,17 @@ Contenido nuevo:
 - Dinero: estimación de la inyección faltante.
 - Geografía: alias entre fuentes.
 - Dashboard: claves GADM, partidos en dos polígonos y nombres legibles.
+
+---
+
+## 12. Reintentos en la extracción (2026-10-05)
+
+**Problema**: al correr el ETL, la descarga de la Bolsa de Cereales de Córdoba falló con `503 Service Unavailable` aunque el archivo estaba disponible: SharePoint responde 503 cuando limita pedidos. El pipeline pasaba directo al raw en disco.
+
+**Causa**: la política de reintentos (`request_with_retry`, backoff exponencial ante 429/5xx) existía sólo dentro del extractor de MAGyP. La descarga de CBA hacía un único `httpx.get` + `raise_for_status()` desde su primera versión. No se quitó en estos cambios: nunca la tuvo.
+
+**Corrección**:
+
+- `etl/extractors/http_retry.py`: la política pasa a un módulo compartido y se amplía. Reintenta ante 429, 500, 502, 503 y 504 y también ante cortes de red (conexión rechazada o cortada, timeouts). Usa backoff exponencial de 2, 4, 8… s (tope 60 s), hasta 6 intentos, y respeta `Retry-After`. MAGyP y CBA la usan.
+- `run_extract_stage`: si una fuente falla igual, se sigue con las demás y al final se hace una **segunda pasada** (tras 60 s) sobre las que fallaron. Recién si vuelve a fallar se usa el raw más reciente en disco.
+- Tests: 503 con `Retry-After`, corte de red, error no reintentable (404), intentos agotados, segunda pasada que recupera la fuente y fallback al raw.
