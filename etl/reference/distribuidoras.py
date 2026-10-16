@@ -85,6 +85,7 @@ def _dist(
     fila_tarifa: tuple[str, int] | dict[str, Any] | None = None,
     fila_inyeccion: dict[str, Any] | None = None,
     urls_inyeccion: list[str] | None = None,
+    pdf_layout: bool = False,
     nota: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -99,6 +100,8 @@ def _dist(
     ``fila_inyeccion`` hace lo mismo con la tarifa de inyección (ver
     ``tariff_parser.find_hinted_row``). ``urls_inyeccion`` son documentos
     que sólo traen la tarifa de inyección (p.ej. resoluciones del ENRE).
+    ``pdf_layout`` lee los PDF respetando la posición del texto (cuadros
+    con varias tablas lado a lado, ver ``tariff_documents.pdf_to_text``).
     """
     slugs = [slug] if isinstance(slug, str) else list(slug or [])
     base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
@@ -113,6 +116,7 @@ def _dist(
         "fila_tarifa": fila_tarifa,
         "fila_inyeccion": fila_inyeccion,
         "urls_inyeccion": urls_inyeccion or [],
+        "pdf_layout": pdf_layout,
         "nota": nota,
     }
 
@@ -346,12 +350,24 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Empresa Distribuidora de Electricidad de Salta S.A.",
         "Salta",
         "edesa",
+        # La página enlaza también los cuadros de ESED (sistemas aislados),
+        # LUSAL (alumbrado) e IAP: no tienen la fila T3, no aportan compra.
+        indices=["https://www.edesa.com.ar/cuadros-tarifarios/"],
         url_templates=[
             "https://www.edesa.com.ar/wp-content/uploads/{year}/{month}/"
             "Cuadro_Tarifario_{mes}_{year}_EDESA.pdf",
             "https://www.edesa.com.ar/wp-content/uploads/{year}/{month}/"
             "Cuadro_Tarifario_{mes}_{year}_EDESA-1.pdf",
         ],
+        # T3 (> 50 kW) BT medianas demandas, horas resto: 5° importe tras
+        # cargo por capacidad, capacidad en punta, cargo fijo y pico. Sirve
+        # para la planilla nacional ("TARIFA 3 / > 50 Kw / BT-MD") y para
+        # el PDF propio leído con layout ("Demandas > 50 KW / BT - MD").
+        fila_tarifa={"ancla": r">\s*50\s*KW", "filas": [(r"^\s*BT\s*-\s*MD\b", 4)]},
+        # "Tarifas Balance Neto": precio por origen de la generación; el
+        # proyecto inyecta energía de biomasa (T_BN_BIO).
+        fila_inyeccion={"ancla": r"Balance\s+Neto", "filas": [(r"\bT_BN_BIO\b", 0)]},
+        pdf_layout=True,
     ),
     "ESJ": _dist(
         "Energía San Juan S.A.",

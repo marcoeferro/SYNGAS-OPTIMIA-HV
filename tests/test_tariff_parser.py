@@ -149,6 +149,67 @@ def test_edesa_planilla_con_encabezados_de_columna() -> None:
     assert out["tarifa_compra_kwh"] == pytest.approx(266.80879, rel=1e-6)
 
 
+# EDESA (Salta) 2026-09, PDF propio leído con layout: tablas lado a lado,
+# la T2 (10-50 kW) y la T3 (> 50 kW) traen filas "BT - MD".
+EDESA_PDF_LAYOUT = """\
+Cuadro Tarifario EDESA S.A        Según Resolución ENRESP N° 1510/26
+            Abastecimiento/RES. SE. N° 222/26     SEPTIEMBRE 2026
+  T1AP   -   372,0006   T3 - BT - MD   14.886,26   909,39   74,4982   Tarifas Balance Neto
+   Medianas y Gr   andes Demandas (> = 10KW)   Balance Neto - Origen Solar   T_BN_SOL   90,2547
+   Balance Neto - Origen Biomasa   T_BN_BIO   37,7622
+   Demandas > 10 < 50 KW   contratada - $ / KW-mes   $/Mes   $/KWh   T3- AT - GD   160,73
+  BT- MD   19.229,76   26.573,47   236,9380
+   T4 - BT - MD   8.362,28   773,66   42.064,23   90,7261   90,1217   89,9784
+   TARIF   A 3Cargo por máx. cap.   de sum.  contratada   Cargo ﬁjo   T5 - BT - MD   9.690,94
+   Demandas > 50 KW   de sum. contratada - $ / KW-mes   en hs. de punta   $/Mes   horas resto
+   -  $ / KW-mes   $/KWh   $/KWh   $/KWh   T5 - BT - GD   9.690,94   638,69   42.064,23
+  BT   - MD   17.287,27   5.495,78   42.064,23   318,3957   313,5895   312,4502   T6 - MT- MD
+  BT   - GD   17.287,27   5.495,78   42.064,23   339,5023   333,9500   332,6337   BT =
+"""
+
+# EDESA 2026-06, planilla del portal nacional (mismas filas del registro).
+EDESA_NACIONAL = [
+    ["TARIFA 3"],
+    ["> 50 Kw", "Cargo por Máx. cap. de sum. contratada $/KW-mes",
+     "Cargo por Cap. de Sum. contratada en Hs. de Punta $/KW-mes", "Cargo Fijo $/mes",
+     "Cargo Variable Horas Pico $/kwh", "Cargo Variable Horas Resto $/KWh",
+     "Cargo Variable Horas Valle $/KWh"],
+    ["BT-MD", 16170.405475, 5276.988136, 39435.881323, 270.314784, 266.808787, 265.176812],
+    ["TARIFAS BALANCE NETO"],
+    ["GENERADORES", "Tipo GEN", "Cargo Variable $/KWh"],
+    ["Balance Neto - Origen Solar", "T_BN_SOL", 84.3557],
+    ["Balance Neto - Origen Biomasa", "T_BN_BIO", 35.294077],
+]
+
+
+@pytest.mark.parametrize(("texto", "compra", "inyeccion"), [
+    (EDESA_PDF_LAYOUT, 313.5895, 37.7622),
+    (rows_to_text(EDESA_NACIONAL), 266.80879, 35.29408),
+])
+def test_edesa_filas_del_registro(texto: str, compra: float, inyeccion: float) -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS["EDESA"]
+    out = parse_tariff_text(texto, info["fila_tarifa"], info["fila_inyeccion"])
+    assert out["tarifa_compra_kwh"] == pytest.approx(compra)       # T3 BT-MD resto
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(inyeccion)  # Balance Neto biomasa
+
+
+def test_edesa_cuadros_de_otros_servicios_no_aportan() -> None:
+    # La página de EDESA enlaza también el cargo de alumbrado público (IAP).
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS["EDESA"]
+    iap = (
+        "CARGOS DE INCIDENCIA DEL ALUMBRADO PÚBLICO\n"
+        "Tarifa   KWH IAP   Tarifa   KWH IAP\n"
+        "T3BT   203,933   T7A   67,822\n"
+    )
+    out = parse_tariff_text(iap, info["fila_tarifa"], info["fila_inyeccion"])
+    assert out["tarifa_compra_kwh"] is None
+    assert out["tarifa_inyeccion_kwh"] is None
+
+
 def test_emsa_media_tension_en_kv_no_aplica() -> None:
     texto = (
         "GRANDES | Energía en horas Resto | 138,76\n"
