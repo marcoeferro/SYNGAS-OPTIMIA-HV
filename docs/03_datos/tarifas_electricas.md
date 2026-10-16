@@ -76,11 +76,12 @@ El dashboard muestra el estado de cada distribuidora en *Dinero* y en
 **25 de 28** distribuidoras con tarifa extraída y 3 sin dato. Sin tarifa
 queda menos del 1 % de la energía calculada (casi toda de Tucumán).
 
-**Inyección**: 12 distribuidoras la publican en un formato que el lector
+**Inyección**: 13 distribuidoras la publican en un formato que el lector
 reconoce (columna *Inyección*), en el mismo cuadro o en un documento aparte
 (resolución del ENRE para EDENOR y EDESUR; cuadro de inyección de OCEBA
 para las bonaerenses). En las demás se estima como compra × ratio mediano
-de las reales (0,915), lo que alcanza a ≈ 31 % de la energía. Fundamento:
+de las reales (0,917), lo que alcanzaba a ≈ 31 % de la energía antes de
+sumar EDERSA (no recalculado). Fundamento:
 [POL-TARIFF-002](../02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
 
 | Distribuidora | Provincia / zona | Compra ($/kWh) | Inyección ($/kWh) | Vigencia | Fuente |
@@ -104,7 +105,7 @@ de las reales (0,915), lo que alcanza a ≈ 31 % de la energía. Fundamento:
 | EDESTE | Mendoza (zona este) | 106,51 | estimada | 2026-05 | Portal nacional |
 | EMSA | Misiones | 283,84 | estimada | 2026-09 | Boletín Oficial de Misiones |
 | EPEN | Neuquén | 359,73 | estimada | 2026-08 | Sitio propio |
-| EDERSA | Río Negro | 155,26 | estimada | 2026-09 | Sitio propio |
+| EDERSA | Río Negro | 166,39 | 166,39 | 2026-10 | Sitio propio (T2 10–50 kW, Resto; compra = energía + transporte; inyección: cuadro UGER) |
 | EDESA | Salta | 313,59 | 37,76 | 2026-09 | Sitio propio (inyección: Balance Neto, origen biomasa) |
 | ESJ | San Juan | 153,27 | 153,27 | 2026-09 | Sitio de Naturgy San Juan |
 | EDESAL | San Luis | 110,76 | estimada | 2026-06 | Portal nacional |
@@ -188,8 +189,13 @@ documento real en `tests/test_tariff_parser.py`.
   verificado contra el PDF de julio.
 - **EJESA, vigencia**: el cuadro trae dos meses en columnas ("Agos-26",
   "Sept-26"); se toma el más reciente.
-- **Inyección en EDERSA y ECSAPEM**: el valor detectado corresponde a otra
+- **Inyección en ECSAPEM**: el valor detectado corresponde a otra
   categoría y supera la tarifa de compra; la validación lo descarta y se
   usa la estimación.
+- **EDERSA**: la compra es el cargo de energía (Resto) más el de transporte
+  de otros agentes, ambos en $/kWh; la inyección del cuadro de
+  usuarios-generadores (UGER) es esa misma suma, así que a veces la supera
+  en el último decimal. La regla inyección ≤ compra admite un margen de
+  redondeo de 0,1 %.
 - **Dominios**: el extractor necesita salida a Internet hacia los sitios de
   la lista [dominios necesarios](../04_arquitectura/despliegue.md#dominios-necesarios).

@@ -227,10 +227,10 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
 - **Tarifas**: 25 de 28 distribuidoras con tarifa extraída automáticamente
   (octubre de 2026). Sin dato: Santa Cruz, Tierra del Fuego y Tucumán; Chubut no tiene distribuidora provincial. Esas provincias (≈ 1 %
   de la energía) tienen energía pero no dinero.
-- **Tarifa de inyección**: 12 distribuidoras la publican en un formato
+- **Tarifa de inyección**: 13 distribuidoras la publican en un formato
   legible (incluidas las de CABA, Buenos Aires y Córdoba); en el resto se
-  estima como compra × 0,915, la mediana de las reales (≈ 31 % de la
-  energía). Fundamento: [POL-TARIFF-002](docs/02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
+  estima como compra × 0,917, la mediana de las reales (≈ 31 % de la
+  energía antes de sumar EDERSA). Fundamento: [POL-TARIFF-002](docs/02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
   Las tarifas faltantes se pueden cargar a mano:
   [tarifas eléctricas](docs/03_datos/tarifas_electricas.md#carga-manual-de-cuadros).
 - **Cultivos sin coeficientes** (caña de azúcar, yerba mate, cítricos)

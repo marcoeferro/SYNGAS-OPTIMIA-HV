@@ -52,6 +52,11 @@ ENRE_INYECCION_URLS: Final[list[str]] = [
 ]
 
 
+# EDERSA: encabezado de la categoría T2 de 10 a 50 kW, en el cuadro general
+# y en el de usuarios-generadores (UGER).
+EDERSA_T2: Final[str] = r"^T2\s+con\s+Potencias\s+entre\s+10\s+y\s+50"
+
+
 def _oceba_inyeccion(columna: int) -> dict[str, Any]:
     """
     Fila del "CUADRO TARIFARIO DE INYECCIÓN EXCEDENTES" de OCEBA.
@@ -323,6 +328,23 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
             "https://www.edersa.com.ar/usuarios/cuadro-tarifario/",
             "https://www.eprern.gov.ar/tarifas.html",
         ],
+        # T2 entre 10 y 50 kW (un PP30 es de 25 kW), primera columna
+        # (T2N_1BTb), banda Resto. El cargo de energía no incluye el de
+        # transporte de otros agentes, que también se cobra por kWh: la
+        # compra es la suma de ambos.
+        fila_tarifa={
+            "ancla": EDERSA_T2,
+            "filas": [
+                (r"CARGO\s+TRANSP\.?\s+OTROS\s+AGENTES", 0),
+                (r"CARGO\s+ENERG[IÍ]A\s+\(R\)", 0),
+            ],
+        },
+        # Tabla "UGER" (usuario-generador, Ley 27.424 y Ley provincial
+        # 5.617), misma categoría. La inyección es energía + transporte.
+        fila_inyeccion={
+            "anclas": [r"Periodo:.*\bUGER\b", EDERSA_T2],
+            "filas": [(r"Tarifa\s+de\s+Inyecci[oó]n\s+\(R\)", 0)],
+        },
     ),
     "EDESA": _dist(
         "Empresa Distribuidora de Electricidad de Salta S.A.",
