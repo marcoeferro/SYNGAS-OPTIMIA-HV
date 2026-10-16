@@ -576,6 +576,25 @@ def card_file_links(html: str, base_url: str) -> list[str]:
     return [u for _, u in sorted(found, key=lambda x: x[0], reverse=True)]
 
 
+def subpage_links(html: str, base_url: str, pattern: str) -> list[str]:
+    """
+    Enlaces de un índice a páginas del mismo sitio que coinciden con ``pattern``.
+
+    Son las páginas por resolución (ver ``distribuidoras.subpaginas``), en
+    el orden del índice y sin repetir.
+    """
+    from bs4 import BeautifulSoup
+
+    regex = re.compile(pattern, re.IGNORECASE)
+    host = urlparse(base_url).netloc
+    links: list[str] = []
+    for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
+        url = urljoin(base_url, str(a["href"])).split("#")[0]
+        if urlparse(url).netloc == host and regex.search(url) and url not in links:
+            links.append(url)
+    return links
+
+
 def download_bytes(url: str) -> bytes:
     """
     Descarga el contenido binario de una URL.
@@ -689,6 +708,11 @@ def _date_score(url: str) -> str:
     return vigencia_from_name(url) or ""
 
 
+PDF_VIEWER_FILE: Final = re.compile(
+    r"""viewer\.html\?file=([^"'&#\s]+\.(?:pdf|xlsx?))""", re.IGNORECASE
+)
+
+
 def discover_document_links(
     html: str,
     base_url: str,
@@ -724,6 +748,9 @@ def discover_document_links(
             r"""["'](https?://[^"'\s]+?\.(?:pdf|xlsx?|zip))["']""", html, flags=re.IGNORECASE
         )
     ]
+    # Documentos embebidos en un visor pdf.js ("viewer.html?file=/images/
+    # .../cuadro.pdf", La Pampa).
+    pairs += [(unquote(m), "") for m in PDF_VIEWER_FILE.findall(html)]
     links: list[str] = []
     for raw_href, text in pairs:
         href = normalize_url(raw_href)
@@ -848,8 +875,18 @@ def candidate_documents(
         return cache[url]
 
     injection: list[str] = []
-    for index in info["indices"]:
+    years = list(dict.fromkeys(f"{y:04d}" for y, _ in months))
+    indices = [
+        i.format(year=y) if "{year}" in i else i
+        for i in info["indices"] for y in (years if "{year}" in i else [""])
+    ]
+    pages: list[str] = []
+    for index in dict.fromkeys(indices):
         html = fetch_index(index)
+        if html and info.get("subpaginas"):
+            pages.extend(u for u in subpage_links(html, index, info["subpaginas"])
+                         if u not in pages)
+            continue
         if html:
             found = astro_file_links(html) + card_file_links(html, index)
             found += discover_document_links(html, index, keywords, others)
@@ -866,6 +903,15 @@ def candidate_documents(
                 if bundle_html:
                     found = discover_document_links(bundle_html, index, keywords, others)
             own.extend(u for u in found if u not in own)
+    # Una página por resolución (las más recientes primero en el índice):
+    # tantas como meses buscados, más una por si hay dos en un mes.
+    for page in pages[: len(months) + 1]:
+        html = fetch_index(page)
+        if html:
+            found = discover_document_links(html, page)
+            own.extend(u for u in found if u not in own)
+    if pages:
+        own.sort(key=_date_score, reverse=True)
     own.extend(u for u in info["urls"] if u not in own)
     for template in info["url_templates"]:
         for y, m in months:

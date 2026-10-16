@@ -51,6 +51,9 @@ ENRE_INYECCION_URLS: Final[list[str]] = [
     "https://servicios.infoleg.gob.ar/infolegInternet/anexos/425000-429999/425422/res244-5.pdf",
 ]
 
+SEYM_TARIFAS: Final[str] = (
+    "https://seym.lapampa.gob.ar/informacion-publica/tarifas-electricas"
+)
 
 # EDERSA: encabezado de la categoría T2 de 10 a 50 kW, en el cuadro general
 # y en el de usuarios-generadores (UGER).
@@ -85,6 +88,7 @@ def _dist(
     fila_tarifa: tuple[str, int] | dict[str, Any] | None = None,
     fila_inyeccion: dict[str, Any] | None = None,
     urls_inyeccion: list[str] | None = None,
+    subpaginas: str | None = None,
     nota: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -99,6 +103,11 @@ def _dist(
     ``fila_inyeccion`` hace lo mismo con la tarifa de inyección (ver
     ``tariff_parser.find_hinted_row``). ``urls_inyeccion`` son documentos
     que sólo traen la tarifa de inyección (p.ej. resoluciones del ENRE).
+
+    ``indices`` admite ``{year}`` (un índice por cada año de los meses
+    buscados). ``subpaginas`` es una regex de los enlaces de un índice que
+    llevan a una página por resolución con los documentos (APE: índice por
+    año → resolución → anexos en un visor pdf.js).
     """
     slugs = [slug] if isinstance(slug, str) else list(slug or [])
     base = slugs[0].removesuffix("-0").removesuffix("-sa") if slugs else None
@@ -113,6 +122,7 @@ def _dist(
         "fila_tarifa": fila_tarifa,
         "fila_inyeccion": fila_inyeccion,
         "urls_inyeccion": urls_inyeccion or [],
+        "subpaginas": subpaginas,
         "nota": nota,
     }
 
@@ -265,6 +275,13 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
         "Administración Provincial de Energía de La Pampa",
         "La Pampa",
         "ape",
+        # Secretaría de Energía y Minería de La Pampa: una página por
+        # resolución mensual; la de usuarios finales trae los anexos I
+        # (zona concesionada), II (no concesionada), III-IV
+        # (electrodependientes) y V (inyección). Las de "APE a
+        # cooperativas" son la tarifa mayorista: no se usan.
+        indices=[SEYM_TARIFAS, SEYM_TARIFAS + "/{year}"],
+        subpaginas=r"/cuadro-tarifario-a-usuarios-finales-",
         # El cuadro separa costo de compra de energía y VAD. Un PP30 en
         # autoconsumo (> 4000 kWh/mes, < 50 kW) es T2I industrial; se toma
         # el precio marginal: compra + VAD del excedente de 4000 kWh.
@@ -274,6 +291,13 @@ DISTRIBUIDORAS: Final[dict[str, dict[str, Any]]] = {
                 (r"^Costo\s+Compra\s+de\s+Energ", 0),
                 (r"^VAD\s+excedente\s+de\s+4000", 0),
             ],
+        },
+        # Anexo V ("precios de compra ... a los usuarios generadores"):
+        # T1 y T2, demandas de 10 a 300 kW. La fila sigue en la línea de
+        # abajo ("kW $/kWh 136,13").
+        fila_inyeccion={
+            "ancla": r"USUARIOS\s+GENERADORES",
+            "filas": [(r"Demandas\s*>\s*10\s*kW\s+y\s*<\s*300", 0)],
         },
         nota="Gran parte de La Pampa se abastece por cooperativas.",
     ),

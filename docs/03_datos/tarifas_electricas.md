@@ -39,7 +39,8 @@ flowchart TD
 1. **Dónde buscar.** Para cada distribuidora se prueba el portal nacional
    (`argentina.gob.ar/.../cuadros-tarifarios-<distribuidora>`, con archivos
    en `energia.gob.ar`), la fuente propia (sitio de la distribuidora, OCEBA
-   para Buenos Aires, API de EPE, Boletín Oficial de Misiones, etc.) y la
+   para Buenos Aires, API de EPE, Boletín Oficial de Misiones, Secretaría
+   de Energía y Minería de La Pampa, etc.) y la
    carpeta de carga manual.
 2. **Leer el documento.** Se convierte el PDF o la planilla a texto y se
    puntúa cada fila con precio en $/kWh según su contexto: categoría,
@@ -76,12 +77,12 @@ El dashboard muestra el estado de cada distribuidora en *Dinero* y en
 **25 de 28** distribuidoras con tarifa extraída y 3 sin dato. Sin tarifa
 queda menos del 1 % de la energía calculada (casi toda de Tucumán).
 
-**Inyección**: 13 distribuidoras la publican en un formato que el lector
+**Inyección**: 14 distribuidoras la publican en un formato que el lector
 reconoce (columna *Inyección*), en el mismo cuadro o en un documento aparte
 (resolución del ENRE para EDENOR y EDESUR; cuadro de inyección de OCEBA
-para las bonaerenses). En las demás se estima como compra × ratio mediano
+para las bonaerenses; anexo V de la resolución mensual para APE). En las demás se estima como compra × ratio mediano
 de las reales (0,917), lo que alcanzaba a ≈ 31 % de la energía antes de
-sumar EDERSA (no recalculado). Fundamento:
+sumar EDERSA y APE (no recalculado). Fundamento:
 [POL-TARIFF-002](../02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
 
 | Distribuidora | Provincia / zona | Compra ($/kWh) | Inyección ($/kWh) | Vigencia | Fuente |
@@ -99,7 +100,7 @@ sumar EDERSA (no recalculado). Fundamento:
 | ENERSA | Entre Ríos | 130,84 | 93,55 | 2026-05 | Portal nacional |
 | REFSA | Formosa | 135,28 | estimada | 2026-06 | Sitio propio |
 | EJESA | Jujuy | 191,58 | 121,54 | 2026-09 | Sitio propio (tarjetas "costos del servicio", Res. SUSEPU) |
-| APE | La Pampa | 169,40 | estimada | 2025-12 | Portal nacional |
+| APE | La Pampa | 248,65 | 136,13 | 2026-09 | Secretaría de Energía y Minería de La Pampa (T2I > 4000 kWh/mes: compra de energía + VAD excedente; inyección: anexo V, T1 y T2 de 10 a 300 kW) |
 | EDELAR | La Rioja | 104,67 | 78,67 | 2026-03 | Portal nacional |
 | EDEMSA | Mendoza | 106,51 | estimada | 2026-05 | Portal nacional |
 | EDESTE | Mendoza (zona este) | 106,51 | estimada | 2026-05 | Portal nacional |
@@ -158,7 +159,11 @@ Todo está en `etl/reference/distribuidoras.py`:
 - `slug`: nombre de la página en el portal nacional.
 - `indices`: páginas propias donde se buscan enlaces a cuadros. Si la
   página se arma en el navegador (Angular, como la de EPEC), los enlaces se
-  buscan en su bundle JS (`main.<hash>.js`).
+  buscan en su bundle JS (`main.<hash>.js`). Admiten `{year}` (un índice
+  por año buscado).
+- `subpaginas`: regex de las páginas por resolución enlazadas desde el
+  índice, donde están los documentos (APE: índice por año → resolución →
+  anexos en un visor pdf.js, `viewer.html?file=...`).
 - `urls` / `url_templates`: archivos directos (con `{ym}` para el mes).
 - `fila_tarifa` / `fila_inyeccion`: fila exacta de compra / inyección
   cuando el parser no puede deducirla (anclas encadenadas: sección →
@@ -195,5 +200,10 @@ documento real en `tests/test_tariff_parser.py`.
   usuarios-generadores (UGER) es esa misma suma, así que a veces la supera
   en el último decimal. La regla inyección ≤ compra admite un margen de
   redondeo de 0,1 %.
+- **APE**: el portal nacional sólo llega a 2025-12; el sitio de la
+  Secretaría de Energía y Minería (`seym.lapampa.gob.ar`) publica una
+  resolución por mes. Se toma la de usuarios finales; las de "APE a
+  cooperativas" son la tarifa mayorista y se ignoran. Los anexos I (zona
+  concesionada) y II (no concesionada) dan la misma compra.
 - **Dominios**: el extractor necesita salida a Internet hacia los sitios de
   la lista [dominios necesarios](../04_arquitectura/despliegue.md#dominios-necesarios).

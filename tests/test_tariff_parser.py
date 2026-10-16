@@ -573,3 +573,30 @@ def test_edersa_t2_compra_con_transporte_e_inyeccion_uger() -> None:
     assert validate_parsed(
         {"tarifa_compra_kwh": 87.227, "tarifa_inyeccion_kwh": 87.229}, None
     ) == {}
+
+
+# APE 2026-09, anexo V (texto de pypdf): tarifa de inyección por categoría.
+APE_INYECCION = """\
+ANEXO V - Resolución S.E.y M. Nº 039 / 26 - CUADRO TARIFARIO
+SERVICIO DE DISTRIBUCIÓN DE ENERGÍA ELÉCTRICA
+PRECIOS DE COMPRA DE ENERGÍA DE LAS  PRESTADORAS  A LOS USUARIOS GENERADORES
+Vigencia: A partir de la facturación del período de septiembre 2026
+Residenciales $/kWh 125,55
+Demandas < o = 10 kW $/kWh 136,13
+Demandas > 10 kW y < 300
+kW $/kWh 140,00
+Ti3b Demandas > o = 300 kW $/kWh 149,22
+"""
+
+
+def test_ape_inyeccion_del_anexo_v() -> None:
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS["APE"]
+    out = parse_tariff_text(APE_INYECCION, info["fila_tarifa"], info["fila_inyeccion"])
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(140.0)
+    assert out["tarifa_compra_kwh"] is None
+    # El cuadro de compra no trae la fila de inyección.
+    assert parse_tariff_text(APE, info["fila_tarifa"], info["fila_inyeccion"])[
+        "tarifa_inyeccion_kwh"
+    ] is None
