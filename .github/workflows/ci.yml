@@ -4,6 +4,9 @@
 #   del estilo (ruff completo) no bloquea: el repo tiene avisos previos.
 # - imagen: construye la imagen Docker sólo si cambian Dockerfile,
 #   pyproject.toml o .dockerignore (es el paso más largo).
+# - automerge: si tests e imagen pasan en un pull request hacia main, lo
+#   mergea (merge commit, como los PR anteriores). Se omite en borradores,
+#   en PR desde forks y en PR con la etiqueta `no-automerge`.
 #
 # El repo es privado: Actions cobra minutos (2000 gratis por mes). Por eso
 # se instala sólo lo necesario, se cachea pip y se cancelan las corridas
@@ -14,6 +17,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -78,3 +82,28 @@ jobs:
         run: |
           docker run --rm etl-biomasa:ci python -c "import etl.pipelines.run_etl, etl.transformers.data_checks; print('ETL ok')"
           docker run --rm etl-biomasa:ci python -c "import streamlit, dashboard.data_loader; print('dashboard ok')"
+
+  automerge:
+    needs: [tests, imagen]
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'no-automerge')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # --match-head-commit: no mergea si llegó un push nuevo mientras
+      # corría el CI (ese push tiene su propia corrida).
+      - name: Mergear el pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --merge \
+            --match-head-commit "${{ github.event.pull_request.head.sha }}"
