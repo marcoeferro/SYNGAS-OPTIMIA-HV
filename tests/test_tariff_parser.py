@@ -526,3 +526,50 @@ def test_filas_de_compra_e_inyeccion(
     out = parse_tariff_text(texto, info["fila_tarifa"], info["fila_inyeccion"])
     assert out["tarifa_compra_kwh"] == pytest.approx(compra)
     assert out["tarifa_inyeccion_kwh"] == pytest.approx(inyeccion)
+
+
+# EDERSA (Río Negro) 2026-10, fragmento del PDF tal como lo devuelve pypdf:
+# el cuadro general (sin inyección) y el de usuarios-generadores (UGER),
+# con la inyección residencial y general antes de la T2.
+EDERSA = """\
+T2 con Potencias entre 10 y 50 Kw
+T2N_1BTb T2N_1BTr
+CGC T2 $/mes 111691,36 111691,36
+CARGO TRANSP. OTROS AGENTES $/kWh 11,09 11,50
+CARGO ENERGIA (P) $/kWh 157,886 163,802
+CARGO ENERGIA (R) $/kWh 155,298 161,117
+CARGO ENERGIA (V) $/kWh 154,275 160,056
+T2 con Potencias entre 50 y 300 Kw
+CARGO TRANSP. OTROS AGENTES $/kWh 11,09 11,50 10,88
+CARGO ENERGIA (R) $/kWh 155,298 161,117 152,329
+CUADRO TARIFARIO
+Periodo: OCTUBRE 2026 UGER
+TARIFA RESIDENCIAL
+TARIFA INYECCIÓN $/kWh 63,110 63,110 148,235 148,235
+TARIFA GENERAL
+TARIFA INYECCIÓN $/kWh 173,078 173,078
+T2 con Potencias entre 10 y 50 Kw
+T2N_1BTb T2N_1BTr
+CARGO TRANSP. OTROS AGENTES $/kWh 11,09 11,50
+CARGO ENERGIA (R) $/kWh 155,298 161,117
+Tarifa de Inyección (P) $/KWh 168,974 175,306
+Tarifa de Inyección (R) $/KWh 166,386 172,621
+Tarifa de Inyección (V) $/KWh 165,363 171,560
+"""
+
+
+def test_edersa_t2_compra_con_transporte_e_inyeccion_uger() -> None:
+    from etl.extractors.scrape_tarifas import validate_parsed
+    from etl.reference.distribuidoras import DISTRIBUIDORAS
+
+    info = DISTRIBUIDORAS["EDERSA"]
+    out = parse_tariff_text(EDERSA, info["fila_tarifa"], info["fila_inyeccion"])
+    # Energía Resto + transporte de otros agentes (155,298 + 11,09); la
+    # inyección de la misma categoría, no la mediana con la residencial.
+    assert out["tarifa_compra_kwh"] == pytest.approx(166.388)
+    assert out["tarifa_inyeccion_kwh"] == pytest.approx(166.386)
+    assert validate_parsed(out, None) == {}
+    # El último decimal del redondeo no la descarta (abril 2025).
+    assert validate_parsed(
+        {"tarifa_compra_kwh": 87.227, "tarifa_inyeccion_kwh": 87.229}, None
+    ) == {}
