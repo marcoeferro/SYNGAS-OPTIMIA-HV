@@ -588,3 +588,38 @@ def test_consumo_especifico_en_base_seca_ficha_apl() -> None:
     assert out[COL_KWH_TOTALES].iloc[0] == pytest.approx(1000.0)   # 1 t MS → 1000 kWh
     assert out["masa_alimentada_kg"].iloc[0] == pytest.approx(1000 / 0.88)
     assert out[COL_EQUIPOS].iloc[0] == pytest.approx(1000 / 22 / (8760 * 0.8))
+
+
+def test_ape_resoluciones_por_anio_y_visor_pdfjs() -> None:
+    """La Pampa: índice por año → página por resolución → anexos en pdf.js."""
+    from etl.reference.distribuidoras import SEYM_TARIFAS
+
+    host = "https://seym.lapampa.gob.ar"
+    ruta = "/informacion-publica/tarifas-electricas/2026/"
+    anexo = host + "/images/Tarifas/2026/Anexo-{}-Cuadro-Tarifario-a-Usuarios-Finales-{}-2026.pdf"
+    visor = (
+        '<iframe src="{}/plugins/content/pdfviewer/assets/pdfjs/web/viewer.html'
+        '?file={}#pagemode=none">'
+    )
+
+    def pagina(mes: str) -> bytes:
+        return "".join(
+            visor.format(host, anexo.format(n, mes).removeprefix(host)) for n in ("I", "V")
+        ).encode()
+
+    pages = {
+        SEYM_TARIFAS + "/2026": (
+            f'<a href="{ruta}cuadro-tarifario-a-usuarios-finales-resolucion-39-26">s</a>'
+            f'<a href="{ruta}cuadro-tarifario-ape-a-cooperativas-resolucion-38-26">c</a>'
+            f'<a href="{ruta}cuadro-tarifario-a-usuarios-finales-resolucion-33-26">a</a>'
+        ).encode(),
+        f"{host}{ruta}cuadro-tarifario-a-usuarios-finales-resolucion-39-26": pagina("Septiembre"),
+        f"{host}{ruta}cuadro-tarifario-a-usuarios-finales-resolucion-33-26": pagina("Agosto"),
+    }
+    cands = st.candidate_documents(
+        "APE", datetime(2026, 10, 16), _fake_downloader(pages), months=[(2026, 10), (2026, 9)]
+    )
+    assert cands[st.SOURCE_OWN][:2] == [
+        anexo.format("I", "Septiembre"), anexo.format("V", "Septiembre")
+    ]
+    assert not any("cooperativas" in u.lower() for u in cands[st.SOURCE_OWN])
