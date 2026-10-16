@@ -684,3 +684,16 @@ Se revisaron dos guías entregadas por la cátedra (cálculo energético y módu
 
 **Sobre las guías**: la estructura de cálculo coincide con la del modelo. Difieren en: fracción retirada (100 % en las guías), consumo específico (1,1 kg MS/kWh, conservador frente a la ficha), coeficientes de trigo y sorgo, y tarifas de referencia (la inyección de las guías es 3 a 4 veces menor que la de los cuadros oficiales).
 
+---
+
+## 19. Tarifa de inyección de EDERSA (2026-10-16)
+
+Revisión de los cuadros mensuales de `edersa.com.ar/usuarios/cuadro-tarifario/`. Cada PDF (desde 2025-01, salvo 2025-03) trae, además del cuadro general, un cuadro **UGER** (usuarios-generadores, Ley 27.424 y Ley provincial 5.617) con una fila "Tarifa de Inyección (P/R/V)" por categoría.
+
+- **Inyección**: fila del registro con anclas "Periodo: ... UGER" → "T2 con Potencias entre 10 y 50 Kw" → "Tarifa de Inyección (R)", primera columna (T2N_1BTb). Antes se tomaba la mediana de todas las líneas de inyección (residencial 63, excedente 148, general 173), que superaba la compra y la validación descartaba.
+- **Compra**: fila T2 de 10 a 50 kW (un PP30 es de 25 kW; antes el parser elegía la de 50 a 300 kW, con el mismo cargo de energía), banda Resto, sumando el **cargo de transporte de otros agentes** ($/kWh), que también se cobra por energía. En octubre de 2026: 155,298 + 11,09 = 166,388 $/kWh (antes 155,30).
+- **Validación**: la inyección del cuadro UGER es energía + transporte con otro redondeo y a veces supera la suma en el último decimal (2025-04: 87,229 contra 87,227). La regla inyección ≤ compra admite ahora un margen de 0,1 %.
+- **Historial**: las 21 filas de EDERSA se reemplazaron por 22 regeneradas (2025-01 a 2026-10, sitio propio y portal nacional); todas con inyección.
+
+**Resultado**: EDERSA 2026-10 con compra 166,39 y inyección 166,39 $/kWh (ratio 1,0). 13 distribuidoras con inyección real; el ratio mediano pasó de 0,915 a 0,917. La fracción de energía con inyección estimada (≈ 31 %) no se recalculó.
+

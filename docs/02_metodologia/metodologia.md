@@ -212,7 +212,7 @@ ellos, se recalculan sobre los resultados del ETL sin volver a correrlo
 | Supuesto | Valor del ETL | Opciones en el dashboard |
 |---|---|---|
 | Autoconsumo $\alpha$ | 60 % | 0 a 100 % |
-| Inyección donde no hay precio publicado | **Central**: compra × ratio mediano (0,915) | **Conservador**: 0 (sólo ahorro) · **Alto**: igual a la compra |
+| Inyección donde no hay precio publicado | **Central**: compra × ratio mediano (0,917) | **Conservador**: 0 (sólo ahorro) · **Alto**: igual a la compra |
 | Consumo específico | 1,0 kg MS/kWh (ficha APL) | 1,1 kg MS/kWh (conservador, como la guía de la cátedra) |
 | Fracción de rastrojo retirada | 50 % | 20 a 70 % |
 
@@ -233,7 +233,7 @@ Un departamento produce **10.000 t de maíz** en una campaña:
 | Masa alimentada (12 % de humedad) | 4.820.745 ÷ 0,88 | 5.478.119 kg |
 | Equipos PP30 | 4.820.745 ÷ (22 × 8760 × 0,8) | ≈ 31 equipos |
 | Ahorro (tarifa de compra 135 $/kWh) | 4.820.745 × 0,6 × 135 | ≈ $ 390 millones |
-| Ingreso (inyección estimada 135 × 0,915 = 123,5 $/kWh) | 4.820.745 × 0,4 × 123,5 | ≈ $ 238 millones |
+| Ingreso (inyección estimada 135 × 0,917 = 123,8 $/kWh) | 4.820.745 × 0,4 × 123,8 | ≈ $ 239 millones |
 | **Beneficio bruto** | | **≈ $ 629 millones por año** |
 
 Es el mismo cálculo de `add_energy_finance_columns` del ETL (con una

@@ -99,6 +99,10 @@ BACKFILL_START: Final[str] = "2025-01"
 
 # Variación máxima aceptada respecto de la corrida previa (factor).
 MAX_CHANGE_FACTOR: Final[float] = 4.0
+# Margen relativo de la regla inyección <= compra: cuando la compra es una
+# suma de cargos redondeados (EDERSA: energía + transporte), la inyección
+# del cuadro puede superarla en el último decimal.
+INJECTION_ROUNDING_TOLERANCE: Final[float] = 1e-3
 
 TARIFF_FIELDS: Final[tuple[str, ...]] = (
     "tarifa_compra_kwh",
@@ -332,7 +336,8 @@ def validate_parsed(
         - Inyección <= compra (la energía inyectada se remunera a precio
           mayorista; en las tarifas con cargo por potencia, como la T3 de
           San Juan, el cargo de energía de compra y el de inyección pueden
-          coincidir).
+          coincidir), con un margen de redondeo de
+          ``INJECTION_ROUNDING_TOLERANCE``.
         - Variación respecto del valor previo **extraído** dentro de
           [1/MAX_CHANGE_FACTOR, MAX_CHANGE_FACTOR]. No se compara contra
           valores ``baseline_manual`` (no verificados): un valor real no
@@ -348,7 +353,11 @@ def validate_parsed(
     rejected: dict[str, str] = {}
     compra = parsed.get("tarifa_compra_kwh")
     iny = parsed.get("tarifa_inyeccion_kwh")
-    if compra is not None and iny is not None and iny > compra:
+    if (
+        compra is not None
+        and iny is not None
+        and iny > compra * (1 + INJECTION_ROUNDING_TOLERANCE)
+    ):
         rejected["tarifa_inyeccion_kwh"] = (
             f"inyección ({iny}) > compra ({compra})"
         )
