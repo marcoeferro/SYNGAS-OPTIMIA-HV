@@ -44,6 +44,7 @@ import os
 import re
 from collections.abc import Callable
 from datetime import datetime
+from functools import partial
 from html import unescape
 from pathlib import Path
 from typing import Any, Final
@@ -877,13 +878,14 @@ def process_document(
     fuente_tipo: str,
     now: datetime,
     raw_dir: Path | None = None,
-    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] | None = None,
 ) -> dict[str, Any] | None:
     """
     Convierte, parsea y fecha un documento tarifario.
 
     Si el documento contiene varios archivos (ZIP), se usa el primero con
-    tarifa de compra reconocible.
+    tarifa de compra reconocible. Sin ``text_extractor`` se usa
+    ``document_to_texts`` (con layout si el registro lo indica).
 
     Returns:
         Diccionario con valores extraídos y metadatos (documento,
@@ -897,6 +899,9 @@ def process_document(
     if raw_dir is not None:
         ext = "pdf" if fmt == "pdf" else fmt
         save_bytes(content, raw_dir / code.lower() / f"{sha[:16]}.{ext}")
+    if text_extractor is None:
+        layout = bool(DISTRIBUIDORAS.get(code, {}).get("pdf_layout"))
+        text_extractor = partial(document_to_texts, layout=layout)
     try:
         texts = text_extractor(content, url)
     except Exception as exc:  # documento corrupto / cifrado
@@ -990,7 +995,7 @@ def fetch_distribuidora(
     now: datetime,
     raw_dir: Path | None = None,
     downloader: Callable[[str], bytes] = download_bytes,
-    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] | None = None,
     months: list[tuple[int, int]] | None = None,
     max_downloads: int | None = MAX_DOWNLOADS_PER_SOURCE,
     stop_at_first: bool = True,
@@ -1214,7 +1219,7 @@ def run_extractor(
     raw_dir: Path | str | None = None,
     reference_dir: Path | str | None = None,
     downloader: Callable[[str], bytes] = download_bytes,
-    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] = document_to_texts,
+    text_extractor: Callable[[bytes, str], list[tuple[str, str]]] | None = None,
     codes: list[str] | None = None,
     historial: bool = False,
     desde: str = BACKFILL_START,
