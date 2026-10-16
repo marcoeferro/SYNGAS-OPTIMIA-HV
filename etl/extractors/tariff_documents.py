@@ -53,12 +53,20 @@ def detect_format(content: bytes, name: str = "") -> str | None:
     return None
 
 
-def pdf_to_text(content: bytes) -> str:
-    """Texto de todas las páginas de un PDF (``pypdf``)."""
+def pdf_to_text(content: bytes, layout: bool = False) -> str:
+    """
+    Texto de todas las páginas de un PDF (``pypdf``).
+
+    Con ``layout`` se respeta la posición del texto en la página: cada
+    fila de una tabla queda en una línea con sus importes (EDESA publica
+    un cuadro apaisado de varias tablas lado a lado, que el modo normal
+    desordena).
+    """
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(content))
-    return "\n".join((page.extract_text() or "") for page in reader.pages)
+    mode = "layout" if layout else "plain"
+    return "\n".join((page.extract_text(extraction_mode=mode) or "") for page in reader.pages)
 
 
 def _cell_str(value: object) -> str:
@@ -143,18 +151,21 @@ def zip_members(content: bytes) -> list[tuple[str, bytes]]:
     return members
 
 
-def document_to_texts(content: bytes, name: str = "") -> list[tuple[str, str]]:
+def document_to_texts(
+    content: bytes, name: str = "", layout: bool = False,
+) -> list[tuple[str, str]]:
     """
     Convierte un documento en una lista de (nombre, texto).
 
     Un ZIP produce un elemento por archivo soportado; el resto, uno solo.
+    ``layout`` se aplica a los PDF (ver ``pdf_to_text``).
 
     Raises:
         ValueError: Si el formato no es soportado.
     """
     fmt = detect_format(content, name)
     if fmt == "pdf":
-        return [(name, pdf_to_text(content))]
+        return [(name, pdf_to_text(content, layout))]
     if fmt == "xlsx":
         return [(name, xlsx_to_text(content))]
     if fmt == "xls":
@@ -162,6 +173,6 @@ def document_to_texts(content: bytes, name: str = "") -> list[tuple[str, str]]:
     if fmt == "zip":
         out: list[tuple[str, str]] = []
         for member, data in zip_members(content):
-            out.extend(document_to_texts(data, f"{name}!{member}"))
+            out.extend(document_to_texts(data, f"{name}!{member}", layout))
         return out
     raise ValueError(f"Formato no soportado (¿HTML de error?): {name}")

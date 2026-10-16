@@ -48,8 +48,8 @@ flowchart TD
    subsidiadas, de media y alta tensión, peaje, alumbrado, ≥ 300 kW y las
    tarifas mayoristas a cooperativas. Cuando un cuadro no permite reconocer
    la categoría por contexto, el registro indica la fila exacta
-   (`fila_tarifa` y, para la inyección, `fila_inyeccion`): EPE, APE, EMSA y
-   EPEC.
+   (`fila_tarifa` y, para la inyección, `fila_inyeccion`): EPE, APE, EMSA,
+   EPEC y EDESA.
 3. **Vigencia.** Se toma la fecha declarada en el documento ("vigente a
    partir del 1° de mayo de 2026"); si no hay, la del nombre del archivo.
 4. **Elegir el cuadro.** Entre los documentos del mes más reciente se elige
@@ -77,12 +77,13 @@ El dashboard muestra el estado de cada distribuidora en *Dinero* y en
 **25 de 28** distribuidoras con tarifa extraída y 3 sin dato. Sin tarifa
 queda menos del 1 % de la energía calculada (casi toda de Tucumán).
 
-**Inyección**: 14 distribuidoras la publican en un formato que el lector
+**Inyección**: 15 distribuidoras la publican en un formato que el lector
 reconoce (columna *Inyección*), en el mismo cuadro o en un documento aparte
 (resolución del ENRE para EDENOR y EDESUR; cuadro de inyección de OCEBA
-para las bonaerenses; anexo V de la resolución mensual para APE). En las demás se estima como compra × ratio mediano
-de las reales (0,917), lo que alcanzaba a ≈ 31 % de la energía antes de
-sumar EDERSA y APE (no recalculado). Fundamento:
+para las bonaerenses; anexo V de la resolución mensual para APE). En las
+demás se estima como compra × ratio mediano de las reales (0,917), lo que
+alcanzaba a ≈ 31 % de la energía antes de sumar EDERSA, EDESA y APE (no
+recalculado). Fundamento:
 [POL-TARIFF-002](../02_metodologia/decisiones.md#pol-tariff-002--tarifa-de-inyección-faltante).
 
 | Distribuidora | Provincia / zona | Compra ($/kWh) | Inyección ($/kWh) | Vigencia | Fuente |
@@ -107,7 +108,7 @@ sumar EDERSA y APE (no recalculado). Fundamento:
 | EMSA | Misiones | 283,84 | estimada | 2026-09 | Boletín Oficial de Misiones |
 | EPEN | Neuquén | 359,73 | estimada | 2026-08 | Sitio propio |
 | EDERSA | Río Negro | 166,39 | 166,39 | 2026-10 | Sitio propio (T2 10–50 kW, Resto; compra = energía + transporte; inyección: cuadro UGER) |
-| EDESA | Salta | 266,81 | estimada | 2026-06 | Portal nacional |
+| EDESA | Salta | 313,59 | 37,76 | 2026-09 | Sitio propio (inyección: Balance Neto, origen biomasa) |
 | ESJ | San Juan | 153,27 | 153,27 | 2026-09 | Sitio de Naturgy San Juan |
 | EDESAL | San Luis | 110,76 | estimada | 2026-06 | Portal nacional |
 | EPE | Santa Fe | 146,77 | estimada | 2026-09 | API del sitio de EPE |
@@ -168,6 +169,8 @@ Todo está en `etl/reference/distribuidoras.py`:
 - `fila_tarifa` / `fila_inyeccion`: fila exacta de compra / inyección
   cuando el parser no puede deducirla (anclas encadenadas: sección →
   apartado → fila; ver `tariff_parser.find_hinted_row`).
+- `pdf_layout`: leer los PDF respetando la posición del texto, para
+  cuadros con varias tablas lado a lado (EDESA).
 - `provincia_a_distribuidora` / `departamento_a_distribuidora`: qué
   distribuidora corresponde a cada lugar.
 
