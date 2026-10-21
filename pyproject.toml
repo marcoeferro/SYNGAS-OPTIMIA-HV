@@ -38,7 +38,7 @@ classifiers = [
 #   pytest (+ tooling de desarrollo).
 # =============================================================
 dependencies = [
-    "pandas>=2.0,<3.0",
+    "pandas>=2.0,<4.0",
     "numpy>=1.26,<3.0",
     "pyarrow>=14.0",
     "duckdb>=1.0",
