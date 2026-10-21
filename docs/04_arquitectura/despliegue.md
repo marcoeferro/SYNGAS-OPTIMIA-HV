@@ -110,7 +110,7 @@ repositorio.
 apagado), no hay quién mande el aviso. Para eso, el dashboard muestra un
 cartel en todas las páginas cuando los datos tienen más de
 `DATOS_VIEJOS_HORAS` horas (48 por defecto: dos corridas diarias
-perdidas). El código está en `etl/notifications.py` y `dashboard/app.py`.
+perdidas). El código está en `src/optimia_hv/comun/notifications.py` y `src/optimia_hv/dashboard/app.py`.
 
 ## Recursos
 

@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: etl-biomasa:latest
+    image: optimia-hv:latest
     container_name: biomasa_etl_worker
     user: "0:0"
     command: ["sleep", "infinity"]
@@ -49,7 +49,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: etl-biomasa:latest
+    image: optimia-hv:latest
     container_name: biomasa_etl
     user: "0:0"
     volumes:
@@ -88,7 +88,7 @@ services:
   # Dashboard Streamlit
   # -----------------------------------------------------------
   dashboard:
-    image: etl-biomasa:latest
+    image: optimia-hv:latest
     container_name: biomasa_dashboard
     depends_on:
       - etl_worker
@@ -96,7 +96,7 @@ services:
       [
         "streamlit",
         "run",
-        "dashboard/app.py",
+        "src/optimia_hv/dashboard/app.py",
         "--server.address=0.0.0.0",
         "--server.port=8501",
         "--browser.gatherUsageStats=false",
@@ -105,7 +105,7 @@ services:
       - "${DASHBOARD_PORT:-8501}:8501"
     volumes:
       - ./data:/app/data:ro
-      - ./dashboard:/app/dashboard:ro
+      - ./src:/app/src:ro
       - ./config:/app/config:ro
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

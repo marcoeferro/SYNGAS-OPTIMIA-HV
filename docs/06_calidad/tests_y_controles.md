@@ -9,7 +9,7 @@
 | Qué verifican | Que el **código** calcula y lee bien | Que los **datos** de cada corrida son razonables |
 | Con qué datos | Casos fijos, escritos a mano o tomados de documentos reales | Los datos recién descargados |
 | Cuándo corren | En GitHub (CI) en cada cambio, y a mano | En cada ejecución del ETL |
-| Dónde están | `tests/` | `etl/transformers/validation.py`, `etl/transformers/data_checks.py` |
+| Dónde están | `tests/` | `src/optimia_hv/biomasa/transformers/validation.py`, `src/optimia_hv/biomasa/transformers/data_checks.py` |
 | Si fallan | No se debería aceptar el cambio de código | El ETL se detiene o deja una alerta |
 
 Los tests **no** corren dentro del ETL: verifican el código una vez, cuando
@@ -42,7 +42,7 @@ pytest pasa automáticamente a los tests que los piden por nombre.
 
 ```bash
 pytest                                  # todos (o: make test)
-pytest tests/test_tariff_parser.py -v   # un archivo
+pytest tests/unit/biomasa/test_tariff_parser.py -v   # un archivo
 pytest -k enersa                        # los que contienen "enersa"
 make test-cov                           # con cobertura de código
 ```
@@ -87,7 +87,7 @@ detiene con `Invariante rota: …` y no publica nada.
 ### 2. Alertas (avisan; con `--estricto` cortan)
 
 Comparan la corrida actual con la anterior para detectar cambios
-sospechosos (`etl/transformers/data_checks.py`):
+sospechosos (`src/optimia_hv/biomasa/transformers/data_checks.py`):
 
 | Control | Se dispara si… | Ejemplo de causa |
 |---|---|---|
@@ -106,7 +106,7 @@ si hay alguna alerta, termina con error **sin reemplazar** los datos
 publicados:
 
 ```bash
-python -m etl.pipelines.run_etl --estricto
+python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto
 ```
 
 Los umbrales están al principio de `data_checks.py`
@@ -120,7 +120,7 @@ Los umbrales están al principio de `data_checks.py`
    del JSON de tarifas o tabla de tarifas del dashboard) y comparar con el
    valor leído. Si es una suba real (ocurre con la inflación), no hay nada
    que hacer. Si se leyó mal, corregir la fila en
-   `etl/reference/distribuidoras.py` (`fila_tarifa`) o el parser, con un
+   `src/optimia_hv/biomasa/reference/distribuidoras.py` (`fila_tarifa`) o el parser, con un
    test.
 3. **Cambio de totales o de provincia**: en **Auditoría de datos →
    Campañas** ver si una campaña tiene menos registros que lo habitual, y

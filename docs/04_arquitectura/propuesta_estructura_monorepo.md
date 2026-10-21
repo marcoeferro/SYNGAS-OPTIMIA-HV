@@ -1,11 +1,12 @@
 # Propuesta: estructura de carpetas para unificar los dos proyectos
 
-> Estado: **propuesta** (no aplicada todavía). Sirve para discutirla entre
-> los dos tesistas antes de mover archivos.
+> Estado: **fases 1, 2 y 4 aplicadas** (código de biomasa en `src/`,
+> tests por tipo, CI, nightly, deploy). Falta la **fase 3**: incorporar
+> el código solar en `src/optimia_hv/solar/` (esqueleto ya creado).
 
 ## Objetivo
 
-Juntar en un solo repositorio (`SYNGAS-OPTIMIA-HV`):
+Juntar en un solo repositorio (`marcoeferro/optimia`):
 
 - **Biomasa** (Marco): ETL de rastrojo → energía → dinero, dashboard Streamlit.
 - **Solar** (compañera): descarga de clima (NASA POWER, Open-Meteo) y de
@@ -24,7 +25,7 @@ Flujo de trabajo buscado:
 ## Estructura propuesta
 
 ```
-SYNGAS-OPTIMIA-HV/
+optimia/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml                  # PR y push: lint, tipos, tests, build de imagen

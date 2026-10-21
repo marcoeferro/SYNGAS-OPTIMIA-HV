@@ -1,0 +1,14 @@
+# Quién tiene que revisar cada parte (se pide su revisión automáticamente).
+# TODO: reemplazar @COMPANIERA por el usuario de GitHub de la compañera y
+# descomentar las líneas de solar.
+
+*                              @marcoeferro
+
+/src/optimia_hv/biomasa/       @marcoeferro
+/tests/**/biomasa/             @marcoeferro
+# /src/optimia_hv/solar/        @COMPANIERA
+# /tests/**/solar/              @COMPANIERA
+# /src/optimia_hv/comun/        @marcoeferro @COMPANIERA
+# /src/optimia_hv/dashboard/    @marcoeferro @COMPANIERA
+# /.github/                     @marcoeferro @COMPANIERA
+# /deploy/                      @marcoeferro @COMPANIERA

@@ -136,11 +136,11 @@ sequenceDiagram
 
 Para desarrolladores:
 
-- Cada página es un archivo de `dashboard/vistas/` registrado en
-  `dashboard/app.py`. Para agregar una, crear el archivo y sumarlo a la
+- Cada página es un archivo de `src/optimia_hv/dashboard/vistas/` registrado en
+  `src/optimia_hv/dashboard/app.py`. Para agregar una, crear el archivo y sumarlo a la
   lista de `st.navigation`. **No usar una carpeta `pages/`**: Streamlit
   activaría su modo multipágina anterior y las páginas dejarían de pasar
   por `app.py`.
 - La caché de lectura usa la fecha de modificación del archivo como parte
   de la clave: cuando el ETL reescribe un Parquet, se lee de nuevo.
-- Los mapas usan los polígonos GADM 4.1 de `dashboard/geo/`.
+- Los mapas usan los polígonos GADM 4.1 de `src/optimia_hv/dashboard/geo/`.

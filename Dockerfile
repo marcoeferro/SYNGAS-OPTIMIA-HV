@@ -1,5 +1,5 @@
 # =============================================================
-# Dockerfile para el pipeline ETL y el dashboard Streamlit
+# Dockerfile de OPTIMIA-HV: pipelines (biomasa, solar) y dashboard
 # =============================================================
 # Una sola imagen sirve para:
 #   - etl_worker / etl_pipeline (CMD por defecto = ETL)
@@ -19,21 +19,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Sólo pyproject.toml: esta capa (dependencias de terceros) se reutiliza
 # mientras no cambien las dependencias. Antes se copiaba también el
-# código, y cualquier cambio en etl/ o dashboard/ volvía a descargar y
+# código, y cualquier cambio en src/ volvía a descargar y
 # compilar pandas, pyarrow, streamlit, etc. Los paquetes vacíos alcanzan
 # para resolver dependencias; el código real se instala en la etapa 2.
 COPY pyproject.toml ./
 RUN : > README.md \
-    && mkdir -p etl dashboard \
-    && touch etl/__init__.py dashboard/__init__.py \
+    && mkdir -p src/optimia_hv \
+    && touch src/optimia_hv/__init__.py \
     && pip wheel --no-cache-dir --wheel-dir /build/wheels ".[dashboard]"
 
 # --- Etapa 2: Runtime ---
 FROM python:3.11-slim
 
 # Etiqueta para limpiar sólo las imágenes viejas de este proyecto
-# (docker image prune --filter label=project=etl-biomasa).
-LABEL project=etl-biomasa
+# (docker image prune --filter label=project=optimia-hv).
+LABEL project=optimia-hv
 
 WORKDIR /app
 
@@ -44,7 +44,7 @@ RUN useradd -m -u 1000 appuser \
 COPY --from=builder /build/wheels /wheels
 RUN pip install --no-cache /wheels/*
 
-# Código del proyecto (paquete etl + dashboard)
+# Código del proyecto (paquete optimia_hv en src/)
 COPY --chown=appuser:appuser . .
 
 # Reinstalar el paquete con el código real (en /wheels quedó el de
@@ -53,7 +53,10 @@ USER root
 RUN pip install --no-cache-dir --no-deps --force-reinstall .
 USER appuser
 
-ENV PYTHONPATH=/app
+# El código se importa desde src/ (no desde site-packages) y data/ y
+# config/ se buscan en /app.
+ENV PYTHONPATH=/app/src
+ENV OPTIMIA_ROOT=/app
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-m", "etl.pipelines.run_etl", "--config", "config/paths.yaml"]
+CMD ["python", "-m", "optimia_hv.biomasa.pipelines.run_biomasa", "--config", "config/paths.yaml"]

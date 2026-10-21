@@ -1,0 +1,89 @@
+# Deploy a producción (Cloud Server de DonWeb) cuando el CI termina verde
+# en main.
+#
+# 1. Construye la imagen y la publica en GitHub Container Registry
+#    (ghcr.io/<owner>/<repo>:<sha> y :latest).
+# 2. Copia deploy/ y config/ al servidor por SSH.
+# 3. Corre deploy/deploy.sh en el servidor: pull de la imagen, up -d y
+#    chequeo de salud del dashboard.
+#
+# Secretos necesarios (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST      IP o dominio del servidor
+#   DEPLOY_USER      usuario con permiso para usar docker
+#   DEPLOY_SSH_KEY   clave privada SSH (la pública va en ~/.ssh/authorized_keys)
+#   DEPLOY_PATH      (opcional) carpeta en el servidor; por defecto /opt/optimia
+# Sin DEPLOY_HOST el job publica la imagen y se saltea el deploy.
+#
+# environment: production permite exigir una aprobación manual antes de
+# desplegar (Settings → Environments → production → Required reviewers).
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/optimia' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Nombre de la imagen
+        id: img
+        run: |
+          repo="$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          sha="$(git rev-parse --short HEAD)"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "tag=$repo:$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Login a GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build y push de la imagen
+        run: |
+          docker build -t "${{ steps.img.outputs.tag }}" -t "${{ steps.img.outputs.repo }}:latest" .
+          docker push "${{ steps.img.outputs.tag }}"
+          docker push "${{ steps.img.outputs.repo }}:latest"
+
+      - name: Preparar SSH
+        if: env.DEPLOY_HOST != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Copiar deploy/ y config/ al servidor
+        if: env.DEPLOY_HOST != ''
+        run: |
+          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
+          scp -i ~/.ssh/id_deploy -r deploy config "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+      - name: Desplegar
+        if: env.DEPLOY_HOST != ''
+        run: |
+          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && OPTIMIA_IMAGE='${{ steps.img.outputs.tag }}' bash deploy/deploy.sh"

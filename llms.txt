@@ -1,4 +1,4 @@
-# SYNGAS-OPTIMIA-HV
+# optimia (OPTIMIA-HV)
 
 > Sistema ETL + dashboard que estima la biomasa residual agrícola de Argentina por departamento, la convierte en energía eléctrica generable con gasificadores APL PP30 (25 kW) y la valoriza en pesos con las tarifas vigentes de 28 distribuidoras eléctricas. Python 3.11, pandas, Parquet/DuckDB, Streamlit, Docker Compose (Ofelia para el cron). Documentación en español.
 
@@ -40,10 +40,10 @@ Orden de lectura: introducción → metodología → arquitectura → contratos 
 
 ## Código (puntos de entrada)
 
-- etl/pipelines/run_etl.py: orquestador del ETL
-- etl/extractors/scrape_tarifas.py y tariff_parser.py: tarifas
-- etl/transformers/: biomass.py, energy_finance.py, reference_period.py, reconciliation.py, data_checks.py
-- dashboard/app.py y dashboard/vistas/: dashboard (no usar carpeta pages/)
+- src/optimia_hv/biomasa/pipelines/run_biomasa.py: orquestador del ETL
+- src/optimia_hv/biomasa/extractors/scrape_tarifas.py y tariff_parser.py: tarifas
+- src/optimia_hv/biomasa/transformers/: biomass.py, energy_finance.py, reference_period.py, reconciliation.py, data_checks.py
+- src/optimia_hv/dashboard/app.py y src/optimia_hv/dashboard/vistas/: dashboard (no usar carpeta pages/)
 - tests/: pytest
 
 ## Opcional

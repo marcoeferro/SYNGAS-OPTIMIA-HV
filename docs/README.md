@@ -46,6 +46,7 @@
 | [flujo_de_datos.md](04_arquitectura/flujo_de_datos.md) | Las 10 etapas del ETL y el recorrido de un registro | Desarrollador / revisor |
 | [ciclo_de_vida_de_los_datos.md](04_arquitectura/ciclo_de_vida_de_los_datos.md) | Qué archivos se conservan, cuáles se regeneran, limpieza del disco | Operador |
 | [despliegue.md](04_arquitectura/despliegue.md) | Servicios Docker, horario del ETL, variables, recursos, seguridad, dominios necesarios, migración a la nube | Operador |
+| [propuesta_estructura_monorepo.md](04_arquitectura/propuesta_estructura_monorepo.md) | Estructura de carpetas biomasa + solar, tipos de test y flujo fork → PR → deploy | Desarrollador |
 
 ### 05 — Uso
 

@@ -22,8 +22,8 @@ Python ni librerías.
 1. Descargar el proyecto:
 
    ```bash
-   git clone https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV.git
-   cd SYNGAS-OPTIMIA-HV
+   git clone https://github.com/marcoeferro/optimia.git
+   cd optimia
    ```
 
 2. Levantar todo (ETL programado + dashboard):
@@ -72,8 +72,8 @@ Los datos quedan en la carpeta `data/`.
 ### Pasos
 
 ```bash
-git clone https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV.git
-cd SYNGAS-OPTIMIA-HV
+git clone https://github.com/marcoeferro/optimia.git
+cd optimia
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate  (o .\activate.ps1)
@@ -87,8 +87,8 @@ pytest, ruff, mypy). Sin extras se instala sólo el ETL.
 Después:
 
 ```bash
-python -m etl.pipelines.run_etl          # o: make etl          → genera los datos
-streamlit run dashboard/app.py           # o: make dashboard    → abre el dashboard
+python -m optimia_hv.biomasa.pipelines.run_biomasa          # o: make etl          → genera los datos
+streamlit run src/optimia_hv/dashboard/app.py           # o: make dashboard    → abre el dashboard
 pytest                                   # o: make test         → corre los tests
 ```
 

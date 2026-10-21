@@ -34,7 +34,7 @@ total, los componentes se suman.
   especies distintas y no se consolidan.
 - Los nombres compuestos (`caña de azúcar`, `yerba mate`) no se colapsan.
 
-**Código**: `etl/reference/crop_taxonomy.py`, `etl/transformers/crop_consolidation.py`.
+**Código**: `src/optimia_hv/biomasa/reference/crop_taxonomy.py`, `src/optimia_hv/biomasa/transformers/crop_consolidation.py`.
 
 ---
 
@@ -55,7 +55,7 @@ subestimar el potencial.
 **Consecuencia**: los registros descartados y la diferencia entre fuentes se
 guardan en `data/audit/` y se ven en el dashboard (Auditoría).
 
-**Código**: `etl/transformers/reconciliation.py`.
+**Código**: `src/optimia_hv/biomasa/transformers/reconciliation.py`.
 
 ---
 
@@ -71,7 +71,7 @@ guardan en `data/audit/` y se ven en el dashboard (Auditoría).
   Cuántos registros y cuánta producción quedan excluidos por cultivo se
   registra en el log de cada corrida.
 
-**Código**: `etl/transformers/source_cleaning.py`, `etl/transformers/biomass.py`.
+**Código**: `src/optimia_hv/biomasa/transformers/source_cleaning.py`, `src/optimia_hv/biomasa/transformers/biomass.py`.
 
 ---
 
@@ -82,7 +82,7 @@ Si las fuentes escriben distinto el mismo departamento, no se cruzan y se
 suman las dos (doble conteo).
 
 **Regla**: los nombres que difieren entre fuentes se unifican con un alias
-explícito en `DEPT_ALIASES` (`etl/transformers/geography.py`). Casos
+explícito en `DEPT_ALIASES` (`src/optimia_hv/biomasa/transformers/geography.py`). Casos
 actuales: Juan Felipe Ibarra (Santiago del Estero), Libertador General San
 Martín (San Luis), Juan B. Alberdi (Tucumán).
 
@@ -98,7 +98,7 @@ cuenta como cero.
 **Fundamento**: sumar todas las campañas desde 1969 no representa ninguna
 magnitud física, y la campaña en curso subestimaría el resultado.
 
-**Código**: `etl/transformers/reference_period.py`.
+**Código**: `src/optimia_hv/biomasa/transformers/reference_period.py`.
 
 ---
 
@@ -119,7 +119,7 @@ MS/kWh) y 25 kW. El cambio bajó la energía un 3,2 %.
 
 **Escenario**: el dashboard permite usar 1,1 kg MS/kWh (conservador).
 
-**Código**: `etl/transformers/energy_finance.py`. Detalle:
+**Código**: `src/optimia_hv/biomasa/transformers/energy_finance.py`. Detalle:
 [metodología §3](metodologia.md#3-energía-gasificador-apl-pp30).
 
 ---
@@ -138,7 +138,7 @@ Es optimista; 30–40 % es más prudente.
 **Escenario**: el dashboard permite variarlo entre 20 % y 70 %; el ETL lo
 acepta con `--fraccion-recuperable`.
 
-**Código**: `etl/transformers/biomass.py` (`add_recoverable_residue`).
+**Código**: `src/optimia_hv/biomasa/transformers/biomass.py` (`add_recoverable_residue`).
 Detalle: [metodología §2](metodologia.md#2-residuo-recuperable).
 
 ---
@@ -162,7 +162,7 @@ por contexto, el registro de distribuidoras fija la fila (`fila_tarifa`):
   barrio), banda "Horas Restantes"; la inyección sale de la misma
   categoría en la sección de generación distribuida (`fila_inyeccion`).
 
-**Código**: `etl/extractors/tariff_parser.py`, `etl/reference/distribuidoras.py`.
+**Código**: `src/optimia_hv/biomasa/extractors/tariff_parser.py`, `src/optimia_hv/biomasa/reference/distribuidoras.py`.
 Detalle: [tarifas eléctricas](../03_datos/tarifas_electricas.md).
 
 ---

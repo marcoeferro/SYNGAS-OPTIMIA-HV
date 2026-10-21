@@ -128,14 +128,14 @@ tarifa y dinero, **expresadas por año**, más `n_campanas_con_dato` y
 ## 6. Invocación (orquestadores)
 
 ```bash
-python -m etl.pipelines.run_etl                         # completo
-python -m etl.pipelines.run_etl --skip-extract          # sin descargar fuentes agrícolas
-python -m etl.pipelines.run_etl --skip-tarifas          # sin descargar tarifas
-python -m etl.pipelines.run_etl --estricto              # no publica si hay alertas
+python -m optimia_hv.biomasa.pipelines.run_biomasa                         # completo
+python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract          # sin descargar fuentes agrícolas
+python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-tarifas          # sin descargar tarifas
+python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto              # no publica si hay alertas
 
-python -m etl.extractors.scrape_estimaciones_agricolas  # sólo MAGyP
-python -m etl.extractors.scrape_bolsa_cereales_cba      # sólo Bolsa de Córdoba
-python -m etl.extractors.scrape_tarifas                 # sólo tarifas
+python -m optimia_hv.biomasa.extractors.scrape_estimaciones_agricolas  # sólo MAGyP
+python -m optimia_hv.biomasa.extractors.scrape_bolsa_cereales_cba      # sólo Bolsa de Córdoba
+python -m optimia_hv.biomasa.extractors.scrape_tarifas                 # sólo tarifas
 ```
 
 Código de salida: `0` si terminó bien, `1` si falló (incluye modo estricto

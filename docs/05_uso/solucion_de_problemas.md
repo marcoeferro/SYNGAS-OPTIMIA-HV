@@ -60,7 +60,7 @@ sitio funcione en el navegador.
 ### El ETL se detiene con `Cultivos sin mapeo en CROP_TAXONOMY`
 
 Una fuente agregó un cultivo que no está en la taxonomía. Agregarlo en
-`etl/reference/crop_taxonomy.py` (y, si corresponde, sus coeficientes en
+`src/optimia_hv/biomasa/reference/crop_taxonomy.py` (y, si corresponde, sus coeficientes en
 `data/reference/ic_fr.csv`; ver [metodología](../02_metodologia/metodologia.md)).
 
 ### `Invariante rota: …`

@@ -63,7 +63,7 @@ graph LR
 - Para regenerar los resultados sin descargar nada:
 
   ```bash
-  python -m etl.pipelines.run_etl --skip-extract --skip-tarifas
+  python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract --skip-tarifas
   ```
 
 ## Limpieza del disco

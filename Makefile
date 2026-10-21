@@ -67,10 +67,10 @@ install-dev:
 # Ejecución local
 # =============================================================
 etl:
-	$(PYTHON) -m etl.pipelines.run_etl --config config/paths.yaml
+	$(PYTHON) -m optimia_hv.biomasa.pipelines.run_biomasa --config config/paths.yaml
 
 dashboard:
-	streamlit run dashboard/app.py --server.port=$(DASHBOARD_PORT)
+	streamlit run src/optimia_hv/dashboard/app.py --server.port=$(DASHBOARD_PORT)
 
 # =============================================================
 # Calidad
@@ -79,15 +79,15 @@ test:
 	pytest tests/ -v
 
 test-cov:
-	pytest tests/ -v --cov=etl --cov-report=term-missing --cov-report=html
+	pytest tests/ -v --cov=optimia_hv --cov-report=term-missing --cov-report=html
 
 lint:
-	ruff check etl/ tests/ dashboard/
-	mypy etl/ --ignore-missing-imports
+	ruff check src/ tests/
+	mypy src/ --ignore-missing-imports
 
 format:
-	ruff format etl/ tests/ dashboard/
-	ruff check --fix etl/ tests/ dashboard/
+	ruff format src/ tests/
+	ruff check --fix src/ tests/
 
 # =============================================================
 # Docker
@@ -113,7 +113,7 @@ docker-shell:
 docker-etl:
 	# La imagen contiene el código del ETL: se reconstruye antes de correrlo.
 	$(DOCKER_COMPOSE) --profile etl build etl_pipeline
-	docker image prune -f --filter label=project=etl-biomasa
+	docker image prune -f --filter label=project=optimia-hv
 	$(DOCKER_COMPOSE) --profile etl run --rm etl_pipeline
 
 docker-clean:
