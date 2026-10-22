@@ -49,7 +49,9 @@ def canales_configurados() -> list[str]:
     return canales
 
 
-def notify(nivel: str, titulo: str, detalle: str = "") -> list[str]:
+def notify(
+    nivel: str, titulo: str, detalle: str = "", etiqueta: str = "ETL biomasa"
+) -> list[str]:
     """
     Envía un aviso a todos los canales configurados.
 
@@ -57,12 +59,13 @@ def notify(nivel: str, titulo: str, detalle: str = "") -> list[str]:
         nivel: ``"error"``, ``"alerta"`` u ``"ok"``.
         titulo: Primera línea del mensaje.
         detalle: Texto adicional (opcional).
+        etiqueta: Qué proceso avisa (``"ETL biomasa"``, ``"Pipeline solar"``).
 
     Returns:
         Canales a los que se envió con éxito.
     """
     host = socket.gethostname()
-    texto = f"{ICONOS.get(nivel, '')} ETL biomasa ({host}): {titulo}".strip()
+    texto = f"{ICONOS.get(nivel, '')} {etiqueta} ({host}): {titulo}".strip()
     if detalle:
         texto += f"\n{detalle}"
     enviados: list[str] = []
@@ -113,6 +116,7 @@ def notify_run_result(
     error: BaseException | None = None,
     df_alertas: pd.DataFrame | None = None,
     estricto: bool = False,
+    etiqueta: str = "ETL biomasa",
 ) -> list[str]:
     """
     Aviso de fin de corrida según el resultado.
@@ -126,7 +130,9 @@ def notify_run_result(
         return []
     hay_alertas = df_alertas is not None and not df_alertas.empty
     if error is not None and not (estricto and hay_alertas):
-        return notify("error", "la corrida falló", f"{type(error).__name__}: {error}"[:1500])
+        return notify(
+            "error", "la corrida falló", f"{type(error).__name__}: {error}"[:1500], etiqueta
+        )
     if hay_alertas:
         assert df_alertas is not None
         titulo = f"{len(df_alertas)} alerta(s) de calidad"
@@ -134,7 +140,7 @@ def notify_run_result(
             titulo += " — modo estricto: NO se publicaron los datos nuevos"
         detalle = resumen_alertas(df_alertas)
         detalle += "\nDetalle: dashboard → Auditoría de datos → Alertas de calidad."
-        return notify("alerta", titulo, detalle)
+        return notify("alerta", titulo, detalle, etiqueta)
     if _env_flag("NOTIFY_ON_SUCCESS"):
-        return notify("ok", "corrida completada sin alertas")
+        return notify("ok", "corrida completada sin alertas", etiqueta=etiqueta)
     return []

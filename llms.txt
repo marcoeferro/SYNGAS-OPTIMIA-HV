@@ -15,6 +15,7 @@ Orden de lectura: introducción → metodología → arquitectura → contratos 
 
 - [Metodología](docs/02_metodologia/metodologia.md): fórmulas de biomasa, energía y dinero; coeficientes; ejemplo numérico; limitaciones
 - [Decisiones](docs/02_metodologia/decisiones.md): reglas POL-… citadas en el código
+- [Metodología solar](docs/02_metodologia/solar/metodologia_solar.md): planta fotovoltaica de 2,25 kWp, fuentes (Growatt, NASA POWER, Open-Meteo), modelo de 15 min, modelo viejo, métricas y observaciones abiertas
 
 ## Datos
 
@@ -34,6 +35,7 @@ Orden de lectura: introducción → metodología → arquitectura → contratos 
 
 - [Instalación](docs/05_uso/instalacion.md)
 - [Ejecutar el ETL](docs/05_uso/ejecutar_etl.md): opciones de línea de comandos, reintentos, logs
+- [Ejecutar el pipeline solar](docs/05_uso/ejecutar_solar.md): corrida diaria, histórico, validación, tablas y réplica MySQL
 - [Dashboard](docs/05_uso/dashboard.md): páginas y cómo leerlas
 - [Solución de problemas](docs/05_uso/solucion_de_problemas.md)
 - [Tests y controles](docs/06_calidad/tests_y_controles.md): pytest, CI, invariantes y alertas
@@ -44,6 +46,8 @@ Orden de lectura: introducción → metodología → arquitectura → contratos 
 - src/optimia_hv/biomasa/extractors/scrape_tarifas.py y tariff_parser.py: tarifas
 - src/optimia_hv/biomasa/transformers/: biomass.py, energy_finance.py, reference_period.py, reconciliation.py, data_checks.py
 - src/optimia_hv/dashboard/app.py y src/optimia_hv/dashboard/vistas/: dashboard (no usar carpeta pages/)
+- src/optimia_hv/solar/pipelines/run_solar.py: pipeline solar; extractors/ (growatt, nasa_power, open_meteo), modelos/ (modelo_15min, modelo_viejo), validacion/ (metricas, comparativas), loaders/almacen.py
+- analisis/solar/: scripts de figuras de la tesis solar (no se despliegan)
 - tests/: pytest
 
 ## Opcional

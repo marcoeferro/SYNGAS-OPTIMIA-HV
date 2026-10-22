@@ -100,7 +100,7 @@ jobs:
         if: steps.cambios.outputs.construir == 'true'
         run: |
           docker run --rm optimia-hv:ci python -c "import optimia_hv.biomasa.pipelines.run_biomasa, optimia_hv.biomasa.transformers.data_checks; print('biomasa ok')"
-          docker run --rm optimia-hv:ci python -c "import optimia_hv.solar, optimia_hv.comun.http_retry; print('solar/comun ok')"
+          docker run --rm optimia-hv:ci python -c "import optimia_hv.solar.pipelines.run_solar, optimia_hv.comun.http_retry; print('solar/comun ok')"
           docker run --rm optimia-hv:ci python -c "import streamlit, optimia_hv.dashboard.data_loader; print('dashboard ok')"
 
   automerge:

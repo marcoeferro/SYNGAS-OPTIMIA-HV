@@ -1,0 +1,32 @@
+{
+ "latitude": -33.637962,
+ "longitude": -65.434235,
+ "utc_offset_seconds": -10800,
+ "timezone": "America/Argentina/San_Luis",
+ "timezone_abbreviation": "GMT-3",
+ "elevation": 513.0,
+ "daily_units": {
+  "time": "iso8601",
+  "temperature_2m_mean": "°C",
+  "relative_humidity_2m_mean": "%",
+  "shortwave_radiation_sum": "MJ/m²"
+ },
+ "daily": {
+  "time": [
+   "2026-09-12",
+   "2026-09-13"
+  ],
+  "temperature_2m_mean": [
+   3.1,
+   5.5
+  ],
+  "relative_humidity_2m_mean": [
+   93,
+   77
+  ],
+  "shortwave_radiation_sum": [
+   4.38,
+   10.79
+  ]
+ }
+}

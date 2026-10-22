@@ -136,3 +136,19 @@ No son controles automáticos, pero permiten revisar a mano:
   (`data/audit/`, dashboard → Auditoría).
 - Impacto de los cultivos excluidos (log, `Impacto de exclusión`).
 - Para cada tarifa: documento, vigencia, SHA-256 y estado.
+
+## Tests y controles de la tesis solar
+
+| Tipo | Archivo | Qué controla |
+|---|---|---|
+| unit | `tests/unit/solar/` | Relleno de huecos de Growatt, parseo de NASA POWER y Open-Meteo (respuestas grabadas en `tests/fixtures/solar/`), fórmulas de los modelos (un caso calculado a mano), métricas y comparativas |
+| integration | `tests/integration/solar/test_pipeline_solar.py` | Corrida diaria completa sin red en disco temporal: las 7 tablas, sin duplicados al repetir, un paso caído no frena a los demás, réplica e importación SQL (SQLite) |
+| regression | `tests/regression/solar/` | El modelo de 15 min y el viejo dan los mismos números sobre datos fijos (si un cambio es intencional, actualizar los valores en el mismo PR) |
+| e2e | `tests/e2e/test_dashboard_solar.py` | Las 3 páginas solares renderizan con y sin datos |
+| contract | `tests/contract/solar/` | NASA POWER, Open-Meteo y Growatt (con secretos) siguen respondiendo con las variables y unidades esperadas; corre en nightly |
+
+Controles en la corrida: NASA sólo guarda días con las tres variables
+(sin `-999`), Open-Meteo descarta días con nulos, y cada tabla se guarda
+por clave (una fila nueva reemplaza a la vieja). Pendiente: umbrales de
+error del modelo contra la generación real (ver
+[metodología solar](../02_metodologia/solar/metodologia_solar.md#observaciones-abiertas)).

@@ -144,3 +144,19 @@ Para desarrolladores:
 - La caché de lectura usa la fecha de modificación del archivo como parte
   de la clave: cuando el ETL reescribe un Parquet, se lee de nuevo.
 - Los mapas usan los polígonos GADM 4.1 de `src/optimia_hv/dashboard/geo/`.
+
+## Páginas solares
+
+En la barra lateral, sección **Solar**. Leen las tablas de
+`data/processed/solar/` que guarda el pipeline solar
+([ejecutar el pipeline solar](ejecutar_solar.md)); si todavía no corrió,
+cada página lo indica.
+
+| Página | Qué muestra |
+|---|---|
+| **Generación real** | Energía diaria de la planta (Growatt) en el período elegido, con la radiación de NASA POWER y Open-Meteo; potencia intradía de un día |
+| **Pronóstico** | Energía pronosticada cada 15 min para los próximos días y total por día; pronóstico diario del clima |
+| **Validación del modelo** | Potencia real vs. estimada por el modelo de 15 min y energía diaria real vs. modelo viejo, con MAE, RMSE, sesgo y error de energía total |
+
+Los supuestos de la barra lateral (autoconsumo, inyección, PP30) son de
+biomasa y no cambian las páginas solares.

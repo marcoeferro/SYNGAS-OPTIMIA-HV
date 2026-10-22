@@ -2,7 +2,8 @@
 # Orquestación de servicios del proyecto Biomasa Residual
 # =============================================================
 # Servicios:
-#   - etl_worker:   Contenedor permanente donde Ofelia ejecuta el ETL.
+#   - etl_worker:   Contenedor permanente donde Ofelia ejecuta los pipelines
+#                   (biomasa y solar).
 #   - etl_pipeline: Job one-shot manual (docker compose --profile etl run ...).
 #   - scheduler:    Ofelia lee config/schedule.ini y dispara el ETL.
 #   - dashboard:    Streamlit sobre los Parquet.
@@ -40,6 +41,11 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
+      # Pipeline solar: portal Growatt y réplica opcional en MySQL (ver .env.example)
+      - GROWATT_USER=${GROWATT_USER:-}
+      - GROWATT_PASSWORD=${GROWATT_PASSWORD:-}
+      - GROWATT_PLANT_ID=${GROWATT_PLANT_ID:-}
+      - SOLAR_DB_URL=${SOLAR_DB_URL:-}
     restart: unless-stopped
 
   # -----------------------------------------------------------
@@ -64,6 +70,11 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
+      # Pipeline solar: portal Growatt y réplica opcional en MySQL (ver .env.example)
+      - GROWATT_USER=${GROWATT_USER:-}
+      - GROWATT_PASSWORD=${GROWATT_PASSWORD:-}
+      - GROWATT_PLANT_ID=${GROWATT_PLANT_ID:-}
+      - SOLAR_DB_URL=${SOLAR_DB_URL:-}
     profiles:
       - etl
     restart: "no"

@@ -10,7 +10,7 @@ DOCKER_COMPOSE := docker compose
 DASHBOARD_PORT ?= 8501
 
 .PHONY: help install install-dev install-etl install-dashboard \
-        etl dashboard \
+        etl solar solar-historico dashboard \
         test test-cov lint format \
         docker-build docker-up docker-down docker-logs docker-shell \
         docker-etl docker-clean \
@@ -29,6 +29,8 @@ help:
 	@echo ""
 	@echo "  Ejecución local"
 	@echo "    etl                  Ejecuta el pipeline ETL"
+	@echo "    solar                Ejecuta el pipeline solar (corrida diaria)"
+	@echo "    solar-historico      Carga completa del histórico solar"
 	@echo "    dashboard            Levanta Streamlit en modo desarrollo"
 	@echo ""
 	@echo "  Calidad"
@@ -68,6 +70,12 @@ install-dev:
 # =============================================================
 etl:
 	$(PYTHON) -m optimia_hv.biomasa.pipelines.run_biomasa --config config/paths.yaml
+
+solar:
+	$(PYTHON) -m optimia_hv.solar.pipelines.run_solar --config config/solar.yaml
+
+solar-historico:
+	$(PYTHON) -m optimia_hv.solar.pipelines.run_solar --config config/solar.yaml --historico
 
 dashboard:
 	streamlit run src/optimia_hv/dashboard/app.py --server.port=$(DASHBOARD_PORT)

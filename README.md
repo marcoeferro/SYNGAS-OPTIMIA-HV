@@ -9,6 +9,12 @@ a las tarifas vigentes de cada distribuidora eléctrica.
 Se actualiza solo todos los días con datos públicos y muestra los
 resultados en un **dashboard web** con mapas, rankings y tablas.
 
+El mismo repositorio incluye la **tesis solar**: descarga el clima (NASA
+POWER, Open-Meteo) y la generación real de una planta fotovoltaica de
+2,25 kWp (Growatt, Villa Mercedes, San Luis), estima la energía cada 15
+minutos con un modelo físico, la pronostica a 5 días y valida el modelo
+contra lo medido. Ver [metodología solar](docs/02_metodologia/solar/metodologia_solar.md).
+
 [![CI](https://github.com/marcoeferro/optimia/actions/workflows/ci.yml/badge.svg)](https://github.com/marcoeferro/optimia/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
@@ -133,10 +139,13 @@ Guía completa: [instalación](docs/05_uso/instalacion.md).
 | Actualizar el código | `git pull` y `docker compose up -d --build` |
 | Detener todo | `docker compose down` · `.\scripts\Stop-Stack.ps1` |
 | Tests | `pytest` · `make test` |
+| Pipeline solar (corrida diaria) | `python -m optimia_hv.solar.pipelines.run_solar` · `make solar` |
+| Histórico solar / validar el modelo | `optimia-solar --historico` · `optimia-solar --validar 2026-09-12 2026-09-16` |
 
 Más: [ejecutar el ETL](docs/05_uso/ejecutar_etl.md),
 [guía del dashboard](docs/05_uso/dashboard.md),
-[solución de problemas](docs/05_uso/solucion_de_problemas.md).
+[solución de problemas](docs/05_uso/solucion_de_problemas.md),
+[ejecutar el pipeline solar](docs/05_uso/ejecutar_solar.md).
 
 ---
 
@@ -152,7 +161,14 @@ optimia/
 │   │   │                      dinero, período de referencia, controles de calidad
 │   │   ├── loaders/           Guardado de Parquet e historial de tarifas
 │   │   └── pipelines/run_biomasa.py   Orquestador (punto de entrada)
-│   ├── solar/                 Tesis solar: extractors, modelos, validacion, pipelines
+│   ├── solar/                 Tesis solar (planta fotovoltaica)
+│   │   ├── extractors/        Growatt, NASA POWER, Open-Meteo (histórico, diario, 15 min, pronóstico)
+│   │   ├── modelos/           Modelo de 15 min y modelo viejo (línea de base)
+│   │   ├── validacion/        Métricas (MAE, RMSE, sesgo) y comparativas modelo vs. real
+│   │   ├── loaders/           Guardado en Parquet (+ réplica opcional en MySQL)
+│   │   ├── graficos.py        Gráficos de la tesis (matplotlib)
+│   │   ├── configuracion.py   Lee config/solar.yaml y las credenciales de .env
+│   │   └── pipelines/run_solar.py     Orquestador (punto de entrada)
 │   ├── comun/                 Compartido: HTTP con reintentos, E/S, avisos
 │   └── dashboard/             Dashboard web
 │       ├── app.py             Navegación
@@ -167,7 +183,7 @@ optimia/
 │   ├── reference/             Coeficientes, tarifas, historial, cuadros manuales (se versiona)
 │   ├── processed/             Resultados (no se versiona)
 │   └── audit/                 Auditoría y alertas (no se versiona)
-├── config/                    Rutas, logging y horario de los pipelines
+├── config/                    Rutas, logging, horario de los pipelines y parámetros solares (solar.yaml)
 ├── deploy/                    Producción en DonWeb (compose, nginx, deploy.sh)
 ├── docs/                      Documentación (índice en docs/README.md)
 ├── scripts/                   Atajos PowerShell (Windows)
@@ -187,6 +203,7 @@ optimia/
 |---|---|
 | Introducción (sin conocimientos técnicos) | [Cómo funciona](docs/01_introduccion/como_funciona.md) · [Glosario](docs/01_introduccion/glosario.md) |
 | Metodología | [Metodología](docs/02_metodologia/metodologia.md) · [Decisiones (POL-…)](docs/02_metodologia/decisiones.md) |
+| Solar | [Metodología solar](docs/02_metodologia/solar/metodologia_solar.md) · [Ejecutar el pipeline solar](docs/05_uso/ejecutar_solar.md) · [Análisis solar](analisis/solar/README.md) |
 | Datos | [Fuentes](docs/03_datos/fuentes.md) · [Tarifas eléctricas](docs/03_datos/tarifas_electricas.md) · [Contratos de artefactos](docs/03_datos/contratos_de_artefactos.md) · [Modelo de datos](docs/03_datos/modelo_de_datos.md) |
 | Arquitectura | [Arquitectura](docs/04_arquitectura/arquitectura.md) · [Flujo de datos](docs/04_arquitectura/flujo_de_datos.md) · [Ciclo de vida](docs/04_arquitectura/ciclo_de_vida_de_los_datos.md) · [Despliegue](docs/04_arquitectura/despliegue.md) |
 | Uso | [Instalación](docs/05_uso/instalacion.md) · [Ejecutar el ETL](docs/05_uso/ejecutar_etl.md) · [Dashboard](docs/05_uso/dashboard.md) · [Solución de problemas](docs/05_uso/solucion_de_problemas.md) |
@@ -219,7 +236,10 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
   [`docs/README.md`](docs/README.md) para ir al documento del tema.
 - **Puntos de entrada del código**: `src/optimia_hv/biomasa/pipelines/run_biomasa.py` (ETL),
   `src/optimia_hv/biomasa/extractors/scrape_tarifas.py` (tarifas), `src/optimia_hv/dashboard/app.py`
-  (dashboard).
+  (dashboard), `src/optimia_hv/solar/pipelines/run_solar.py` (pipeline solar).
+- **Tesis solar**: [`docs/02_metodologia/solar/metodologia_solar.md`](docs/02_metodologia/solar/metodologia_solar.md)
+  (fórmulas, fuentes, observaciones abiertas) y
+  [`docs/05_uso/ejecutar_solar.md`](docs/05_uso/ejecutar_solar.md) (comandos y tablas).
 - **Reglas**: el código es la fuente de verdad; `docs/07_historial/` es
   histórico (lo marcado **[Superado]** ya no aplica); no modificar
   `docs/informes/`; las páginas del dashboard van en `src/optimia_hv/dashboard/vistas/`
@@ -248,5 +268,11 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
   cuyo costo no está incluido.
 - **Beneficio bruto**: sin costos de inversión, operación, acondicionamiento
   ni logística.
+
+- **Solar**: una sola planta, parámetros de datasheet (no ajustados) y
+  extractor de Growatt sobre el portal web (no es una API oficial). Hay
+  observaciones abiertas sobre el modelo de 15 min (unidades de la
+  temperatura de celda, radiación directa normal vs. horizontal):
+  [metodología solar](docs/02_metodologia/solar/metodologia_solar.md#observaciones-abiertas).
 
 Lista completa: [metodología → limitaciones](docs/02_metodologia/metodologia.md#limitaciones).
