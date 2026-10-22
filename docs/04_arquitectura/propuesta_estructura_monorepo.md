@@ -1,8 +1,16 @@
 # Propuesta: estructura de carpetas para unificar los dos proyectos
 
 > Estado: **fases 1, 2 y 4 aplicadas** (código de biomasa en `src/`,
-> tests por tipo, CI, nightly, deploy). Falta la **fase 3**: incorporar
-> el código solar en `src/optimia_hv/solar/` (esqueleto ya creado).
+> tests por tipo, CI, nightly, deploy). **Fase 3 aplicada** (código solar
+> en `src/optimia_hv/solar/`, pasos 18-26): extractores unificados,
+> modelos, validación, pipeline `run_solar`, job en `schedule.ini`, páginas
+> `vistas/solar/`, tests de todos los tipos y `analisis/solar/`. Quedan
+> pendientes: umbrales de error del modelo (paso 2), usuario de GitHub de
+> la compañera en `CODEOWNERS` y secretos de Growatt en el repo (paso 31).
+> Diferencias con lo propuesto: se agregó `solar/loaders/almacen.py`
+> (Parquet + réplica opcional en MySQL) y `solar/configuracion.py` (en vez
+> de `comun/config.py`, que todavía no usa biomasa). Ver
+> [ejecutar el pipeline solar](../05_uso/ejecutar_solar.md).
 
 ## Objetivo
 

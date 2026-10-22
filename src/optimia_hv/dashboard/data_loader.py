@@ -603,3 +603,45 @@ def format_metric(metrica: str, x: float) -> str:
     return {"Biomasa residual": format_tn, "Energía": format_kwh, "Dinero": format_ars}[
         metrica
     ](x)
+
+
+# =============================================================
+# Solar (tablas de optimia_hv.solar.pipelines.run_solar)
+# =============================================================
+# Un Parquet por tabla, con los mismos nombres que la base MySQL anterior.
+SOLAR_DIR = PROJECT_ROOT / "data" / "processed" / "solar"
+COLOR_REAL = "#2ca02c"     # generación real (Growatt), como en los gráficos de la tesis
+COLOR_MODELO = "#ff7f0e"   # modelo de 15 min
+COLOR_MODELO_VIEJO = "#d62728"
+
+
+def solar_path(tabla: str) -> Path:
+    """Ruta del Parquet de una tabla solar."""
+    return SOLAR_DIR / f"{tabla}.parquet"
+
+
+# Caché aparte de la de biomasa: son 9 tablas chicas y no deben desplazar
+# a biomasa_validos de la caché.
+@st.cache_data(show_spinner="Cargando datos…", max_entries=18)
+def _load_solar_cached(path: str, mtime: float) -> pd.DataFrame:
+    del mtime  # sólo forma parte de la clave de caché
+    return _read_parquet(Path(path))
+
+
+def load_solar(tabla: str) -> pd.DataFrame | None:
+    """Tabla solar; None si el pipeline solar todavía no la generó."""
+    path = solar_path(tabla)
+    mtime = _mtime(path)
+    if mtime is None:
+        return None
+    return _load_solar_cached(str(path), mtime)
+
+
+def stop_sin_datos_solares(tabla: str) -> None:
+    """Mensaje y corte de la página cuando falta una tabla solar."""
+    st.info(
+        f"Todavía no hay datos en `data/processed/solar/{tabla}.parquet`. Ejecutá el pipeline "
+        "solar: `python -m optimia_hv.solar.pipelines.run_solar` (ver "
+        "docs/05_uso/ejecutar_solar.md)."
+    )
+    st.stop()

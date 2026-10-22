@@ -19,7 +19,10 @@ license = { text = "MIT" }
 authors = [
     { name = "Proyecto Biomasa", email = "contacto@example.com" }
 ]
-keywords = ["biomasa", "agro", "etl", "argentina", "energia", "duckdb", "streamlit"]
+keywords = [
+    "biomasa", "agro", "etl", "argentina", "energia", "duckdb", "streamlit",
+    "solar", "fotovoltaica", "growatt", "open-meteo", "nasa-power",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -60,7 +63,13 @@ dependencies = [
 [project.optional-dependencies]
 # Dependencias propias de cada dominio (las comunes van en dependencies).
 biomasa = []
-solar = []
+# solar: el pipeline usa sólo dependencias comunes (httpx, pandas, numpy,
+# matplotlib). SQLAlchemy y el conector MySQL hacen falta sólo para replicar
+# en la base MySQL anterior (SOLAR_DB_URL) o importar desde ella.
+solar = [
+    "SQLAlchemy>=2.0",
+    "mysql-connector-python>=8.0",
+]
 # Alias del extra anterior (Makefile / scripts viejos).
 etl = []
 dashboard = [
@@ -86,6 +95,7 @@ all = [
 # =============================================================
 [project.scripts]
 optimia-biomasa = "optimia_hv.biomasa.pipelines.run_biomasa:main"
+optimia-solar = "optimia_hv.solar.pipelines.run_solar:main"
 
 [project.urls]
 Homepage = "https://github.com/marcoeferro/optimia"

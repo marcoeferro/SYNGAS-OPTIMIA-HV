@@ -39,4 +39,5 @@ jobs:
         env:
           GROWATT_USER: ${{ secrets.GROWATT_USER }}
           GROWATT_PASSWORD: ${{ secrets.GROWATT_PASSWORD }}
+          GROWATT_PLANT_ID: ${{ secrets.GROWATT_PLANT_ID }}
         run: pytest -q -m contract || [ $? -eq 5 ]

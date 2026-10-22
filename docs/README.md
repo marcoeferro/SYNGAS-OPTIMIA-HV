@@ -12,6 +12,7 @@
 | **Instalarlo y operarlo** | [Instalación](05_uso/instalacion.md) → [Ejecutar el ETL](05_uso/ejecutar_etl.md) → [Despliegue](04_arquitectura/despliegue.md) → [Solución de problemas](05_uso/solucion_de_problemas.md) |
 | **Modificar el código** | [Arquitectura](04_arquitectura/arquitectura.md) → [Flujo de datos](04_arquitectura/flujo_de_datos.md) → [Contratos de artefactos](03_datos/contratos_de_artefactos.md) → [Tests y controles](06_calidad/tests_y_controles.md) → [Decisiones](02_metodologia/decisiones.md) |
 | **Saber qué cambió y por qué** | [Reporte de cambios](07_historial/reporte_cambios.md) |
+| **Entender la tesis solar** | [Metodología solar](02_metodologia/solar/metodologia_solar.md) → [Ejecutar el pipeline solar](05_uso/ejecutar_solar.md) → [Análisis solar](../analisis/solar/README.md) |
 
 ## Contenido
 
@@ -28,6 +29,7 @@
 |---|---|---|
 | [metodologia.md](02_metodologia/metodologia.md) | Fórmulas de biomasa, energía y dinero; coeficientes por cultivo; asignación de tarifas; período de referencia; ejemplo numérico; limitaciones | Técnico / revisor |
 | [decisiones.md](02_metodologia/decisiones.md) | Registro de decisiones con código `POL-…`: qué se decidió, por qué y dónde está en el código | Técnico / revisor |
+| [solar/metodologia_solar.md](02_metodologia/solar/metodologia_solar.md) | Tesis solar: la planta, fuentes (Growatt, NASA POWER, Open-Meteo), modelo de 15 min, modelo viejo, métricas de validación y observaciones abiertas | Técnico / revisor |
 
 ### 03 — Datos
 
@@ -54,6 +56,7 @@
 |---|---|---|
 | [instalacion.md](05_uso/instalacion.md) | Instalar con Docker o con Python, actualizar y detener | Operador |
 | [ejecutar_etl.md](05_uso/ejecutar_etl.md) | Correr el ETL, opciones, reintentos, archivos generados, logs | Operador |
+| [ejecutar_solar.md](05_uso/ejecutar_solar.md) | Correr el pipeline solar (diario, histórico, validación), tablas que guarda, réplica en MySQL y equivalencia con los scripts anteriores | Operador |
 | [dashboard.md](05_uso/dashboard.md) | Qué muestra cada página del dashboard y cómo leerla | Todos |
 | [solucion_de_problemas.md](05_uso/solucion_de_problemas.md) | Errores conocidos y cómo resolverlos | Operador |
 
@@ -79,6 +82,8 @@ técnica.
 
 - [`data/reference/cuadros_manuales/README.md`](../data/reference/cuadros_manuales/README.md):
   cómo cargar a mano un cuadro tarifario.
+- [`analisis/solar/README.md`](../analisis/solar/README.md): scripts de
+  figuras de la tesis solar.
 
 ## Para asistentes de IA (LLM)
 

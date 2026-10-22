@@ -115,12 +115,25 @@ if modificados:
     )
 
 PAGES = Path(__file__).resolve().parent / "vistas" / "biomasa"
-nav = st.navigation([
-    st.Page(PAGES / "inicio.py", title="Inicio", icon="🌾", default=True),
-    st.Page(PAGES / "resumen.py", title="Resumen", icon="📊"),
-    st.Page(PAGES / "energia.py", title="Energía", icon="⚡"),
-    st.Page(PAGES / "dinero.py", title="Dinero", icon="💰"),
-    st.Page(PAGES / "exploracion.py", title="Exploración", icon="🔍"),
-    st.Page(PAGES / "auditoria.py", title="Auditoría de datos", icon="🧾"),
-])
+SOLAR = Path(__file__).resolve().parent / "vistas" / "solar"
+# Una sección por dominio. Los ``url_path`` de solar llevan prefijo para no
+# chocar con los de biomasa (p. ej. "energia").
+nav = st.navigation({
+    "Biomasa": [
+        st.Page(PAGES / "inicio.py", title="Inicio", icon="🌾", default=True),
+        st.Page(PAGES / "resumen.py", title="Resumen", icon="📊"),
+        st.Page(PAGES / "energia.py", title="Energía", icon="⚡"),
+        st.Page(PAGES / "dinero.py", title="Dinero", icon="💰"),
+        st.Page(PAGES / "exploracion.py", title="Exploración", icon="🔍"),
+        st.Page(PAGES / "auditoria.py", title="Auditoría de datos", icon="🧾"),
+    ],
+    "Solar": [
+        st.Page(SOLAR / "generacion.py", title="Generación real", icon="☀️",
+                url_path="solar_generacion"),
+        st.Page(SOLAR / "pronostico.py", title="Pronóstico", icon="🌤️",
+                url_path="solar_pronostico"),
+        st.Page(SOLAR / "validacion.py", title="Validación del modelo", icon="📐",
+                url_path="solar_validacion"),
+    ],
+})
 nav.run()

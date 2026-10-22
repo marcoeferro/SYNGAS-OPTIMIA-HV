@@ -141,3 +141,11 @@ python -m optimia_hv.biomasa.extractors.scrape_tarifas                 # sólo t
 Código de salida: `0` si terminó bien, `1` si falló (incluye modo estricto
 con alertas). El scheduler Ofelia (`config/schedule.ini`) ejecuta el
 pipeline completo.
+
+## 7. Tesis solar → `data/processed/solar/`
+
+Un Parquet por tabla, con los mismos nombres y columnas que la base MySQL
+que usaban los scripts originales. Tablas, claves y columnas:
+[ejecutar el pipeline solar → qué se guarda](../05_uso/ejecutar_solar.md#qué-se-guarda).
+Orquestador: `python -m optimia_hv.solar.pipelines.run_solar` (código de
+salida `1` si algún paso falló).

@@ -41,6 +41,8 @@ Thumbs.db
 #--- Enviroment Variables ---
 .env
 .env.*
+# La plantilla sí se versiona (sin valores reales).
+!.env.example
 
 #--- Docs ---
 # docs/
