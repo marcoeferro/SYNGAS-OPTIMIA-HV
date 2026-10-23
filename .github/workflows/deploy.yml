@@ -3,13 +3,19 @@
 #
 # Dokploy construye la imagen en el servidor (git clone + docker compose
 # up --build, ver deploy/docker-compose.dokploy.yml). Este workflow sólo
-# llama al webhook de deploy de Dokploy, así nunca se despliega un commit
-# con tests rotos. En Dokploy dejar **apagado** el Autodeploy por push
-# (si no, despliega también cuando el CI falla).
+# le pide el deploy por la API de Dokploy (compose.deploy), así nunca se
+# despliega un commit con tests rotos.
 #
-# Secreto necesario (Settings → Secrets and variables → Actions):
-#   DOKPLOY_WEBHOOK_URL   Dokploy → servicio compose → Deployments → Webhook URL
-# Sin el secreto el job no hace nada.
+# Se usa la API y no el webhook ("Webhook URL" de Deployments) porque el
+# webhook de Dokploy responde 400 si el Autodeploy está apagado, y con el
+# Autodeploy prendido Dokploy despliega en cada push aunque el CI falle.
+# En Dokploy: Autodeploy **apagado**.
+#
+# Secretos necesarios (Settings → Secrets and variables → Actions):
+#   DOKPLOY_URL          URL del panel, sin barra final (https://panel.midominio.com)
+#   DOKPLOY_API_KEY      Dokploy → Settings → Profile → API/CLI → Generate
+#   DOKPLOY_COMPOSE_ID   ID del servicio compose (último tramo de su URL en el panel)
+# Sin los secretos el job no hace nada.
 #
 # environment: production permite exigir una aprobación manual antes de
 # desplegar (Settings → Environments → production → Required reviewers).
@@ -39,16 +45,22 @@ jobs:
     timeout-minutes: 5
     environment: production
     env:
-      DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+      DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+      COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Disparar el deploy en Dokploy
-        if: env.DOKPLOY_WEBHOOK_URL != ''
+      # La API encola el deploy y responde enseguida: el resultado del
+      # build se ve en Dokploy → servicio → Deployments.
+      - name: Pedir el deploy a Dokploy
+        if: env.DOKPLOY_URL != '' && env.DOKPLOY_API_KEY != '' && env.DOKPLOY_COMPOSE_ID != ''
         run: |
-          curl -fsS -X POST "$DOKPLOY_WEBHOOK_URL" \
+          curl -fsS -X POST "${DOKPLOY_URL%/}/api/compose.deploy" \
+            -H "accept: application/json" \
             -H "Content-Type: application/json" \
-            -H "X-GitHub-Event: push" \
-            -d '{"ref": "refs/heads/main"}'
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "{\"composeId\": \"$DOKPLOY_COMPOSE_ID\", \"title\": \"CI verde: ${COMMIT::7}\"}"
 
-      - name: Sin webhook configurado
-        if: env.DOKPLOY_WEBHOOK_URL == ''
-        run: echo "Falta el secreto DOKPLOY_WEBHOOK_URL; no se despliega."
+      - name: Sin secretos configurados
+        if: env.DOKPLOY_URL == '' || env.DOKPLOY_API_KEY == '' || env.DOKPLOY_COMPOSE_ID == ''
+        run: echo "Faltan DOKPLOY_URL, DOKPLOY_API_KEY o DOKPLOY_COMPOSE_ID; no se despliega."

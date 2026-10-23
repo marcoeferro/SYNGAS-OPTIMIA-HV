@@ -38,7 +38,7 @@ Después abrir el PR de `tu-fork:mi-cambio` → `marcoeferro/optimia:main`.
 3. Con los checks en verde y la aprobación, se mergea. Para que se mergee
    solo, tocar **Enable auto-merge** en el PR (los PR desde forks no
    pueden usar el job `automerge` del CI porque su token es de sólo lectura).
-4. El merge a `main` dispara `deploy.yml`: llama al webhook de Dokploy, que
+4. El merge a `main` dispara `deploy.yml`: le pide el deploy a la API de Dokploy, que
    reconstruye y despliega (ver `deploy/README.md`).
 
 ## Dónde va cada cosa
