@@ -141,3 +141,14 @@ def test_variables_del_env_example_llegan_al_cron_en_dev() -> None:
     entorno = _compose(COMPOSE_DEV)["services"]["cron"]["environment"]
     pasadas = {e.split("=")[0] for e in entorno}
     assert variables <= pasadas, variables - pasadas
+
+
+# =============================================================
+# Deploy (GitHub Actions → Dokploy)
+# =============================================================
+def test_deploy_usa_la_api_de_dokploy_y_no_el_webhook() -> None:
+    """El webhook de Dokploy responde 400 con el Autodeploy apagado."""
+    texto = (ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
+    assert "/api/compose.deploy" in texto
+    assert "x-api-key" in texto
+    assert "DOKPLOY_WEBHOOK_URL" not in texto

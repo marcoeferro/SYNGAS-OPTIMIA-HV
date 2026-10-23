@@ -16,15 +16,21 @@ Traefik (incluido en Dokploy) pone el dominio y el HTTPS.
   `linux-amd64`).
 - **2 GB de RAM como mínimo** (Dokploy + build de la imagen + pandas);
   recomendado 4 GB. Con 2 GB conviene agregar 2 GB de swap.
-- Puertos 80, 443 y 3000 (panel de Dokploy) abiertos.
+- Puertos 80, 443 y 3000 (panel de Dokploy) abiertos. En **DonWeb**
+  (Cloud Server) revisar también el firewall del panel de DonWeb, además
+  del `ufw` del sistema; y si el VPS trae Apache/Nginx instalado,
+  desinstalarlo: Traefik necesita los puertos 80 y 443 libres.
 
 ## Preparar Dokploy (una sola vez)
 
 1. Instalar Dokploy en el VPS: `curl -sSL https://dokploy.com/install.sh | sh`
    y entrar a `http://<ip>:3000`.
-2. Conectar GitHub (Settings → Git → GitHub App) con acceso al repo.
-3. **Create Service → Compose**:
-   - Provider: GitHub, repo `marcoeferro/optimia`, rama `main`.
+   Crear el usuario admin y, conviene, ponerle un dominio al panel
+   (Settings → Web Server) para entrar por HTTPS en vez de `:3000`.
+2. Conectar GitHub (Settings → Git → GitHub → Create GitHub App) y darle
+   acceso al repo (es privado).
+3. **Create Project → Create Service → Compose**:
+   - Provider: GitHub, repo `marcoeferro/SYNGAS-OPTIMIA-HV`, rama `main`.
    - Compose Path: `./deploy/docker-compose.dokploy.yml`.
    - **Autodeploy: apagado** (el deploy lo dispara el CI verde, ver abajo).
 4. **Environment**: pegar las variables de `.env.example` con los valores
@@ -41,11 +47,22 @@ Traefik (incluido en Dokploy) pone el dominio y el HTTPS.
 
 ## Deploy automático tras el CI
 
-`.github/workflows/deploy.yml` llama al webhook de Dokploy cuando el CI
-termina verde en `main`. Cargar en GitHub (Settings → Secrets and
-variables → Actions):
+`.github/workflows/deploy.yml` pide el deploy por la API de Dokploy
+(`compose.deploy`) cuando el CI termina verde en `main`. No se usa el
+webhook de Dokploy: con el Autodeploy apagado responde 400, y con el
+Autodeploy prendido Dokploy despliega en cada push aunque el CI falle.
 
-- `DOKPLOY_WEBHOOK_URL`: Dokploy → servicio → Deployments → Webhook URL.
+Cargar en GitHub (Settings → Secrets and variables → Actions):
+
+| Secreto | De dónde sale |
+|---|---|
+| `DOKPLOY_URL` | URL del panel, sin barra final (`https://panel.midominio.com` o `http://<ip>:3000`) |
+| `DOKPLOY_API_KEY` | Dokploy → Settings → Profile → API/CLI → Generate |
+| `DOKPLOY_COMPOSE_ID` | ID del servicio: último tramo de la URL al abrirlo en el panel (`.../services/compose/<id>`) |
+
+Opcional: Settings → Environments → `production` → Required reviewers,
+para aprobar a mano cada deploy. Para probar sin esperar un push:
+Actions → Deploy → Run workflow.
 
 ## Datos y backups
 
