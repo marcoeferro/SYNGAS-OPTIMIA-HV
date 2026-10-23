@@ -1,49 +1,69 @@
-# Deploy en DonWeb
+# Deploy en Dokploy (VPS)
 
-Producción corre en un **Cloud Server (VPS) de DonWeb** con Docker. Un
-hosting compartido (cPanel/PHP) no sirve: no puede mantener Streamlit ni
-el cron de Ofelia corriendo.
+Producción corre en un **VPS con [Dokploy](https://dokploy.com)**. Dokploy
+clona el repo, construye la imagen y levanta `docker-compose.dokploy.yml`;
+Traefik (incluido en Dokploy) pone el dominio y el HTTPS.
 
 | Archivo | Para qué |
 |---|---|
-| `docker-compose.prod.yml` | worker + scheduler (Ofelia) + dashboard, con la imagen de GHCR |
-| `deploy.sh` | pull de la imagen, `up -d` y chequeo de salud; lo llama el workflow |
-| `nginx/optimia.conf` | proxy inverso con HTTPS delante de Streamlit |
+| `docker-compose.dokploy.yml` | `cron` (supercronic) + `dashboard`, con volúmenes con nombre |
+| `cron-entrypoint.sh` | arranque del servicio `cron`: primera carga del ETL + supercronic |
+| `../config/crontab` | horario de los extractores (cron estándar de 5 campos) |
 
-## Preparar el servidor (una sola vez)
+## Requisitos del VPS
 
-1. Crear el Cloud Server (Ubuntu LTS) y apuntar el dominio a su IP.
-2. Instalar Docker y Nginx:
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   sudo apt install -y nginx certbot python3-certbot-nginx
-   ```
-3. Usuario de deploy con acceso a Docker y clave SSH:
-   ```bash
-   sudo adduser --disabled-password deploy
-   sudo usermod -aG docker deploy
-   sudo mkdir -p /opt/optimia && sudo chown deploy: /opt/optimia
-   # en tu máquina: ssh-keygen -t ed25519 -f optimia_deploy
-   # pegar optimia_deploy.pub en /home/deploy/.ssh/authorized_keys
-   ```
-4. Nginx + HTTPS: copiar `nginx/optimia.conf`, cambiar `server_name` y
-   correr `sudo certbot --nginx -d <dominio>`.
-5. Secretos de la app en `/opt/optimia/.env` (copiar de `.env.example`).
-   Si la imagen de GHCR es privada, agregar `GHCR_USER` y `GHCR_TOKEN`
-   (token clásico con `read:packages`).
+- Ubuntu 22.04/24.04, **amd64** (el binario de supercronic de la imagen es
+  `linux-amd64`).
+- **2 GB de RAM como mínimo** (Dokploy + build de la imagen + pandas);
+  recomendado 4 GB. Con 2 GB conviene agregar 2 GB de swap.
+- Puertos 80, 443 y 3000 (panel de Dokploy) abiertos.
 
-## Secretos en GitHub
+## Preparar Dokploy (una sola vez)
 
-`Settings → Secrets and variables → Actions` del repo principal:
+1. Instalar Dokploy en el VPS: `curl -sSL https://dokploy.com/install.sh | sh`
+   y entrar a `http://<ip>:3000`.
+2. Conectar GitHub (Settings → Git → GitHub App) con acceso al repo.
+3. **Create Service → Compose**:
+   - Provider: GitHub, repo `marcoeferro/optimia`, rama `main`.
+   - Compose Path: `./deploy/docker-compose.dokploy.yml`.
+   - **Autodeploy: apagado** (el deploy lo dispara el CI verde, ver abajo).
+4. **Environment**: pegar las variables de `.env.example` con los valores
+   reales (Growatt, Telegram/webhook, etc.). Dokploy las guarda en `.env`
+   junto al compose y `env_file` las pasa a los contenedores.
+5. **Domains**: agregar el dominio → servicio `dashboard`, puerto `8501`,
+   HTTPS con Let's Encrypt. El DNS del dominio tiene que apuntar a la IP.
+6. **Deploy**. La primera vez el servicio `cron` corre el ETL de biomasa
+   en segundo plano (`ETL_AL_INICIAR=auto`, unos minutos); el dashboard
+   muestra datos cuando termina.
+7. Carga histórica solar (una vez), desde la pestaña de terminal del
+   contenedor `cron` o `docker exec`:
+   `python -m optimia_hv.solar.pipelines.run_solar --historico`.
 
-- `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (contenido de `optimia_deploy`)
-- `DEPLOY_PATH` (opcional, por defecto `/opt/optimia`)
+## Deploy automático tras el CI
 
-Sin `DEPLOY_HOST` el workflow publica la imagen pero no despliega.
+`.github/workflows/deploy.yml` llama al webhook de Dokploy cuando el CI
+termina verde en `main`. Cargar en GitHub (Settings → Secrets and
+variables → Actions):
 
-## Deploy manual / rollback
+- `DOKPLOY_WEBHOOK_URL`: Dokploy → servicio → Deployments → Webhook URL.
 
-```bash
-cd /opt/optimia
-OPTIMIA_IMAGE=ghcr.io/marcoeferro/optimia:<sha-anterior> bash deploy/deploy.sh
-```
+## Datos y backups
+
+- `optimia_data` (`/app/data`) y `optimia_logs` (`/app/logs`) son
+  volúmenes con nombre: sobreviven a cada deploy. Un bind mount `./data`
+  **no** sirve: Dokploy borra la carpeta del repo en cada deploy.
+- La primera vez `optimia_data` se llena con `data/raw` y `data/reference`
+  de la imagen. Después **no** se actualiza desde el repo: si se cambia un
+  archivo de referencia versionado (p. ej. `ic_fr.csv`), copiarlo a mano
+  (`docker cp`) o borrar el volumen para que se vuelva a sembrar.
+- Backups: Dokploy → Volume Backups (sólo funciona con volúmenes con
+  nombre) hacia un S3.
+
+## Operación
+
+| Tarea | Cómo |
+|---|---|
+| Ver si corrió el cron | Logs del servicio `cron` (cada job loguea inicio, salida y código) |
+| Correr el ETL a mano | Terminal del contenedor `cron`: `python -m optimia_hv.biomasa.pipelines.run_biomasa` |
+| Cambiar el horario | Editar `config/crontab`, push a `main` (redeploy) |
+| Rollback | Dokploy → Deployments → redeploy de un deploy anterior |

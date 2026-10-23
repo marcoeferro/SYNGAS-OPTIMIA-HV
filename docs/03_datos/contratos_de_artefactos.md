@@ -1,7 +1,7 @@
 # Contratos de artefactos
 
 > Qué archivo escribe cada etapa, dónde y con qué columnas. Sirve para
-> orquestadores (Ofelia, n8n, scripts), para quien consuma los resultados
+> orquestadores (cron, n8n, scripts), para quien consuma los resultados
 > desde otra herramienta y para tests de regresión.
 
 Rutas relativas a la raíz del repositorio. Las carpetas se configuran en
@@ -139,7 +139,7 @@ python -m optimia_hv.biomasa.extractors.scrape_tarifas                 # sólo t
 ```
 
 Código de salida: `0` si terminó bien, `1` si falló (incluye modo estricto
-con alertas). El scheduler Ofelia (`config/schedule.ini`) ejecuta el
+con alertas). El servicio `cron` (`config/crontab`) ejecuta el
 pipeline completo.
 
 ## 7. Tesis solar → `data/processed/solar/`

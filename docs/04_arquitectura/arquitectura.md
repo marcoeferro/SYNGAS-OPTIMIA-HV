@@ -10,7 +10,7 @@ Un programa en Python (**ETL**: extraer, transformar, cargar) descarga
 datos públicos, calcula biomasa, energía y dinero, y guarda los resultados
 en archivos; un **dashboard** web (Streamlit) lee esos archivos y los
 muestra. Los dos corren en contenedores Docker y un programador de tareas
-(Ofelia) ejecuta el ETL todos los días.
+(supercronic, servicio `cron`) ejecuta los pipelines todos los días.
 
 ## Diagrama
 
@@ -77,8 +77,8 @@ graph TB
 | Dashboard | `src/optimia_hv/dashboard/` | `app.py` (navegación), `vistas/` (una página por archivo), `data_loader.py` (lectura y caché), `charts.py` (gráficos y mapas), `geo/` (límites GADM 4.1). |
 | Notebook | `analisis/biomasa/main.ipynb` | Análisis exploratorio y verificación de los cálculos. No es parte de la operación diaria. |
 | Tests | `tests/` | Pruebas automáticas del código (ver [tests y controles](../06_calidad/tests_y_controles.md)). |
-| Configuración | `config/` | Rutas (`paths.yaml`), logging (`logging.yml`), horario del ETL (`schedule.ini`). |
-| Contenedores | `Dockerfile`, `docker-compose.yml` | Imagen única para ETL y dashboard; servicios worker, scheduler y dashboard. |
+| Configuración | `config/` | Rutas (`paths.yaml`), logging (`logging.yml`), horario de los pipelines (`crontab`). |
+| Contenedores | `Dockerfile`, `docker-compose.yml` | Imagen única para ETL y dashboard; servicios cron y dashboard. Producción: `deploy/docker-compose.dokploy.yml`. |
 | Scripts | `scripts/*.ps1`, `Makefile` | Atajos para Windows (PowerShell) y Linux/Mac (make). |
 
 ## Decisiones de diseño
@@ -107,4 +107,4 @@ graph TB
 | Descargas y documentos | httpx, curl_cffi, BeautifulSoup, pypdf, openpyxl, xlrd |
 | Dashboard | Streamlit, Plotly |
 | Calidad | pytest, ruff, GitHub Actions |
-| Operación | Docker, Docker Compose, Ofelia (cron) |
+| Operación | Docker, Docker Compose, supercronic (cron), Dokploy |

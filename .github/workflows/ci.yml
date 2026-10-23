@@ -5,7 +5,8 @@
 #   estilo (ruff completo) no bloquea: el repo tiene avisos previos. Los
 #   tests de contract (APIs reales) corren en nightly.yml, no acá.
 # - imagen: construye la imagen Docker sólo si cambian Dockerfile,
-#   pyproject.toml o .dockerignore (es el paso más largo).
+#   pyproject.toml, .dockerignore, el crontab o los compose (es el paso
+#   más largo). Verifica imports, el crontab y que los compose sean válidos.
 # - automerge: si tests e imagen pasan en un pull request hacia main, lo
 #   mergea (merge commit, como los PR anteriores). Se omite en borradores,
 #   en PR desde forks y en PR con la etiqueta `no-automerge`. En PR desde
@@ -85,7 +86,7 @@ jobs:
           else
             base="${{ github.event.before }}"
           fi
-          if git diff --quiet "$base" HEAD -- Dockerfile pyproject.toml .dockerignore src/optimia_hv/__init__.py 2>/dev/null; then
+          if git diff --quiet "$base" HEAD -- Dockerfile pyproject.toml .dockerignore src/optimia_hv/__init__.py config/crontab deploy/ docker-compose.yml 2>/dev/null; then
             echo "construir=false" >> "$GITHUB_OUTPUT"
             echo "Sin cambios en la imagen: se omite el build."
           else
@@ -102,6 +103,14 @@ jobs:
           docker run --rm optimia-hv:ci python -c "import optimia_hv.biomasa.pipelines.run_biomasa, optimia_hv.biomasa.transformers.data_checks; print('biomasa ok')"
           docker run --rm optimia-hv:ci python -c "import optimia_hv.solar.pipelines.run_solar, optimia_hv.comun.http_retry; print('solar/comun ok')"
           docker run --rm optimia-hv:ci python -c "import streamlit, optimia_hv.dashboard.data_loader; print('dashboard ok')"
+
+      - name: Humo (cron y compose)
+        if: steps.cambios.outputs.construir == 'true'
+        run: |
+          docker run --rm optimia-hv:ci supercronic -test config/crontab
+          docker run --rm -e TZ=America/Argentina/Buenos_Aires optimia-hv:ci date
+          docker compose -f deploy/docker-compose.dokploy.yml config -q
+          docker compose config -q
 
   automerge:
     needs: [tests, imagen]

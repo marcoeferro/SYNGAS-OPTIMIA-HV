@@ -41,7 +41,7 @@ help:
 	@echo ""
 	@echo "  Docker"
 	@echo "    docker-build         Construye la imagen del ETL/dashboard"
-	@echo "    docker-up            Levanta worker + scheduler + dashboard"
+	@echo "    docker-up            Levanta cron + dashboard"
 	@echo "    docker-down          Detiene y elimina contenedores"
 	@echo "    docker-logs          Sigue los logs del dashboard"
 	@echo "    docker-etl           Ejecuta el pipeline ETL como job"
@@ -106,8 +106,7 @@ docker-build:
 docker-up:
 	$(DOCKER_COMPOSE) up -d --build
 	@echo "Dashboard:  http://localhost:$(DASHBOARD_PORT)"
-	@echo "Scheduler:  config/schedule.ini (cron ETL)"
-	@echo "Worker ETL: biomasa_etl_worker"
+	@echo "Cron:       config/crontab (docker compose logs cron)"
 
 docker-down:
 	$(DOCKER_COMPOSE) down

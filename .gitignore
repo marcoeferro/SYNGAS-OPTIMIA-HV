@@ -58,5 +58,6 @@ data/cache/
 # --- Figuras sueltas en la raíz (van a outputs/ o docs/informes/img/) ---
 /*.png
 
-# --- Producción (generado por deploy/deploy.sh) ---
-schedule.prod.ini
+# --- Cobertura (pytest --cov) ---
+.coverage
+htmlcov/

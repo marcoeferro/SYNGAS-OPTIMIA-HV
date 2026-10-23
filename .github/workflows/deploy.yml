@@ -1,18 +1,15 @@
-# Deploy a producción (Cloud Server de DonWeb) cuando el CI termina verde
-# en main.
+# Deploy a producción (Dokploy en el VPS) cuando el CI termina verde en
+# main.
 #
-# 1. Construye la imagen y la publica en GitHub Container Registry
-#    (ghcr.io/<owner>/<repo>:<sha> y :latest).
-# 2. Copia deploy/ y config/ al servidor por SSH.
-# 3. Corre deploy/deploy.sh en el servidor: pull de la imagen, up -d y
-#    chequeo de salud del dashboard.
+# Dokploy construye la imagen en el servidor (git clone + docker compose
+# up --build, ver deploy/docker-compose.dokploy.yml). Este workflow sólo
+# llama al webhook de deploy de Dokploy, así nunca se despliega un commit
+# con tests rotos. En Dokploy dejar **apagado** el Autodeploy por push
+# (si no, despliega también cuando el CI falla).
 #
-# Secretos necesarios (Settings → Secrets and variables → Actions):
-#   DEPLOY_HOST      IP o dominio del servidor
-#   DEPLOY_USER      usuario con permiso para usar docker
-#   DEPLOY_SSH_KEY   clave privada SSH (la pública va en ~/.ssh/authorized_keys)
-#   DEPLOY_PATH      (opcional) carpeta en el servidor; por defecto /opt/optimia
-# Sin DEPLOY_HOST el job publica la imagen y se saltea el deploy.
+# Secreto necesario (Settings → Secrets and variables → Actions):
+#   DOKPLOY_WEBHOOK_URL   Dokploy → servicio compose → Deployments → Webhook URL
+# Sin el secreto el job no hace nada.
 #
 # environment: production permite exigir una aprobación manual antes de
 # desplegar (Settings → Environments → production → Required reviewers).
@@ -31,7 +28,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   deploy:
@@ -40,50 +36,19 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     environment: production
     env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/optimia' }}
+      DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - name: Nombre de la imagen
-        id: img
+      - name: Disparar el deploy en Dokploy
+        if: env.DOKPLOY_WEBHOOK_URL != ''
         run: |
-          repo="$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
-          sha="$(git rev-parse --short HEAD)"
-          echo "repo=$repo" >> "$GITHUB_OUTPUT"
-          echo "tag=$repo:$sha" >> "$GITHUB_OUTPUT"
+          curl -fsS -X POST "$DOKPLOY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref": "refs/heads/main"}'
 
-      - name: Login a GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Build y push de la imagen
-        run: |
-          docker build -t "${{ steps.img.outputs.tag }}" -t "${{ steps.img.outputs.repo }}:latest" .
-          docker push "${{ steps.img.outputs.tag }}"
-          docker push "${{ steps.img.outputs.repo }}:latest"
-
-      - name: Preparar SSH
-        if: env.DEPLOY_HOST != ''
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
-
-      - name: Copiar deploy/ y config/ al servidor
-        if: env.DEPLOY_HOST != ''
-        run: |
-          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
-          scp -i ~/.ssh/id_deploy -r deploy config "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
-
-      - name: Desplegar
-        if: env.DEPLOY_HOST != ''
-        run: |
-          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && OPTIMIA_IMAGE='${{ steps.img.outputs.tag }}' bash deploy/deploy.sh"
+      - name: Sin webhook configurado
+        if: env.DOKPLOY_WEBHOOK_URL == ''
+        run: echo "Falta el secreto DOKPLOY_WEBHOOK_URL; no se despliega."

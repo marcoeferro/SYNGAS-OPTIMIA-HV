@@ -104,7 +104,7 @@ calidad. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
 
 - Archivo: `logs/pipeline.log` (rota a los 10 MB, guarda 5 anteriores).
 - En Docker, la salida de las corridas programadas también se ve con
-  `docker logs biomasa_scheduler`.
+  `docker compose logs cron`.
 - Nivel de detalle: variable `LOG_LEVEL` (`DEBUG` para ver cada pedido).
 
 Mensajes útiles del log:

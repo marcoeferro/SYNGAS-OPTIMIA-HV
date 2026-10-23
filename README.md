@@ -88,7 +88,7 @@ flowchart LR
 Fórmulas y supuestos: [metodología](docs/02_metodologia/metodologia.md).
 
 **Tecnologías**: Python 3.11 (pandas, httpx, pypdf), Parquet + DuckDB,
-Streamlit + Plotly, Docker Compose con Ofelia (cron), pytest y GitHub
+Streamlit + Plotly, Docker Compose con supercronic (cron), Dokploy, pytest y GitHub
 Actions. Detalle: [arquitectura](docs/04_arquitectura/arquitectura.md).
 
 ---
@@ -135,7 +135,7 @@ Guía completa: [instalación](docs/05_uso/instalacion.md).
 | Recalcular sin descargar | `python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract --skip-tarifas` |
 | No publicar si hay alertas de calidad | `python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto` |
 | Actualizar sólo tarifas | `python -m optimia_hv.biomasa.extractors.scrape_tarifas` |
-| Cambiar el horario del ETL | Editar `config/schedule.ini` y `docker compose restart scheduler` |
+| Cambiar el horario del ETL | Editar `config/crontab` y `docker compose up -d --build cron` |
 | Actualizar el código | `git pull` y `docker compose up -d --build` |
 | Detener todo | `docker compose down` · `.\scripts\Stop-Stack.ps1` |
 | Tests | `pytest` · `make test` |
@@ -184,7 +184,7 @@ optimia/
 │   ├── processed/             Resultados (no se versiona)
 │   └── audit/                 Auditoría y alertas (no se versiona)
 ├── config/                    Rutas, logging, horario de los pipelines y parámetros solares (solar.yaml)
-├── deploy/                    Producción en DonWeb (compose, nginx, deploy.sh)
+├── deploy/                    Producción en Dokploy (compose, arranque del cron)
 ├── docs/                      Documentación (índice en docs/README.md)
 ├── scripts/                   Atajos PowerShell (Windows)
 ├── .github/                   CI, deploy, nightly, CODEOWNERS, plantilla de PR

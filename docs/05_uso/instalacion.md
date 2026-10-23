@@ -43,7 +43,7 @@ Python ni librerías.
 4. Abrir el dashboard en <http://localhost:8501>.
 
 Desde entonces el ETL corre solo todos los días a las 06:00 (se cambia en
-`config/schedule.ini`, ver [despliegue](../04_arquitectura/despliegue.md#horario-del-etl)).
+`config/crontab`, ver [despliegue](../04_arquitectura/despliegue.md#horario-del-etl)).
 
 ### Actualizar a una versión nueva
 

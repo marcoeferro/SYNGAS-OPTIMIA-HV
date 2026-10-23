@@ -41,7 +41,7 @@ from optimia_hv.dashboard.data_loader import (  # noqa: E402
 )
 from optimia_hv.biomasa.transformers.energy_finance import injection_ratio  # noqa: E402
 
-# Aviso si el ETL dejó de publicar datos (scheduler detenido, fuente caída,
+# Aviso si el ETL dejó de publicar datos (cron detenido, fuente caída,
 # corrida fallida). El ETL corre todos los días: 48 h son dos corridas.
 DATOS_VIEJOS_HORAS = float(os.environ.get("DATOS_VIEJOS_HORAS", "48"))
 horas = horas_desde_ultima_corrida()
@@ -49,7 +49,7 @@ if horas is not None and horas > DATOS_VIEJOS_HORAS:
     st.warning(
         f"⚠️ Los datos tienen {horas / 24:.1f} días: el ETL no publicó resultados "
         f"en las últimas {DATOS_VIEJOS_HORAS:.0f} horas. Revisar `logs/pipeline.log` "
-        "y que el scheduler esté corriendo (ver docs/05_uso/solucion_de_problemas.md)."
+        "y que el servicio cron esté corriendo (ver docs/05_uso/solucion_de_problemas.md)."
     )
 
 # --- Supuestos del cálculo (valen para todas las páginas) ---

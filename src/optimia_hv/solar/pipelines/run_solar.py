@@ -1,6 +1,6 @@
 """Entrypoint del pipeline solar (ex ``main_actualizaciones.py``).
 
-Corrida diaria (lo que dispara el cron, ``config/schedule.ini``):
+Corrida diaria (lo que dispara el cron, ``config/crontab``):
     1. Generación diaria Growatt del mes en curso → ``growatt_produccion``.
     2. Clima diario NASA POWER (últimos 30 días) → ``clima_historico_nasa``.
     3. Clima diario Open-Meteo (últimos 30 días) → ``clima_historico_openmeteo``.

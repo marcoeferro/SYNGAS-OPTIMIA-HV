@@ -23,9 +23,9 @@
 | Validar el modelo en un período | `optimia-solar --validar 2026-09-12 2026-09-16` |
 | Traer el histórico de la base MySQL anterior | `pip install -e ".[solar]"` y `optimia-solar --importar-sql mysql+mysqlconnector://root:@localhost/datos` |
 | Figuras de la tesis | scripts de [`analisis/solar/`](../../analisis/solar/README.md) |
-| Con Docker | `docker compose exec etl_worker python -m optimia_hv.solar.pipelines.run_solar` |
+| Con Docker | `docker compose exec cron python -m optimia_hv.solar.pipelines.run_solar` |
 
-El cron (`config/schedule.ini`, job `solar`) corre la corrida diaria a las
+El cron (`config/crontab`, job `run_solar`) corre la corrida diaria a las
 06:30. Cada paso es independiente: si uno falla (p. ej. Growatt caído) los
 demás siguen, y al final se envía un aviso (mismos canales que biomasa,
 ver [despliegue](../04_arquitectura/despliegue.md)) y el proceso sale con
