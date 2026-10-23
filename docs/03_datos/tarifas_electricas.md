@@ -18,9 +18,9 @@ Para valorizar la energía se necesitan dos precios por distribuidora:
 
 ## Cómo se obtiene
 
-Programa: `etl/extractors/scrape_tarifas.py`, con el parser
-`etl/extractors/tariff_parser.py` y el registro de distribuidoras
-`etl/reference/distribuidoras.py`.
+Programa: `src/optimia_hv/biomasa/extractors/scrape_tarifas.py`, con el parser
+`src/optimia_hv/biomasa/extractors/tariff_parser.py` y el registro de distribuidoras
+`src/optimia_hv/biomasa/reference/distribuidoras.py`.
 
 ```mermaid
 flowchart TD
@@ -145,17 +145,17 @@ versión con texto o una planilla.
 ## Comandos
 
 ```bash
-python -m etl.extractors.scrape_tarifas                          # tarifas vigentes
-python -m etl.extractors.scrape_tarifas --solo EPE EDESAL        # sólo algunas
-python -m etl.extractors.scrape_tarifas --historial --desde 2025-01   # reconstruir el historial
+python -m optimia_hv.biomasa.extractors.scrape_tarifas                          # tarifas vigentes
+python -m optimia_hv.biomasa.extractors.scrape_tarifas --solo EPE EDESAL        # sólo algunas
+python -m optimia_hv.biomasa.extractors.scrape_tarifas --historial --desde 2025-01   # reconstruir el historial
 ```
 
-El ETL completo (`python -m etl.pipelines.run_etl`) ya corre el extractor de
+El ETL completo (`python -m optimia_hv.biomasa.pipelines.run_biomasa`) ya corre el extractor de
 tarifas; `--skip-tarifas` lo saltea y usa el último JSON.
 
 ## Agregar o corregir una distribuidora
 
-Todo está en `etl/reference/distribuidoras.py`:
+Todo está en `src/optimia_hv/biomasa/reference/distribuidoras.py`:
 
 - `slug`: nombre de la página en el portal nacional.
 - `indices`: páginas propias donde se buscan enlaces a cuadros. Si la
@@ -175,7 +175,7 @@ Todo está en `etl/reference/distribuidoras.py`:
   distribuidora corresponde a cada lugar.
 
 Después de un cambio conviene agregar un test con un fragmento del
-documento real en `tests/test_tariff_parser.py`.
+documento real en `tests/unit/biomasa/test_tariff_parser.py`.
 
 ## Problemas conocidos
 

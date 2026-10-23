@@ -1,0 +1,54 @@
+# Deploy a producción (Dokploy en el VPS) cuando el CI termina verde en
+# main.
+#
+# Dokploy construye la imagen en el servidor (git clone + docker compose
+# up --build, ver deploy/docker-compose.dokploy.yml). Este workflow sólo
+# llama al webhook de deploy de Dokploy, así nunca se despliega un commit
+# con tests rotos. En Dokploy dejar **apagado** el Autodeploy por push
+# (si no, despliega también cuando el CI falla).
+#
+# Secreto necesario (Settings → Secrets and variables → Actions):
+#   DOKPLOY_WEBHOOK_URL   Dokploy → servicio compose → Deployments → Webhook URL
+# Sin el secreto el job no hace nada.
+#
+# environment: production permite exigir una aprobación manual antes de
+# desplegar (Settings → Environments → production → Required reviewers).
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    env:
+      DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+    steps:
+      - name: Disparar el deploy en Dokploy
+        if: env.DOKPLOY_WEBHOOK_URL != ''
+        run: |
+          curl -fsS -X POST "$DOKPLOY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref": "refs/heads/main"}'
+
+      - name: Sin webhook configurado
+        if: env.DOKPLOY_WEBHOOK_URL == ''
+        run: echo "Falta el secreto DOKPLOY_WEBHOOK_URL; no se despliega."

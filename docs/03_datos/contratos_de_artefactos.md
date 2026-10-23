@@ -1,7 +1,7 @@
 # Contratos de artefactos
 
 > Qué archivo escribe cada etapa, dónde y con qué columnas. Sirve para
-> orquestadores (Ofelia, n8n, scripts), para quien consuma los resultados
+> orquestadores (cron, n8n, scripts), para quien consuma los resultados
 > desde otra herramienta y para tests de regresión.
 
 Rutas relativas a la raíz del repositorio. Las carpetas se configuran en
@@ -128,16 +128,24 @@ tarifa y dinero, **expresadas por año**, más `n_campanas_con_dato` y
 ## 6. Invocación (orquestadores)
 
 ```bash
-python -m etl.pipelines.run_etl                         # completo
-python -m etl.pipelines.run_etl --skip-extract          # sin descargar fuentes agrícolas
-python -m etl.pipelines.run_etl --skip-tarifas          # sin descargar tarifas
-python -m etl.pipelines.run_etl --estricto              # no publica si hay alertas
+python -m optimia_hv.biomasa.pipelines.run_biomasa                         # completo
+python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract          # sin descargar fuentes agrícolas
+python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-tarifas          # sin descargar tarifas
+python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto              # no publica si hay alertas
 
-python -m etl.extractors.scrape_estimaciones_agricolas  # sólo MAGyP
-python -m etl.extractors.scrape_bolsa_cereales_cba      # sólo Bolsa de Córdoba
-python -m etl.extractors.scrape_tarifas                 # sólo tarifas
+python -m optimia_hv.biomasa.extractors.scrape_estimaciones_agricolas  # sólo MAGyP
+python -m optimia_hv.biomasa.extractors.scrape_bolsa_cereales_cba      # sólo Bolsa de Córdoba
+python -m optimia_hv.biomasa.extractors.scrape_tarifas                 # sólo tarifas
 ```
 
 Código de salida: `0` si terminó bien, `1` si falló (incluye modo estricto
-con alertas). El scheduler Ofelia (`config/schedule.ini`) ejecuta el
+con alertas). El servicio `cron` (`config/crontab`) ejecuta el
 pipeline completo.
+
+## 7. Tesis solar → `data/processed/solar/`
+
+Un Parquet por tabla, con los mismos nombres y columnas que la base MySQL
+que usaban los scripts originales. Tablas, claves y columnas:
+[ejecutar el pipeline solar → qué se guarda](../05_uso/ejecutar_solar.md#qué-se-guarda).
+Orquestador: `python -m optimia_hv.solar.pipelines.run_solar` (código de
+salida `1` si algún paso falló).

@@ -20,7 +20,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
 . (Join-Path $PSScriptRoot "_Common.ps1")
 
-$etlArgs = @("-m", "etl.pipelines.run_etl", "--config", "config/paths.yaml")
+$etlArgs = @("-m", "optimia_hv.biomasa.pipelines.run_biomasa", "--config", "config/paths.yaml")
 if ($SkipExtract) { $etlArgs += "--skip-extract" }
 if ($SkipTarifas) { $etlArgs += "--skip-tarifas" }
 
@@ -40,7 +40,7 @@ if ($Local) {
     # Cada build que cambia el código deja la imagen anterior sin etiqueta
     # ("dangling"); se borran (sólo las de este proyecto) para no llenar el
     # disco del servidor.
-    docker image prune -f --filter "label=project=etl-biomasa" | Out-Null
+    docker image prune -f --filter "label=project=optimia-hv" | Out-Null
     Write-Host "Ejecutando ETL en Docker (one-shot)..." -ForegroundColor Cyan
     docker compose --profile etl run --rm etl_pipeline python @etlArgs
 }

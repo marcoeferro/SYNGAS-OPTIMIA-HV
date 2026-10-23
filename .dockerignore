@@ -10,7 +10,8 @@ data/audit
 outputs/
 
 # --- Notebooks (no son necesarios para la imagen final) ---
-notebooks/
+analisis/
+tests/
 
 # --- Archivos de sistema y editores ---
 .git
@@ -33,3 +34,5 @@ docker-compose.yml
 
 # --- Documentación (README se incluye: lo exige pyproject.toml) ---
 docs/
+# --- Secretos ---
+.env

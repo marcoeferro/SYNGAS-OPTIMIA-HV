@@ -1,0 +1,43 @@
+# =============================================================
+# Parámetros de la tesis solar (planta de Villa Mercedes, San Luis)
+# =============================================================
+# Cambiar un valor acá no requiere rebuild de la imagen.
+# Las credenciales de Growatt NO van acá: van en .env
+# (GROWATT_USER, GROWATT_PASSWORD, GROWATT_PLANT_ID; ver .env.example).
+# =============================================================
+
+ubicacion:
+  latitud: -33.64451720576176
+  longitud: -65.44526071823961
+  zona_horaria: "America/Argentina/San_Luis"
+
+# Inicio de la serie histórica (carga completa con --historico).
+historico:
+  desde: "2024-08-01"
+
+# Ventana que se vuelve a revisar todos los días: NASA POWER publica la
+# radiación con 4-5 días de atraso y Open-Meteo corrige los últimos días.
+ventana_revision_dias: 30
+
+# Días a futuro del pronóstico cada 15 min.
+dias_pronostico_15min: 5
+
+# Modelo físico de 15 minutos (energía estimada / pronosticada).
+modelo_15min:
+  potencia_pico_kwp: 2.25        # 5 paneles x 450 W
+  eficiencia_inversor: 0.93      # Growatt (93 %)
+  pr_base: 0.78                  # pérdidas fijas: cables, suciedad, desacople
+  gamma: -0.0035                 # coeficiente térmico de potencia (-0,35 %/°C)
+  noct: 45.0                     # Normal Operating Cell Temperature (°C)
+  inclinacion_panel: 35.0        # grados
+
+# Modelo viejo (diario, línea de base).
+modelo_viejo:
+  potencia_pico_kwp: 2.25
+  eficiencia_inversor: 0.93
+  pr_base: 0.88
+  gamma: -0.0035
+
+# Dónde se guardan las tablas (Parquet, una por tabla).
+almacen:
+  dir: "data/processed/solar"

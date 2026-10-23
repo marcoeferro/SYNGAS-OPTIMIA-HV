@@ -10,7 +10,7 @@
 |---|---|
 | Docker, Windows | `.\scripts\Run-Etl.ps1` |
 | Docker, Linux/Mac | `make docker-etl` o `docker compose --profile etl run --rm etl_pipeline` |
-| Python local | `python -m etl.pipelines.run_etl` o `make etl` |
+| Python local | `python -m optimia_hv.biomasa.pipelines.run_biomasa` o `make etl` |
 | Python local, Windows | `.\scripts\Run-Etl.ps1 -Local` |
 
 `Run-Etl.ps1` y `make docker-etl` reconstruyen la imagen antes de correr,
@@ -19,7 +19,7 @@ así siempre se usa el código actual.
 ## Opciones
 
 ```bash
-python -m etl.pipelines.run_etl [opciones]
+python -m optimia_hv.biomasa.pipelines.run_biomasa [opciones]
 ```
 
 | Opción | Qué hace | Cuándo usarla |
@@ -39,17 +39,17 @@ sin `-Local`).
 Ejemplos:
 
 ```bash
-python -m etl.pipelines.run_etl                                   # completo (descarga todo)
-python -m etl.pipelines.run_etl --skip-extract --skip-tarifas     # sólo recalcular
-python -m etl.pipelines.run_etl --fraccion-recuperable 0.3        # escenario conservador
+python -m optimia_hv.biomasa.pipelines.run_biomasa                                   # completo (descarga todo)
+python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract --skip-tarifas     # sólo recalcular
+python -m optimia_hv.biomasa.pipelines.run_biomasa --fraccion-recuperable 0.3        # escenario conservador
 ```
 
 Partes sueltas:
 
 ```bash
-python -m etl.extractors.scrape_estimaciones_agricolas   # sólo descargar MAGyP
-python -m etl.extractors.scrape_bolsa_cereales_cba       # sólo descargar Bolsa de Córdoba
-python -m etl.extractors.scrape_tarifas                  # sólo tarifas (ver tarifas_electricas.md)
+python -m optimia_hv.biomasa.extractors.scrape_estimaciones_agricolas   # sólo descargar MAGyP
+python -m optimia_hv.biomasa.extractors.scrape_bolsa_cereales_cba       # sólo descargar Bolsa de Córdoba
+python -m optimia_hv.biomasa.extractors.scrape_tarifas                  # sólo tarifas (ver tarifas_electricas.md)
 ```
 
 ## Cuánto tarda
@@ -104,7 +104,7 @@ calidad. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
 
 - Archivo: `logs/pipeline.log` (rota a los 10 MB, guarda 5 anteriores).
 - En Docker, la salida de las corridas programadas también se ve con
-  `docker logs biomasa_scheduler`.
+  `docker compose logs cron`.
 - Nivel de detalle: variable `LOG_LEVEL` (`DEBUG` para ver cada pedido).
 
 Mensajes útiles del log:

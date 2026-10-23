@@ -1,5 +1,5 @@
 # =============================================================
-# Configuración del proyecto ETL Biomasa Residual
+# Configuración del proyecto OPTIMIA-HV (biomasa + solar)
 # =============================================================
 
 [build-system]
@@ -10,16 +10,19 @@ build-backend = "setuptools.build_meta"
 # Metadatos del proyecto
 # =============================================================
 [project]
-name = "etl-biomasa"
-version = "0.3.0"
-description = "Pipeline ETL para estimación de biomasa residual agrícola en Argentina"
+name = "optimia-hv"
+version = "0.4.0"
+description = "Biomasa residual agrícola y generación solar: ETL, modelos y dashboard"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
     { name = "Proyecto Biomasa", email = "contacto@example.com" }
 ]
-keywords = ["biomasa", "agro", "etl", "argentina", "energia", "duckdb", "streamlit"]
+keywords = [
+    "biomasa", "agro", "etl", "argentina", "energia", "duckdb", "streamlit",
+    "solar", "fotovoltaica", "growatt", "open-meteo", "nasa-power",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -30,15 +33,15 @@ classifiers = [
 ]
 
 # =============================================================
-# Dependencias de runtime (pipeline ETL + extractors)
+# Dependencias de runtime comunes (biomasa + solar + extractors)
 # =============================================================
-# Inventario de imports de terceros en etl/, dashboard/, tests/, notebooks/:
+# Inventario de imports de terceros en src/, tests/, analisis/:
 #   pandas, numpy, pyarrow, duckdb, PyYAML (yaml), plotly, matplotlib,
 #   seaborn, openpyxl, httpx, beautifulsoup4 (bs4), curl_cffi, streamlit,
 #   pytest (+ tooling de desarrollo).
 # =============================================================
 dependencies = [
-    "pandas>=2.0,<3.0",
+    "pandas>=2.0,<4.0",
     "numpy>=1.26,<3.0",
     "pyarrow>=14.0",
     "duckdb>=1.0",
@@ -58,7 +61,16 @@ dependencies = [
 # Dependencias opcionales por grupo
 # =============================================================
 [project.optional-dependencies]
-# Núcleo ETL = [project].dependencies (sin extra adicional)
+# Dependencias propias de cada dominio (las comunes van en dependencies).
+biomasa = []
+# solar: el pipeline usa sólo dependencias comunes (httpx, pandas, numpy,
+# matplotlib). SQLAlchemy y el conector MySQL hacen falta sólo para replicar
+# en la base MySQL anterior (SOLAR_DB_URL) o importar desde ella.
+solar = [
+    "SQLAlchemy>=2.0",
+    "mysql-connector-python>=8.0",
+]
+# Alias del extra anterior (Makefile / scripts viejos).
 etl = []
 dashboard = [
     "streamlit>=1.32",
@@ -75,35 +87,51 @@ dev = [
     "jupyterlab>=4.0",
 ]
 all = [
-    "etl-biomasa[dashboard,dev]",
+    "optimia-hv[biomasa,solar,dashboard,dev]",
 ]
 
 # =============================================================
 # Entry points
 # =============================================================
 [project.scripts]
-etl-biomasa = "etl.pipelines.run_etl:main"
+optimia-biomasa = "optimia_hv.biomasa.pipelines.run_biomasa:main"
+optimia-solar = "optimia_hv.solar.pipelines.run_solar:main"
 
 [project.urls]
-Homepage = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV"
-Repository = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV"
-Issues = "https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/issues"
+Homepage = "https://github.com/marcoeferro/optimia"
+Repository = "https://github.com/marcoeferro/optimia"
+Issues = "https://github.com/marcoeferro/optimia/issues"
 
 # =============================================================
 # Configuración de setuptools
 # =============================================================
 [tool.setuptools]
-packages = { find = { include = ["etl*", "dashboard*"] } }
+package-dir = { "" = "src" }
+packages = { find = { where = ["src"], include = ["optimia_hv*"] } }
+
+[tool.setuptools.package-data]
+"optimia_hv.dashboard" = ["geo/*.json", "vistas/**/*.py"]
 
 # =============================================================
 # Configuración de pytest
 # =============================================================
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config"
+# Permite correr pytest sin instalar el paquete.
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config -m \"not contract\""
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+# Tipos de test: el marker se asigna solo según la carpeta (tests/conftest.py).
+# Los de contract usan red y APIs reales: no corren por defecto (sólo nightly).
+markers = [
+    "unit: funciones sueltas, sin red ni disco",
+    "integration: pipeline completo con fixtures, sin red",
+    "e2e: el dashboard / la imagen arrancan de punta a punta",
+    "regression: las métricas del modelo no empeoran",
+    "contract: APIs externas reales (red); corre en nightly",
+]
 
 # =============================================================
 # Configuración de ruff (linter + formatter)
@@ -123,7 +151,7 @@ ignore = ["D100", "D104", "D107"]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "S101"]
+"tests/**" = ["D", "S101"]
 
 # =============================================================
 # Configuración de mypy
@@ -134,7 +162,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
-exclude = ["build", "dist", "notebooks"]
+exclude = ["build", "dist", "analisis"]
 
 [[tool.mypy.overrides]]
 module = ["plotly.*", "seaborn.*", "duckdb.*"]
@@ -144,7 +172,7 @@ ignore_missing_imports = true
 # Configuración de coverage
 # =============================================================
 [tool.coverage.run]
-source = ["etl"]
+source = ["optimia_hv"]
 omit = ["*/tests/*", "*/__init__.py"]
 
 [tool.coverage.report]

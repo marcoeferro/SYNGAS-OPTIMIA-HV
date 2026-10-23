@@ -9,57 +9,56 @@
 ```mermaid
 graph LR
     subgraph Host["Máquina con Docker"]
-        SCH["scheduler<br/>(Ofelia)"]
-        W["etl_worker<br/>(permanente)"]
+        CRON["cron<br/>(supercronic)"]
         J["etl_pipeline<br/>(ejecución manual)"]
         DASH["dashboard<br/>Streamlit :8501"]
-        V1[("./data")]
-        V2[("./config")]
-        V3[("./logs")]
+        V1[("data")]
+        V3[("logs")]
     end
     U[Navegador] -->|HTTP 8501| DASH
-    SCH -->|"ejecuta el ETL según<br/>config/schedule.ini"| W
-    W -.lee y escribe.-> V1
+    CRON -->|"corre los pipelines según<br/>config/crontab"| V1
     J -.lee y escribe.-> V1
-    W -.lee.-> V2
-    J -.lee.-> V2
-    W -.escribe.-> V3
+    CRON -.escribe.-> V3
     DASH -.sólo lee.-> V1
 ```
 
-| Servicio | Contenedor | Qué hace |
-|---|---|---|
-| `etl_worker` | `biomasa_etl_worker` | Queda encendido sin hacer nada; el scheduler ejecuta el ETL dentro de él. |
-| `scheduler` | `biomasa_scheduler` | Ofelia: dispara el ETL según `config/schedule.ini`. |
-| `dashboard` | `biomasa_dashboard` | Sirve el dashboard en el puerto 8501. Monta `./data` en sólo lectura. |
-| `etl_pipeline` | `biomasa_etl` | Ejecución única del ETL a pedido (perfil `etl`): `docker compose --profile etl run --rm etl_pipeline`. |
+| Servicio | Qué hace |
+|---|---|
+| `cron` | supercronic corre los pipelines (biomasa 06:00, solar 06:30) según `config/crontab`. Al arrancar sin datos publicados corre el ETL de biomasa una vez (`ETL_AL_INICIAR`). |
+| `dashboard` | Sirve el dashboard en el puerto 8501. Monta los datos en sólo lectura. |
+| `etl_pipeline` | Ejecución única del ETL a pedido (perfil `etl`, sólo en desarrollo): `docker compose --profile etl run --rm etl_pipeline`. |
 
-- Una sola imagen (`etl-biomasa:latest`) sirve para el ETL y el dashboard.
-- Las carpetas `data/`, `config/` y `logs/` del repositorio se montan en los
-  contenedores: los datos sobreviven aunque se borren los contenedores.
-- El código del ETL **está dentro de la imagen**: después de actualizar el
-  código (`git pull`) hay que reconstruirla (`docker compose up -d --build`
-  o `.\scripts\Run-Etl.ps1`, que la reconstruye solo). El código del
-  dashboard se monta desde la carpeta, pero conviene reconstruir igual.
+- Una sola imagen (`optimia-hv`) sirve para el cron, el ETL y el dashboard.
+- **Desarrollo** (`docker-compose.yml`): las carpetas `data/`, `config/` y
+  `logs/` del repositorio se montan en los contenedores.
+- **Producción** (`deploy/docker-compose.dokploy.yml`, ver
+  [deploy/README.md](../../deploy/README.md)): volúmenes con nombre
+  (`optimia_data`, `optimia_logs`), sin puertos publicados (Traefik de
+  Dokploy pone el dominio y el HTTPS) y sin `container_name`.
+- El código y `config/` **están dentro de la imagen**: después de
+  actualizar el código hay que reconstruirla (`docker compose up -d --build`;
+  en Dokploy, cada deploy la reconstruye).
 
 ## Horario del ETL
 
-Se configura en `config/schedule.ini`, línea `schedule`. El formato de
-Ofelia tiene **seis campos, con los segundos primero**:
+Se configura en `config/crontab`, con el formato cron estándar de **cinco
+campos** (minuto, hora, día del mes, mes, día de la semana):
 
-```ini
-schedule = 0 0 6 * * *     ; todos los días a las 06:00
+```cron
+0 6 * * * python -m optimia_hv.biomasa.pipelines.run_biomasa --config config/paths.yaml
 ```
 
 | Ejemplo | Significado |
 |---|---|
-| `0 0 6 * * *` | Todos los días a las 06:00 |
-| `0 0 */12 * * *` | Cada 12 horas |
-| `0 30 7 * * 1-5` | Lunes a viernes a las 07:30 |
-| `0 0 0 1 * *` | El día 1 de cada mes a medianoche |
+| `0 6 * * *` | Todos los días a las 06:00 |
+| `0 */12 * * *` | Cada 12 horas |
+| `30 7 * * 1-5` | Lunes a viernes a las 07:30 |
+| `0 0 1 * *` | El día 1 de cada mes a medianoche |
 
 La hora es la de la variable `TZ` (por defecto Buenos Aires). Después de
-cambiarlo: `docker compose restart scheduler`.
+cambiarlo: `docker compose up -d --build cron` (en Dokploy, push a `main`).
+Un job no se superpone consigo mismo: si la corrida anterior sigue, se
+saltea.
 
 Las fuentes agrícolas se actualizan pocas veces por mes y las tarifas,
 mensualmente: una corrida diaria alcanza de sobra; una semanal también.
@@ -77,6 +76,7 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | `NOTIFY_WEBHOOK_URL` | (vacío) | Webhook para avisos (Slack, Discord, Teams, Google Chat). Ver [avisos](#avisos) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | (vacío) | Avisos por un bot de Telegram |
 | `NOTIFY_ON_SUCCESS` | (vacío) | `1` para avisar también las corridas sin problemas |
+| `ETL_AL_INICIAR` | `auto` | Corrida del ETL al arrancar `cron`: `auto` (sólo sin datos), `si`, `no` |
 | `DATOS_VIEJOS_HORAS` | `48` | Horas sin datos nuevos a partir de las cuales el dashboard muestra un aviso |
 
 ## Avisos
@@ -101,16 +101,16 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=123456789
 ```
 
-Después de cambiar `.env`: `docker compose up -d` (recrea el worker con las
-variables nuevas). Un aviso que no se puede enviar no hace fallar el ETL;
+Después de cambiar `.env`: `docker compose up -d` (recrea el cron con las
+variables nuevas; en Dokploy, redeploy). Un aviso que no se puede enviar no hace fallar el ETL;
 queda en el log. Las URL y tokens son secretos: no subir `.env` al
 repositorio.
 
-**Si el ETL directamente no corre** (scheduler detenido, servidor
+**Si el ETL directamente no corre** (servicio `cron` detenido, servidor
 apagado), no hay quién mande el aviso. Para eso, el dashboard muestra un
 cartel en todas las páginas cuando los datos tienen más de
 `DATOS_VIEJOS_HORAS` horas (48 por defecto: dos corridas diarias
-perdidas). El código está en `etl/notifications.py` y `dashboard/app.py`.
+perdidas). El código está en `src/optimia_hv/comun/notifications.py` y `src/optimia_hv/dashboard/app.py`.
 
 ## Recursos
 
@@ -124,19 +124,19 @@ Estimación con los datos de octubre de 2026 (orientativa):
 
 Un VPS con **2 GB de RAM, 1 vCPU y 20 GB de disco** alcanza. Los scripts
 `Run-Etl.ps1` y `make docker-etl` borran las imágenes viejas del
-proyecto (etiqueta `project=etl-biomasa`) para que no se acumulen.
+proyecto (etiqueta `project=optimia-hv`) para que no se acumulen.
 
 ## Seguridad y acceso
 
 - El dashboard **no tiene usuario ni contraseña**. En un servidor público,
   ponerlo detrás de un proxy con autenticación (Nginx, Caddy, Traefik) o de
   una VPN, y no exponer el puerto 8501 directamente.
-- El `scheduler` monta el socket de Docker (`/var/run/docker.sock`) para
-  ejecutar el ETL; es el mecanismo estándar de Ofelia, pero da control
-  sobre Docker a ese contenedor.
-- `etl_worker` y `etl_pipeline` corren como root dentro del contenedor
-  porque en Windows/Docker Desktop las carpetas montadas no siempre son
-  escribibles por otro usuario.
+- Ningún contenedor monta el socket de Docker (antes Ofelia lo
+  necesitaba).
+- En desarrollo `cron` y `etl_pipeline` corren como root dentro del
+  contenedor porque en Windows/Docker Desktop las carpetas montadas no
+  siempre son escribibles por otro usuario. En producción (volúmenes con
+  nombre) todo corre como `appuser`.
 
 ## Dominios necesarios
 
@@ -167,9 +167,8 @@ en blanco.
 
 La imagen es la misma para cualquier proveedor. Opciones:
 
-- **VPS o máquina virtual** (lo más simple): igual que en una PC, con
-  Docker Compose.
+- **VPS con Dokploy** (lo actual): ver [deploy/README.md](../../deploy/README.md).
 - **Servicios gestionados** (Cloud Run, Azure Container Apps, ECS): el
   dashboard como servicio web y el ETL como tarea programada (Cloud
-  Scheduler, EventBridge) en lugar de Ofelia; `data/` en un disco o
+  Scheduler, EventBridge) en lugar del servicio `cron`; `data/` en un disco o
   almacenamiento compartido entre ambos.

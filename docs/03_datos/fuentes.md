@@ -6,12 +6,12 @@
 
 | Fuente | Qué aporta | Estado | Extractor |
 |---|---|---|---|
-| MAGyP – Estimaciones Agrícolas | Producción por departamento, cultivo y campaña (todo el país, desde 1969) | **En uso** (principal) | `etl/extractors/scrape_estimaciones_agricolas.py` |
-| Bolsa de Cereales de Córdoba | Producción por departamento (Córdoba y provincias vecinas) | **En uso** (complementaria) | `etl/extractors/scrape_bolsa_cereales_cba.py` |
-| Cuadros tarifarios (28 distribuidoras) | Precio de la electricidad | **En uso** | `etl/extractors/scrape_tarifas.py` |
+| MAGyP – Estimaciones Agrícolas | Producción por departamento, cultivo y campaña (todo el país, desde 1969) | **En uso** (principal) | `src/optimia_hv/biomasa/extractors/scrape_estimaciones_agricolas.py` |
+| Bolsa de Cereales de Córdoba | Producción por departamento (Córdoba y provincias vecinas) | **En uso** (complementaria) | `src/optimia_hv/biomasa/extractors/scrape_bolsa_cereales_cba.py` |
+| Cuadros tarifarios (28 distribuidoras) | Precio de la electricidad | **En uso** | `src/optimia_hv/biomasa/extractors/scrape_tarifas.py` |
 | Coeficientes por cultivo (IC, FR, MS) | Rastrojo por tonelada de grano | **En uso** (tabla manual) | `data/reference/ic_fr.csv` |
-| Límites GADM 4.1 | Polígonos de provincias y departamentos para los mapas | **En uso** (archivos fijos) | `dashboard/geo/` |
-| Bolsa de Cereales de Buenos Aires | Producción por zona agroecológica | **Descartada** | `etl/extractors/scrape_bolsa_cereales_nacion.py` (no se ejecuta) |
+| Límites GADM 4.1 | Polígonos de provincias y departamentos para los mapas | **En uso** (archivos fijos) | `src/optimia_hv/dashboard/geo/` |
+| Bolsa de Cereales de Buenos Aires | Producción por zona agroecológica | **Descartada** | `src/optimia_hv/biomasa/extractors/scrape_bolsa_cereales_nacion.py` (no se ejecuta) |
 
 ---
 

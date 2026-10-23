@@ -9,7 +9,7 @@
 | Qué verifican | Que el **código** calcula y lee bien | Que los **datos** de cada corrida son razonables |
 | Con qué datos | Casos fijos, escritos a mano o tomados de documentos reales | Los datos recién descargados |
 | Cuándo corren | En GitHub (CI) en cada cambio, y a mano | En cada ejecución del ETL |
-| Dónde están | `tests/` | `etl/transformers/validation.py`, `etl/transformers/data_checks.py` |
+| Dónde están | `tests/` | `src/optimia_hv/biomasa/transformers/validation.py`, `src/optimia_hv/biomasa/transformers/data_checks.py` |
 | Si fallan | No se debería aceptar el cambio de código | El ETL se detiene o deja una alerta |
 
 Los tests **no** corren dentro del ETL: verifican el código una vez, cuando
@@ -42,7 +42,7 @@ pytest pasa automáticamente a los tests que los piden por nombre.
 
 ```bash
 pytest                                  # todos (o: make test)
-pytest tests/test_tariff_parser.py -v   # un archivo
+pytest tests/unit/biomasa/test_tariff_parser.py -v   # un archivo
 pytest -k enersa                        # los que contienen "enersa"
 make test-cov                           # con cobertura de código
 ```
@@ -87,7 +87,7 @@ detiene con `Invariante rota: …` y no publica nada.
 ### 2. Alertas (avisan; con `--estricto` cortan)
 
 Comparan la corrida actual con la anterior para detectar cambios
-sospechosos (`etl/transformers/data_checks.py`):
+sospechosos (`src/optimia_hv/biomasa/transformers/data_checks.py`):
 
 | Control | Se dispara si… | Ejemplo de causa |
 |---|---|---|
@@ -106,7 +106,7 @@ si hay alguna alerta, termina con error **sin reemplazar** los datos
 publicados:
 
 ```bash
-python -m etl.pipelines.run_etl --estricto
+python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto
 ```
 
 Los umbrales están al principio de `data_checks.py`
@@ -120,7 +120,7 @@ Los umbrales están al principio de `data_checks.py`
    del JSON de tarifas o tabla de tarifas del dashboard) y comparar con el
    valor leído. Si es una suba real (ocurre con la inflación), no hay nada
    que hacer. Si se leyó mal, corregir la fila en
-   `etl/reference/distribuidoras.py` (`fila_tarifa`) o el parser, con un
+   `src/optimia_hv/biomasa/reference/distribuidoras.py` (`fila_tarifa`) o el parser, con un
    test.
 3. **Cambio de totales o de provincia**: en **Auditoría de datos →
    Campañas** ver si una campaña tiene menos registros que lo habitual, y
@@ -136,3 +136,19 @@ No son controles automáticos, pero permiten revisar a mano:
   (`data/audit/`, dashboard → Auditoría).
 - Impacto de los cultivos excluidos (log, `Impacto de exclusión`).
 - Para cada tarifa: documento, vigencia, SHA-256 y estado.
+
+## Tests y controles de la tesis solar
+
+| Tipo | Archivo | Qué controla |
+|---|---|---|
+| unit | `tests/unit/solar/` | Relleno de huecos de Growatt, parseo de NASA POWER y Open-Meteo (respuestas grabadas en `tests/fixtures/solar/`), fórmulas de los modelos (un caso calculado a mano), métricas y comparativas |
+| integration | `tests/integration/solar/test_pipeline_solar.py` | Corrida diaria completa sin red en disco temporal: las 7 tablas, sin duplicados al repetir, un paso caído no frena a los demás, réplica e importación SQL (SQLite) |
+| regression | `tests/regression/solar/` | El modelo de 15 min y el viejo dan los mismos números sobre datos fijos (si un cambio es intencional, actualizar los valores en el mismo PR) |
+| e2e | `tests/e2e/test_dashboard_solar.py` | Las 3 páginas solares renderizan con y sin datos |
+| contract | `tests/contract/solar/` | NASA POWER, Open-Meteo y Growatt (con secretos) siguen respondiendo con las variables y unidades esperadas; corre en nightly |
+
+Controles en la corrida: NASA sólo guarda días con las tres variables
+(sin `-999`), Open-Meteo descarta días con nulos, y cada tabla se guarda
+por clave (una fila nueva reemplaza a la vieja). Pendiente: umbrales de
+error del modelo contra la generación real (ver
+[metodología solar](../02_metodologia/solar/metodologia_solar.md#observaciones-abiertas)).

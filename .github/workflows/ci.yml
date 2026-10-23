@@ -1,12 +1,21 @@
 # Integración continua: tests y chequeos en cada push y pull request.
 #
-# - tests: pytest + errores reales de lint (pyflakes y sintaxis). El resto
-#   del estilo (ruff completo) no bloquea: el repo tiene avisos previos.
+# - tests: errores reales de lint (pyflakes y sintaxis) y pytest por tipo
+#   (unit, integration, e2e, regression; ver tests/README.md). El resto del
+#   estilo (ruff completo) no bloquea: el repo tiene avisos previos. Los
+#   tests de contract (APIs reales) corren en nightly.yml, no acá.
 # - imagen: construye la imagen Docker sólo si cambian Dockerfile,
-#   pyproject.toml o .dockerignore (es el paso más largo).
+#   pyproject.toml, .dockerignore, el crontab o los compose (es el paso
+#   más largo). Verifica imports, el crontab y que los compose sean válidos.
 # - automerge: si tests e imagen pasan en un pull request hacia main, lo
 #   mergea (merge commit, como los PR anteriores). Se omite en borradores,
-#   en PR desde forks y en PR con la etiqueta `no-automerge`.
+#   en PR desde forks y en PR con la etiqueta `no-automerge`. En PR desde
+#   forks el GITHUB_TOKEN es de sólo lectura: ahí se usa el auto-merge
+#   nativo de GitHub (botón "Enable auto-merge" + checks requeridos en
+#   main). Ver CONTRIBUTING.md.
+#
+# El deploy a producción está en deploy.yml (corre cuando este CI termina
+# verde en main).
 #
 # El repo es privado: Actions cobra minutos (2000 gratis por mes). Por eso
 # se instala sólo lo necesario, se cachea pip y se cancelan las corridas
@@ -31,9 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -45,16 +54,27 @@ jobs:
           pip install -e ".[dashboard]" pytest ruff
 
       - name: Lint (errores reales)
-        run: ruff check --select E9,F etl dashboard tests
+        run: ruff check --select E9,F src tests
 
-      - name: Tests
-        run: pytest -q
+      # Un paso por tipo de test para ver en la UI cuál falló. pytest sale
+      # con código 5 si un tipo todavía no tiene tests: no es un error.
+      - name: Tests unitarios
+        run: pytest -q -m unit || [ $? -eq 5 ]
+
+      - name: Tests de integración
+        run: pytest -q -m integration || [ $? -eq 5 ]
+
+      - name: Tests de regresión del modelo
+        run: pytest -q -m regression || [ $? -eq 5 ]
+
+      - name: Tests e2e (dashboard)
+        run: pytest -q -m e2e || [ $? -eq 5 ]
 
   imagen:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -66,7 +86,7 @@ jobs:
           else
             base="${{ github.event.before }}"
           fi
-          if git diff --quiet "$base" HEAD -- Dockerfile pyproject.toml .dockerignore 2>/dev/null; then
+          if git diff --quiet "$base" HEAD -- Dockerfile pyproject.toml .dockerignore src/optimia_hv/__init__.py config/crontab deploy/ docker-compose.yml 2>/dev/null; then
             echo "construir=false" >> "$GITHUB_OUTPUT"
             echo "Sin cambios en la imagen: se omite el build."
           else
@@ -75,13 +95,22 @@ jobs:
 
       - name: Build de la imagen
         if: steps.cambios.outputs.construir == 'true'
-        run: docker build -t etl-biomasa:ci .
+        run: docker build -t optimia-hv:ci .
 
       - name: Humo (imports dentro de la imagen)
         if: steps.cambios.outputs.construir == 'true'
         run: |
-          docker run --rm etl-biomasa:ci python -c "import etl.pipelines.run_etl, etl.transformers.data_checks; print('ETL ok')"
-          docker run --rm etl-biomasa:ci python -c "import streamlit, dashboard.data_loader; print('dashboard ok')"
+          docker run --rm optimia-hv:ci python -c "import optimia_hv.biomasa.pipelines.run_biomasa, optimia_hv.biomasa.transformers.data_checks; print('biomasa ok')"
+          docker run --rm optimia-hv:ci python -c "import optimia_hv.solar.pipelines.run_solar, optimia_hv.comun.http_retry; print('solar/comun ok')"
+          docker run --rm optimia-hv:ci python -c "import streamlit, optimia_hv.dashboard.data_loader; print('dashboard ok')"
+
+      - name: Humo (cron y compose)
+        if: steps.cambios.outputs.construir == 'true'
+        run: |
+          docker run --rm optimia-hv:ci supercronic -test config/crontab
+          docker run --rm -e TZ=America/Argentina/Buenos_Aires optimia-hv:ci date
+          docker compose -f deploy/docker-compose.dokploy.yml config -q
+          docker compose config -q
 
   automerge:
     needs: [tests, imagen]
