@@ -10,6 +10,7 @@
 | **Proyecto / Tesis** | OPTIMIA-HV |
 | **Tipo de documento** | Informe de avance de proyecto (N.º 2) |
 | **Fecha de corte de datos** | Octubre de 2026 |
+| **Fe de erratas** | 27 de octubre de 2026 (ver al final del documento) |
 
 ---
 
@@ -585,3 +586,48 @@ El resultado —76,8 TWh/año y ≈ 10,5 billones de pesos de beneficio bruto an
 | $\alpha$ | Fracción de autoconsumo | — |
 | $T_{compra}$, $T_{iny}$ | Tarifas de compra e inyección, sin impuestos | $/kWh |
 | $\tilde{r}$ | Mediana del ratio inyección/compra | — |
+
+---
+
+## Fe de erratas (27 de octubre de 2026)
+
+Después de cerrar este informe incorporé al extractor una fuente nueva de tarifas para La Pampa, lo que modifica algunos valores publicados. Los cambios no alteran la metodología, las conclusiones ni el orden de los supuestos en el análisis de sensibilidad, por lo que los registro aquí en lugar de redactar un informe nuevo.
+
+### E1. Tarifas de APE (La Pampa)
+
+**Qué cambió.** El portal nacional sólo publica cuadros de APE hasta diciembre de 2025, que es el cuadro que usé en este informe. La Secretaría de Energía y Minería de La Pampa publica una resolución por mes con los anexos de usuarios finales, incluido el **anexo V con el precio de compra de la energía a los usuarios-generadores** (Ley 27.424). Agregué esa fuente al registro de distribuidoras (`etl/reference/distribuidoras.py`) y el extractor ahora obtiene el cuadro de septiembre de 2026:
+
+| Concepto | Valor publicado (§11.3) | Valor corregido | Fuente |
+|---|---:|---:|---|
+| Vigencia | 2025-12 | 2026-09 | Resolución mensual de la SEyM, cuadro a usuarios finales |
+| Tarifa de compra | 169,4 $/kWh | **248,65 $/kWh** | Anexo I: T2I > 4.000 kWh/mes, compra de energía (174,24) + VAD excedente (74,41) |
+| Tarifa de inyección | 155,0 $/kWh (estimada) | **136,13 $/kWh (real)** | Anexo V: T1 y T2, demandas de 10 a 300 kW |
+
+**Por qué cambia tanto la compra.** No es un error de lectura: entre diciembre de 2025 y septiembre de 2026 el costo de compra de la energía del cuadro pasó de 110,87 a 174,24 $/kWh y el VAD del excedente de 58,53 a 74,41 $/kWh. El criterio de selección de la fila (POL-TARIFF-001) es el mismo.
+
+**Por qué importa la inyección.** Es la primera vez que La Pampa tiene inyección **real**. El ratio inyección/compra de APE es 0,547, muy por debajo de la mediana nacional: la estimación del informe sobrevaloraba la inyección en ≈ 14 %. Esto confirma la advertencia de §5.5 sobre la dispersión del ratio.
+
+**Efecto en los resultados.** Con la misma energía de La Pampa (3,83 TWh/año) y $\alpha$ = 0,6:
+
+$$
+\text{Beneficio} = 3{,}83 \ \text{TWh} \times (0{,}6 \times 248{,}65 + 0{,}4 \times 136{,}13) \approx 780 \ \text{mil M ARS/año}
+$$
+
+frente a 626 mil millones publicados (+ ≈ 154 mil millones). La Pampa sigue siendo la quinta provincia por beneficio bruto, pero queda casi a la par de Santiago del Estero (810 mil millones) con un 28 % menos de energía, lo que refuerza la observación de §11.3: el ranking económico y el energético no coinciden.
+
+### E2. Ratio mediano de inyección (POL-TARIFF-002)
+
+Con APE ya son **15** las distribuidoras que publican inyección (antes 14) y la mediana pasa de 0,915 a **0,913**. La inyección se estima ahora en **10** de las 25 distribuidoras con tarifa (antes 11), que representan ≈ 24 % de la energía (antes 29,1 %). El efecto del nuevo ratio sobre el beneficio nacional es menor al 0,1 %.
+
+### E3. Valores corregidos
+
+| Dónde | Dice | Debe decir |
+|---|---|---|
+| Resumen, §11.2 y §14: beneficio bruto nacional | ≈ 10,5 billones de ARS/año | ≈ 10,7 billones de ARS/año (+ 1,5 %) |
+| §11.2: beneficio medio por kWh | ≈ 137,7 $/kWh | ≈ 139,7 $/kWh |
+| §11.2: energía con inyección estimada | 29,1 % | ≈ 24 % |
+| §5.5 y §9: ratio mediano | 0,915 (14 distribuidoras) | 0,913 (15 distribuidoras) |
+| §11.3: La Pampa | 626 mil M ARS/año; 169,4 / 155,0 (est.) $/kWh | ≈ 780 mil M ARS/año; 248,65 / 136,13 $/kWh |
+| §12, limitación 6 | inyección estimada en 11 de 25 distribuidoras | en 10 de 25 |
+
+**Alcance de la corrección.** Los valores de E3 son un **recálculo directo** de las fórmulas de §5.2 con las tarifas nuevas, no una nueva corrida completa del ETL; las Figuras 2, 3 y 4 y la tabla de sensibilidad de §9 conservan los valores originales. La amplitud de cada supuesto en el tornado cambia en el mismo orden (≈ 1–2 %), por lo que la jerarquía de supuestos y la conclusión de §9 se mantienen. Los montos siguen en pesos corrientes de la vigencia de cada cuadro (limitación 7): la tarifa nueva de APE es de septiembre de 2026, y parte de la diferencia con el valor anterior es inflación del período y no un cambio real de precio.
