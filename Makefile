@@ -10,7 +10,7 @@ DOCKER_COMPOSE := docker compose
 DASHBOARD_PORT ?= 8501
 
 .PHONY: help install install-dev install-etl install-dashboard \
-        etl solar solar-historico dashboard \
+        etl dashboard \
         test test-cov lint format \
         docker-build docker-up docker-down docker-logs docker-shell \
         docker-etl docker-clean \
@@ -29,8 +29,6 @@ help:
 	@echo ""
 	@echo "  Ejecución local"
 	@echo "    etl                  Ejecuta el pipeline ETL"
-	@echo "    solar                Ejecuta el pipeline solar (corrida diaria)"
-	@echo "    solar-historico      Carga completa del histórico solar"
 	@echo "    dashboard            Levanta Streamlit en modo desarrollo"
 	@echo ""
 	@echo "  Calidad"
@@ -41,7 +39,7 @@ help:
 	@echo ""
 	@echo "  Docker"
 	@echo "    docker-build         Construye la imagen del ETL/dashboard"
-	@echo "    docker-up            Levanta cron + dashboard"
+	@echo "    docker-up            Levanta worker + scheduler + dashboard"
 	@echo "    docker-down          Detiene y elimina contenedores"
 	@echo "    docker-logs          Sigue los logs del dashboard"
 	@echo "    docker-etl           Ejecuta el pipeline ETL como job"
@@ -69,16 +67,10 @@ install-dev:
 # Ejecución local
 # =============================================================
 etl:
-	$(PYTHON) -m optimia_hv.biomasa.pipelines.run_biomasa --config config/paths.yaml
-
-solar:
-	$(PYTHON) -m optimia_hv.solar.pipelines.run_solar --config config/solar.yaml
-
-solar-historico:
-	$(PYTHON) -m optimia_hv.solar.pipelines.run_solar --config config/solar.yaml --historico
+	$(PYTHON) -m etl.pipelines.run_etl --config config/paths.yaml
 
 dashboard:
-	streamlit run src/optimia_hv/dashboard/app.py --server.port=$(DASHBOARD_PORT)
+	streamlit run dashboard/app.py --server.port=$(DASHBOARD_PORT)
 
 # =============================================================
 # Calidad
@@ -87,15 +79,15 @@ test:
 	pytest tests/ -v
 
 test-cov:
-	pytest tests/ -v --cov=optimia_hv --cov-report=term-missing --cov-report=html
+	pytest tests/ -v --cov=etl --cov-report=term-missing --cov-report=html
 
 lint:
-	ruff check src/ tests/
-	mypy src/ --ignore-missing-imports
+	ruff check etl/ tests/ dashboard/
+	mypy etl/ --ignore-missing-imports
 
 format:
-	ruff format src/ tests/
-	ruff check --fix src/ tests/
+	ruff format etl/ tests/ dashboard/
+	ruff check --fix etl/ tests/ dashboard/
 
 # =============================================================
 # Docker
@@ -106,7 +98,8 @@ docker-build:
 docker-up:
 	$(DOCKER_COMPOSE) up -d --build
 	@echo "Dashboard:  http://localhost:$(DASHBOARD_PORT)"
-	@echo "Cron:       config/crontab (docker compose logs cron)"
+	@echo "Scheduler:  config/schedule.ini (cron ETL)"
+	@echo "Worker ETL: biomasa_etl_worker"
 
 docker-down:
 	$(DOCKER_COMPOSE) down
@@ -120,7 +113,7 @@ docker-shell:
 docker-etl:
 	# La imagen contiene el código del ETL: se reconstruye antes de correrlo.
 	$(DOCKER_COMPOSE) --profile etl build etl_pipeline
-	docker image prune -f --filter label=project=optimia-hv
+	docker image prune -f --filter label=project=etl-biomasa
 	$(DOCKER_COMPOSE) --profile etl run --rm etl_pipeline
 
 docker-clean:

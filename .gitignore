@@ -41,23 +41,7 @@ Thumbs.db
 #--- Enviroment Variables ---
 .env
 .env.*
-# La plantilla sí se versiona (sin valores reales).
-!.env.example
 
 #--- Docs ---
 # docs/
 # .docs/
-# --- Secretos ---
-.env
-
-# --- Cachés HTTP (requests-cache / Open-Meteo) ---
-data/cache/
-*.cache.sqlite
-.cache.sqlite
-
-# --- Figuras sueltas en la raíz (van a outputs/ o docs/informes/img/) ---
-/*.png
-
-# --- Cobertura (pytest --cov) ---
-.coverage
-htmlcov/

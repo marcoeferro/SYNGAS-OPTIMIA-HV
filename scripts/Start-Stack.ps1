@@ -1,4 +1,4 @@
-﻿# Arranca cron (supercronic) + dashboard.
+﻿# Arranca worker ETL + scheduler (cron) + dashboard.
 # Requisito: Docker Desktop (se inicia automáticamente si está instalado).
 # Uso (desde la raíz del repo, en PowerShell):
 #   .\scripts\Start-Stack.ps1
@@ -17,9 +17,10 @@ if ($LASTEXITCODE -ne 0) { throw "docker compose up falló con código $LASTEXIT
 Write-Host ""
 Write-Host "Stack en ejecución:" -ForegroundColor Green
 Write-Host "  - Dashboard:  http://localhost:8501"
-Write-Host "  - Cron:       lee config\crontab (docker compose logs cron)"
+Write-Host "  - Scheduler:  lee config\schedule.ini (cron del ETL)"
+Write-Host "  - Worker ETL: biomasa_etl_worker"
 Write-Host ""
-Write-Host "Para cambiar el horario del ETL, editá config\crontab y ejecutá:"
-Write-Host "  docker compose up -d --build cron"
+Write-Host "Para cambiar el horario del ETL, editá config\schedule.ini y ejecutá:"
+Write-Host "  docker compose restart scheduler"
 Write-Host ""
 docker compose ps

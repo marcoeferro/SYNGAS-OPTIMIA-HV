@@ -1,14 +1,11 @@
 # =============================================================
-# Orquestación de servicios de OPTIMIA-HV (desarrollo / local)
+# Orquestación de servicios del proyecto Biomasa Residual
 # =============================================================
 # Servicios:
-#   - cron:         supercronic corre los pipelines (biomasa y solar)
-#                   según config/crontab.
+#   - etl_worker:   Contenedor permanente donde Ofelia ejecuta el ETL.
 #   - etl_pipeline: Job one-shot manual (docker compose --profile etl run ...).
+#   - scheduler:    Ofelia lee config/schedule.ini y dispara el ETL.
 #   - dashboard:    Streamlit sobre los Parquet.
-#
-# Producción (Dokploy): deploy/docker-compose.dokploy.yml (volúmenes con
-# nombre en vez de ./data, sin puertos publicados; ver deploy/README.md).
 #
 # Arranque típico (Windows / Linux / macOS, sin Make):
 #   docker compose up -d --build
@@ -16,66 +13,90 @@
 # Nota permisos (Windows/Docker Desktop):
 #   Los bind mounts de ./data y ./logs suelen no ser escribibles por
 #   el usuario no-root de la imagen (appuser uid 1000). Por eso
-#   cron y etl_pipeline corren como root dentro del contenedor.
+#   etl_worker y etl_pipeline corren como root dentro del contenedor.
 # =============================================================
-
-x-pipeline: &pipeline
-  build:
-    context: .
-    dockerfile: Dockerfile
-  image: optimia-hv:latest
-  user: "0:0"
-  volumes:
-    - ./data:/app/data
-    - ./config:/app/config:ro
-    - ./logs:/app/logs
-  environment:
-    - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    - TZ=${TZ:-America/Argentina/Buenos_Aires}
-    # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
-    - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
-    - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-    - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-    - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
-    # Pipeline solar: portal Growatt y réplica opcional en MySQL (ver .env.example)
-    - GROWATT_USER=${GROWATT_USER:-}
-    - GROWATT_PASSWORD=${GROWATT_PASSWORD:-}
-    - GROWATT_PLANT_ID=${GROWATT_PLANT_ID:-}
-    - SOLAR_DB_URL=${SOLAR_DB_URL:-}
-    # Primera carga al arrancar el cron (auto | si | no; ver deploy/cron-entrypoint.sh)
-    - ETL_AL_INICIAR=${ETL_AL_INICIAR:-auto}
 
 services:
   # -----------------------------------------------------------
-  # Cron (supercronic): corre los pipelines según config/crontab
+  # Worker ETL (permanece vivo; el scheduler ejecuta comandos aquí)
   # -----------------------------------------------------------
-  cron:
-    <<: *pipeline
-    command: ["sh", "deploy/cron-entrypoint.sh"]
-    init: true
+  etl_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: etl-biomasa:latest
+    container_name: biomasa_etl_worker
+    user: "0:0"
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
+      - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
     restart: unless-stopped
 
   # -----------------------------------------------------------
   # Pipeline ETL one-shot (ejecución manual bajo demanda)
   # -----------------------------------------------------------
   etl_pipeline:
-    <<: *pipeline
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: etl-biomasa:latest
+    container_name: biomasa_etl
+    user: "0:0"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
+      - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
     profiles:
       - etl
     restart: "no"
 
   # -----------------------------------------------------------
+  # Scheduler (Ofelia): cron configurado en config/schedule.ini
+  # -----------------------------------------------------------
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: biomasa_scheduler
+    depends_on:
+      - etl_worker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/schedule.ini:/etc/ofelia/config.ini:ro
+    command: ["daemon", "--config=/etc/ofelia/config.ini"]
+    environment:
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+    restart: unless-stopped
+
+  # -----------------------------------------------------------
   # Dashboard Streamlit
   # -----------------------------------------------------------
   dashboard:
-    image: optimia-hv:latest
+    image: etl-biomasa:latest
+    container_name: biomasa_dashboard
     depends_on:
-      - cron
+      - etl_worker
     command:
       [
         "streamlit",
         "run",
-        "src/optimia_hv/dashboard/app.py",
+        "dashboard/app.py",
         "--server.address=0.0.0.0",
         "--server.port=8501",
         "--browser.gatherUsageStats=false",
@@ -84,7 +105,7 @@ services:
       - "${DASHBOARD_PORT:-8501}:8501"
     volumes:
       - ./data:/app/data:ro
-      - ./src:/app/src:ro
+      - ./dashboard:/app/dashboard:ro
       - ./config:/app/config:ro
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

@@ -25,7 +25,7 @@ fecha de los archivos cambió.
 - El cartel aparece cuando el ETL no publicó resultados en las últimas 48
   horas (`DATOS_VIEJOS_HORAS`).
 - Ver la fecha en **Inicio → Archivos de datos**.
-- Si es vieja, revisar que el servicio `cron` esté corriendo
+- Si es vieja, revisar que el scheduler esté corriendo
   (`docker compose ps`) y el log (`logs/pipeline.log`).
 - Si el ETL corrió con `--estricto` y hubo alertas, no publica datos
   nuevos a propósito: revisar las alertas en el log.
@@ -60,7 +60,7 @@ sitio funcione en el navegador.
 ### El ETL se detiene con `Cultivos sin mapeo en CROP_TAXONOMY`
 
 Una fuente agregó un cultivo que no está en la taxonomía. Agregarlo en
-`src/optimia_hv/biomasa/reference/crop_taxonomy.py` (y, si corresponde, sus coeficientes en
+`etl/reference/crop_taxonomy.py` (y, si corresponde, sus coeficientes en
 `data/reference/ic_fr.csv`; ver [metodología](../02_metodologia/metodologia.md)).
 
 ### `Invariante rota: …`
@@ -95,15 +95,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Run-Etl.ps1
 
 ### El ETL programado no corre a la hora esperada
 
-- `config/crontab` usa cron estándar de **5 campos**: `0 6 * * *` es
-  06:00 (el formato de 6 campos con segundos era de Ofelia, ya no se usa).
-- `docker compose logs cron` muestra cada job: inicio, salida y código.
+- El horario de Ofelia lleva **segundos al principio** (6 campos):
+  `0 0 6 * * *` es 06:00. Con 5 campos (`0 6 * * *`) se interpreta mal.
 - La hora es la de `TZ` (por defecto Buenos Aires).
-- Después de editar `config/crontab`: `docker compose up -d --build cron`.
+- Después de editar `config/schedule.ini`: `docker compose restart scheduler`.
 
 ### El disco se llena
 
-- Imágenes Docker viejas: `docker image prune -f --filter label=project=optimia-hv`.
+- Imágenes Docker viejas: `docker image prune -f --filter label=project=etl-biomasa`.
 - Descargas viejas en `data/raw/`: ver
   [limpieza del disco](../04_arquitectura/ciclo_de_vida_de_los_datos.md#limpieza-del-disco).
 

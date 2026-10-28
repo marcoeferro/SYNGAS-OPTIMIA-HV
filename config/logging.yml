@@ -1,6 +1,6 @@
 # =============================================================
 # Configuración de logging estilo stdlib dictConfig.
-# Se carga una sola vez desde el entrypoint (optimia_hv/biomasa/pipelines/run_biomasa.py).
+# Se carga una sola vez desde el entrypoint (run_etl.py).
 # =============================================================
 
 version: 1
@@ -28,7 +28,7 @@ handlers:
     encoding: utf-8
 
 loggers:
-  optimia_hv:
+  etl:
     level: DEBUG
     handlers: [console, file]
     propagate: false

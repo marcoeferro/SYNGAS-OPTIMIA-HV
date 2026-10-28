@@ -23,7 +23,7 @@ flowchart TD
 
 ## 1. Biomasa residual
 
-**Código**: `src/optimia_hv/biomasa/transformers/biomass.py`. **Coeficientes**: `data/reference/ic_fr.csv`.
+**Código**: `etl/transformers/biomass.py`. **Coeficientes**: `data/reference/ic_fr.csv`.
 
 $$
 \text{Biomasa residual (t MS)} = \text{Producción (t)} \times \text{MS} \times \text{FR},
@@ -94,7 +94,7 @@ dinero son proporcionales a esta fracción.
 
 ## 3. Energía (gasificador APL PP30)
 
-**Código**: `src/optimia_hv/biomasa/transformers/energy_finance.py`.
+**Código**: `etl/transformers/energy_finance.py`.
 
 | Parámetro | Valor | Fuente |
 |---|---|---|
@@ -137,7 +137,7 @@ los resultados son un **potencial técnico** bajo el supuesto de material
 acondicionado.
 
 Los parámetros se fijan en el código (`PARAMETROS_PP30_DEFAULT` en
-`src/optimia_hv/biomasa/extractors/scrape_tarifas.py`) y se copian al bloque `parametros_pp30`
+`etl/extractors/scrape_tarifas.py`) y se copian al bloque `parametros_pp30`
 del JSON de tarifas.
 
 ## 4. Dinero (balance neto, Ley 27.424)
@@ -190,7 +190,7 @@ inflación ni se proyectan.
 
 ## 5. Resultados anuales (período de referencia)
 
-**Código**: `src/optimia_hv/biomasa/transformers/reference_period.py`.
+**Código**: `etl/transformers/reference_period.py`.
 
 Sumar todas las campañas desde 1969 no representa ninguna magnitud física.
 Por eso los resultados se expresan **por año**, como promedio de las **5
@@ -207,7 +207,7 @@ Por eso los resultados se expresan **por año**, como promedio de las **5
 Los supuestos más inciertos se pueden cambiar en el dashboard (barra
 lateral, **⚙️ Supuestos del cálculo**). Como energía y dinero son lineales en
 ellos, se recalculan sobre los resultados del ETL sin volver a correrlo
-(`src/optimia_hv/dashboard/data_loader.py`, `apply_supuestos`).
+(`dashboard/data_loader.py`, `apply_supuestos`).
 
 | Supuesto | Valor del ETL | Opciones en el dashboard |
 |---|---|---|

@@ -17,8 +17,3 @@ outputs:
 
 logs:
   dir: "logs"
-
-# Tesis solar: el resto de sus parámetros está en config/solar.yaml.
-solar:
-  processed: "data/processed/solar"
-  figures:   "outputs/figures/solar"

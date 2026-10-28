@@ -1,4 +1,0 @@
-# Scripts y crontab que corren dentro de la imagen (Linux): siempre LF,
-# aunque se clone en Windows (con CRLF sh y supercronic fallan).
-*.sh text eol=lf
-config/crontab text eol=lf

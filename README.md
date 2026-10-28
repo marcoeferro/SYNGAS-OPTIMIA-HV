@@ -9,13 +9,7 @@ a las tarifas vigentes de cada distribuidora eléctrica.
 Se actualiza solo todos los días con datos públicos y muestra los
 resultados en un **dashboard web** con mapas, rankings y tablas.
 
-El mismo repositorio incluye la **tesis solar**: descarga el clima (NASA
-POWER, Open-Meteo) y la generación real de una planta fotovoltaica de
-2,25 kWp (Growatt, Villa Mercedes, San Luis), estima la energía cada 15
-minutos con un modelo físico, la pronostica a 5 días y valida el modelo
-contra lo medido. Ver [metodología solar](docs/02_metodologia/solar/metodologia_solar.md).
-
-[![CI](https://github.com/marcoeferro/optimia/actions/workflows/ci.yml/badge.svg)](https://github.com/marcoeferro/optimia/actions/workflows/ci.yml)
+[![CI](https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/actions/workflows/ci.yml/badge.svg)](https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 [![Streamlit](https://img.shields.io/badge/dashboard-streamlit-FF4B4B)](https://streamlit.io/)
@@ -88,7 +82,7 @@ flowchart LR
 Fórmulas y supuestos: [metodología](docs/02_metodologia/metodologia.md).
 
 **Tecnologías**: Python 3.11 (pandas, httpx, pypdf), Parquet + DuckDB,
-Streamlit + Plotly, Docker Compose con supercronic (cron), Dokploy, pytest y GitHub
+Streamlit + Plotly, Docker Compose con Ofelia (cron), pytest y GitHub
 Actions. Detalle: [arquitectura](docs/04_arquitectura/arquitectura.md).
 
 ---
@@ -101,8 +95,8 @@ Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 (Windows/Mac) o Docker Engine + Compose (Linux).
 
 ```bash
-git clone https://github.com/marcoeferro/optimia.git
-cd optimia
+git clone https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV.git
+cd SYNGAS-OPTIMIA-HV
 
 docker compose up -d --build                       # Windows: .\scripts\Start-Stack.ps1
 docker compose --profile etl run --rm etl_pipeline # Windows: .\scripts\Run-Etl.ps1  (primera carga)
@@ -118,8 +112,8 @@ python -m venv .venv
 source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-python -m optimia_hv.biomasa.pipelines.run_biomasa     # genera los datos (unos minutos)
-streamlit run src/optimia_hv/dashboard/app.py      # abre el dashboard
+python -m etl.pipelines.run_etl     # genera los datos (unos minutos)
+streamlit run dashboard/app.py      # abre el dashboard
 pytest                              # corre los tests
 ```
 
@@ -131,65 +125,50 @@ Guía completa: [instalación](docs/05_uso/instalacion.md).
 
 | Tarea | Comando |
 |---|---|
-| Correr el ETL a mano | `.\scripts\Run-Etl.ps1` · `make docker-etl` · `python -m optimia_hv.biomasa.pipelines.run_biomasa` |
-| Recalcular sin descargar | `python -m optimia_hv.biomasa.pipelines.run_biomasa --skip-extract --skip-tarifas` |
-| No publicar si hay alertas de calidad | `python -m optimia_hv.biomasa.pipelines.run_biomasa --estricto` |
-| Actualizar sólo tarifas | `python -m optimia_hv.biomasa.extractors.scrape_tarifas` |
-| Cambiar el horario del ETL | Editar `config/crontab` y `docker compose up -d --build cron` |
+| Correr el ETL a mano | `.\scripts\Run-Etl.ps1` · `make docker-etl` · `python -m etl.pipelines.run_etl` |
+| Recalcular sin descargar | `python -m etl.pipelines.run_etl --skip-extract --skip-tarifas` |
+| No publicar si hay alertas de calidad | `python -m etl.pipelines.run_etl --estricto` |
+| Actualizar sólo tarifas | `python -m etl.extractors.scrape_tarifas` |
+| Cambiar el horario del ETL | Editar `config/schedule.ini` y `docker compose restart scheduler` |
 | Actualizar el código | `git pull` y `docker compose up -d --build` |
 | Detener todo | `docker compose down` · `.\scripts\Stop-Stack.ps1` |
 | Tests | `pytest` · `make test` |
-| Pipeline solar (corrida diaria) | `python -m optimia_hv.solar.pipelines.run_solar` · `make solar` |
-| Histórico solar / validar el modelo | `optimia-solar --historico` · `optimia-solar --validar 2026-09-12 2026-09-16` |
 
 Más: [ejecutar el ETL](docs/05_uso/ejecutar_etl.md),
 [guía del dashboard](docs/05_uso/dashboard.md),
-[solución de problemas](docs/05_uso/solucion_de_problemas.md),
-[ejecutar el pipeline solar](docs/05_uso/ejecutar_solar.md).
+[solución de problemas](docs/05_uso/solucion_de_problemas.md).
 
 ---
 
 ## Estructura del repositorio
 
 ```
-optimia/
-├── src/optimia_hv/            Paquete Python único (lo que se despliega)
-│   ├── biomasa/               Programa que descarga y calcula (biomasa)
-│   │   ├── extractors/        Descargas: MAGyP, Bolsa de Córdoba, tarifas (+ lector de cuadros)
-│   │   ├── reference/         Taxonomía de cultivos, registro de distribuidoras
-│   │   ├── transformers/      Limpieza, lugares, reconciliación, biomasa, energía,
-│   │   │                      dinero, período de referencia, controles de calidad
-│   │   ├── loaders/           Guardado de Parquet e historial de tarifas
-│   │   └── pipelines/run_biomasa.py   Orquestador (punto de entrada)
-│   ├── solar/                 Tesis solar (planta fotovoltaica)
-│   │   ├── extractors/        Growatt, NASA POWER, Open-Meteo (histórico, diario, 15 min, pronóstico)
-│   │   ├── modelos/           Modelo de 15 min y modelo viejo (línea de base)
-│   │   ├── validacion/        Métricas (MAE, RMSE, sesgo) y comparativas modelo vs. real
-│   │   ├── loaders/           Guardado en Parquet (+ réplica opcional en MySQL)
-│   │   ├── graficos.py        Gráficos de la tesis (matplotlib)
-│   │   ├── configuracion.py   Lee config/solar.yaml y las credenciales de .env
-│   │   └── pipelines/run_solar.py     Orquestador (punto de entrada)
-│   ├── comun/                 Compartido: HTTP con reintentos, E/S, avisos
-│   └── dashboard/             Dashboard web
-│       ├── app.py             Navegación
-│       ├── vistas/<dominio>/  Una página por archivo
-│       ├── data_loader.py     Lectura de datos y caché
-│       ├── charts.py          Mapas y gráficos
-│       └── geo/               Límites de provincias y departamentos (GADM 4.1)
-├── tests/                     unit/ integration/ regression/ e2e/ contract/ (ver tests/README.md)
-├── analisis/                  Notebooks y scripts de figuras por dominio (no se despliega)
+SYNGAS-OPTIMIA-HV/
+├── etl/                       Programa que descarga y calcula
+│   ├── extractors/            Descargas: MAGyP, Bolsa de Córdoba, tarifas (+ lector de cuadros)
+│   ├── reference/             Taxonomía de cultivos, registro de distribuidoras
+│   ├── transformers/          Limpieza, lugares, reconciliación, biomasa, energía,
+│   │                          dinero, período de referencia, controles de calidad
+│   ├── loaders/               Guardado de Parquet e historial de tarifas
+│   └── pipelines/run_etl.py   Orquestador (punto de entrada)
+├── dashboard/                 Dashboard web
+│   ├── app.py                 Navegación
+│   ├── vistas/                Una página por archivo
+│   ├── data_loader.py         Lectura de datos y caché
+│   ├── charts.py              Mapas y gráficos
+│   └── geo/                   Límites de provincias y departamentos (GADM 4.1)
 ├── data/
 │   ├── raw/                   Descargas fechadas (no se versiona)
 │   ├── reference/             Coeficientes, tarifas, historial, cuadros manuales (se versiona)
 │   ├── processed/             Resultados (no se versiona)
 │   └── audit/                 Auditoría y alertas (no se versiona)
-├── config/                    Rutas, logging, horario de los pipelines y parámetros solares (solar.yaml)
-├── deploy/                    Producción en Dokploy (compose, arranque del cron)
 ├── docs/                      Documentación (índice en docs/README.md)
+├── tests/                     Tests automáticos (pytest)
+├── notebooks/main.ipynb       Análisis exploratorio y verificación de cálculos
+├── config/                    Rutas, logging y horario del ETL
 ├── scripts/                   Atajos PowerShell (Windows)
-├── .github/                   CI, deploy, nightly, CODEOWNERS, plantilla de PR
-├── CONTRIBUTING.md            Flujo fork → pull request
-├── Dockerfile · docker-compose.yml · Makefile · pyproject.toml · .env.example
+├── .github/workflows/ci.yml   Integración continua
+├── Dockerfile · docker-compose.yml · Makefile · pyproject.toml
 └── llms.txt                   Mapa del repositorio para asistentes de IA
 ```
 
@@ -203,7 +182,6 @@ optimia/
 |---|---|
 | Introducción (sin conocimientos técnicos) | [Cómo funciona](docs/01_introduccion/como_funciona.md) · [Glosario](docs/01_introduccion/glosario.md) |
 | Metodología | [Metodología](docs/02_metodologia/metodologia.md) · [Decisiones (POL-…)](docs/02_metodologia/decisiones.md) |
-| Solar | [Metodología solar](docs/02_metodologia/solar/metodologia_solar.md) · [Ejecutar el pipeline solar](docs/05_uso/ejecutar_solar.md) · [Análisis solar](analisis/solar/README.md) |
 | Datos | [Fuentes](docs/03_datos/fuentes.md) · [Tarifas eléctricas](docs/03_datos/tarifas_electricas.md) · [Contratos de artefactos](docs/03_datos/contratos_de_artefactos.md) · [Modelo de datos](docs/03_datos/modelo_de_datos.md) |
 | Arquitectura | [Arquitectura](docs/04_arquitectura/arquitectura.md) · [Flujo de datos](docs/04_arquitectura/flujo_de_datos.md) · [Ciclo de vida](docs/04_arquitectura/ciclo_de_vida_de_los_datos.md) · [Despliegue](docs/04_arquitectura/despliegue.md) |
 | Uso | [Instalación](docs/05_uso/instalacion.md) · [Ejecutar el ETL](docs/05_uso/ejecutar_etl.md) · [Dashboard](docs/05_uso/dashboard.md) · [Solución de problemas](docs/05_uso/solucion_de_problemas.md) |
@@ -234,15 +212,12 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
   8. [`docs/06_calidad/tests_y_controles.md`](docs/06_calidad/tests_y_controles.md) — tests y alertas.
 - **Para una tarea puntual** no hace falta leer todo: usar la tabla de
   [`docs/README.md`](docs/README.md) para ir al documento del tema.
-- **Puntos de entrada del código**: `src/optimia_hv/biomasa/pipelines/run_biomasa.py` (ETL),
-  `src/optimia_hv/biomasa/extractors/scrape_tarifas.py` (tarifas), `src/optimia_hv/dashboard/app.py`
-  (dashboard), `src/optimia_hv/solar/pipelines/run_solar.py` (pipeline solar).
-- **Tesis solar**: [`docs/02_metodologia/solar/metodologia_solar.md`](docs/02_metodologia/solar/metodologia_solar.md)
-  (fórmulas, fuentes, observaciones abiertas) y
-  [`docs/05_uso/ejecutar_solar.md`](docs/05_uso/ejecutar_solar.md) (comandos y tablas).
+- **Puntos de entrada del código**: `etl/pipelines/run_etl.py` (ETL),
+  `etl/extractors/scrape_tarifas.py` (tarifas), `dashboard/app.py`
+  (dashboard).
 - **Reglas**: el código es la fuente de verdad; `docs/07_historial/` es
   histórico (lo marcado **[Superado]** ya no aplica); no modificar
-  `docs/informes/`; las páginas del dashboard van en `src/optimia_hv/dashboard/vistas/`
+  `docs/informes/`; las páginas del dashboard van en `dashboard/vistas/`
   (nunca en `pages/`); todo cambio de código lleva tests (`pytest`).
 
 ---
@@ -268,11 +243,5 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
   cuyo costo no está incluido.
 - **Beneficio bruto**: sin costos de inversión, operación, acondicionamiento
   ni logística.
-
-- **Solar**: una sola planta, parámetros de datasheet (no ajustados) y
-  extractor de Growatt sobre el portal web (no es una API oficial). Hay
-  observaciones abiertas sobre el modelo de 15 min (unidades de la
-  temperatura de celda, radiación directa normal vs. horizontal):
-  [metodología solar](docs/02_metodologia/solar/metodologia_solar.md#observaciones-abiertas).
 
 Lista completa: [metodología → limitaciones](docs/02_metodologia/metodologia.md#limitaciones).
