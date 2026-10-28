@@ -10,7 +10,7 @@ Un programa en Python (**ETL**: extraer, transformar, cargar) descarga
 datos públicos, calcula biomasa, energía y dinero, y guarda los resultados
 en archivos; un **dashboard** web (Streamlit) lee esos archivos y los
 muestra. Los dos corren en contenedores Docker y un programador de tareas
-(supercronic, servicio `cron`) ejecuta los pipelines todos los días.
+(Ofelia) ejecuta el ETL todos los días.
 
 ## Diagrama
 
@@ -23,13 +23,13 @@ graph TB
         S4[OCEBA, EPE, sitios de<br/>distribuidoras y entes]
     end
 
-    subgraph ETL["ETL (Python, carpeta src/optimia_hv/biomasa/)"]
-        E1[Extractores agrícolas<br/>src/optimia_hv/biomasa/extractors]
+    subgraph ETL["ETL (Python, carpeta etl/)"]
+        E1[Extractores agrícolas<br/>etl/extractors]
         E2[Extractor de tarifas<br/>scrape_tarifas + tariff_parser]
         T1[Transformaciones<br/>limpieza, geografía, reconciliación, biomasa]
         T2[Energía y dinero<br/>energy_finance, reference_period]
         Q[Controles de calidad<br/>validation, data_checks]
-        L1[Guardado<br/>src/optimia_hv/biomasa/loaders]
+        L1[Guardado<br/>etl/loaders]
     end
 
     subgraph Datos["Archivos en disco (carpeta data/)"]
@@ -39,7 +39,7 @@ graph TB
         R4[(audit<br/>auditoría y alertas)]
     end
 
-    subgraph Servicio["Dashboard (carpeta src/optimia_hv/dashboard/)"]
+    subgraph Servicio["Dashboard (carpeta dashboard/)"]
         D1[data_loader<br/>DuckDB + caché]
         D2[Streamlit<br/>Inicio, Resumen, Energía, Dinero,<br/>Exploración, Auditoría]
     end
@@ -69,16 +69,16 @@ graph TB
 
 | Componente | Carpeta | Qué hace |
 |---|---|---|
-| Extractores | `src/optimia_hv/biomasa/extractors/` | Descargan las fuentes agrícolas y los cuadros tarifarios. Reintentan ante errores temporales (`http_retry.py`). |
-| Referencias | `src/optimia_hv/biomasa/reference/`, `data/reference/` | Taxonomía de cultivos, coeficientes por cultivo (`ic_fr.csv`), registro de las 28 distribuidoras. |
-| Transformaciones | `src/optimia_hv/biomasa/transformers/` | Limpieza, nombres de lugares, consolidación de cultivos, reconciliación de fuentes, biomasa, energía, dinero, período de referencia, controles. |
-| Guardado | `src/optimia_hv/biomasa/loaders/` | Escribe los Parquet de resultados y auditoría, y el historial de tarifas. |
-| Orquestador | `src/optimia_hv/biomasa/pipelines/run_biomasa.py` | Ejecuta todas las etapas en orden (ver [flujo de datos](flujo_de_datos.md)). |
-| Dashboard | `src/optimia_hv/dashboard/` | `app.py` (navegación), `vistas/` (una página por archivo), `data_loader.py` (lectura y caché), `charts.py` (gráficos y mapas), `geo/` (límites GADM 4.1). |
-| Notebook | `analisis/biomasa/main.ipynb` | Análisis exploratorio y verificación de los cálculos. No es parte de la operación diaria. |
+| Extractores | `etl/extractors/` | Descargan las fuentes agrícolas y los cuadros tarifarios. Reintentan ante errores temporales (`http_retry.py`). |
+| Referencias | `etl/reference/`, `data/reference/` | Taxonomía de cultivos, coeficientes por cultivo (`ic_fr.csv`), registro de las 28 distribuidoras. |
+| Transformaciones | `etl/transformers/` | Limpieza, nombres de lugares, consolidación de cultivos, reconciliación de fuentes, biomasa, energía, dinero, período de referencia, controles. |
+| Guardado | `etl/loaders/` | Escribe los Parquet de resultados y auditoría, y el historial de tarifas. |
+| Orquestador | `etl/pipelines/run_etl.py` | Ejecuta todas las etapas en orden (ver [flujo de datos](flujo_de_datos.md)). |
+| Dashboard | `dashboard/` | `app.py` (navegación), `vistas/` (una página por archivo), `data_loader.py` (lectura y caché), `charts.py` (gráficos y mapas), `geo/` (límites GADM 4.1). |
+| Notebook | `notebooks/main.ipynb` | Análisis exploratorio y verificación de los cálculos. No es parte de la operación diaria. |
 | Tests | `tests/` | Pruebas automáticas del código (ver [tests y controles](../06_calidad/tests_y_controles.md)). |
-| Configuración | `config/` | Rutas (`paths.yaml`), logging (`logging.yml`), horario de los pipelines (`crontab`). |
-| Contenedores | `Dockerfile`, `docker-compose.yml` | Imagen única para ETL y dashboard; servicios cron y dashboard. Producción: `deploy/docker-compose.dokploy.yml`. |
+| Configuración | `config/` | Rutas (`paths.yaml`), logging (`logging.yml`), horario del ETL (`schedule.ini`). |
+| Contenedores | `Dockerfile`, `docker-compose.yml` | Imagen única para ETL y dashboard; servicios worker, scheduler y dashboard. |
 | Scripts | `scripts/*.ps1`, `Makefile` | Atajos para Windows (PowerShell) y Linux/Mac (make). |
 
 ## Decisiones de diseño
@@ -107,4 +107,4 @@ graph TB
 | Descargas y documentos | httpx, curl_cffi, BeautifulSoup, pypdf, openpyxl, xlrd |
 | Dashboard | Streamlit, Plotly |
 | Calidad | pytest, ruff, GitHub Actions |
-| Operación | Docker, Docker Compose, supercronic (cron), Dokploy |
+| Operación | Docker, Docker Compose, Ofelia (cron) |

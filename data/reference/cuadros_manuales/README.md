@@ -10,7 +10,7 @@ procesa como cualquier otro.
 1. Descargar el cuadro tarifario oficial de la distribuidora o del ente
    regulador (PDF con texto, XLSX, XLS o ZIP).
 2. Crear una carpeta con el **código** de la distribuidora (ver la tabla
-   abajo o `src/optimia_hv/biomasa/reference/distribuidoras.py`) y guardar el archivo con el
+   abajo o `etl/reference/distribuidoras.py`) y guardar el archivo con el
    **año y mes** de vigencia en el nombre (`AAAA_MM`):
 
    ```
@@ -20,7 +20,7 @@ procesa como cualquier otro.
 3. Correr el extractor de tarifas o el ETL completo:
 
    ```bash
-   python -m optimia_hv.biomasa.extractors.scrape_tarifas --solo EDET
+   python -m etl.extractors.scrape_tarifas --solo EDET
    ```
 
 4. Verificar en el dashboard (**Dinero → Tarifas por distribuidora**) que

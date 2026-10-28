@@ -1,7 +1,7 @@
 # Flujo de datos
 
 > Qué hace el ETL, etapa por etapa, y qué le pasa a cada registro. El
-> programa es `src/optimia_hv/biomasa/pipelines/run_biomasa.py`; cada etapa indica el módulo que
+> programa es `etl/pipelines/run_etl.py`; cada etapa indica el módulo que
 > la implementa. Las fórmulas están en
 > [metodología](../02_metodologia/metodologia.md).
 
@@ -51,7 +51,7 @@ flowchart TD
 
 | # | Etapa | Qué hace | Módulo |
 |---|---|---|---|
-| 1a | Extracción agrícola | Descarga MAGyP y la Bolsa de Córdoba. Reintenta, hace una segunda pasada a los 60 s y, si sigue fallando, usa la última descarga. Se saltea con `--skip-extract`. | `src/optimia_hv/biomasa/extractors/scrape_*.py`, `http_retry.py` |
+| 1a | Extracción agrícola | Descarga MAGyP y la Bolsa de Córdoba. Reintenta, hace una segunda pasada a los 60 s y, si sigue fallando, usa la última descarga. Se saltea con `--skip-extract`. | `etl/extractors/scrape_*.py`, `http_retry.py` |
 | 1b | Extracción de tarifas | Descarga y lee los cuadros tarifarios. Si falla, se usa el último JSON. Se saltea con `--skip-tarifas`. | `scrape_tarifas.py`, `tariff_parser.py` |
 | 2 | Carga y limpieza | Pasa textos a minúsculas sin tildes, unifica nombres de provincias y departamentos (alias), lleva cada cultivo a su nombre canónico y convierte "SD" en faltante. | `source_cleaning.py`, `geography.py`, `crop_consolidation.py` |
 | 3 | Agrupación | Un registro por provincia, departamento, campaña y cultivo, con el mismo formato para las dos fuentes. Si hay total y componentes de un cultivo, queda el total. | `source_cleaning.py` |
@@ -61,7 +61,7 @@ flowchart TD
 | 7 | Energía y dinero | Energía del gasificador PP30, tarifa de la distribuidora del lugar, ahorro e ingreso. | `energy_finance.py` |
 | 8 | Potencial anual | Promedio de las 5 últimas campañas completas. | `reference_period.py` |
 | 9 | Controles | Invariantes de la biomasa y comparación con la corrida anterior (alertas). Con `--estricto`, una alerta frena el guardado. | `validation.py`, `data_checks.py` |
-| 10 | Guardado | Escribe los Parquet de `data/processed/` y `data/audit/`. | `src/optimia_hv/biomasa/loaders/save_processed.py` |
+| 10 | Guardado | Escribe los Parquet de `data/processed/` y `data/audit/`. | `etl/loaders/save_processed.py` |
 
 Archivos que produce cada etapa: [contratos de artefactos](../03_datos/contratos_de_artefactos.md).
 

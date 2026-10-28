@@ -42,20 +42,3 @@ def df_reconciliation_sample() -> pd.DataFrame:
         "Rendimiento (Tn/Ha)": [3.0, 2.92],
         "fuente": ["magyp_estimaciones", "bolsa_cereales_cba"],
     })
-
-# =============================================================
-# Tipos de test según la carpeta
-# =============================================================
-_TIPOS = ("unit", "integration", "e2e", "regression", "contract")
-
-
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Marca cada test con el tipo de su carpeta (tests/<tipo>/...).
-
-    Así se puede correr un tipo solo, p. ej. ``pytest -m unit`` o
-    ``pytest -m contract``, sin decorar cada test a mano.
-    """
-    for item in items:
-        partes = item.path.relative_to(config.rootpath / "tests").parts
-        if partes and partes[0] in _TIPOS:
-            item.add_marker(getattr(pytest.mark, partes[0]))
