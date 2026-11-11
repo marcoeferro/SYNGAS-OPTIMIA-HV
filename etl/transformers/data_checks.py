@@ -179,3 +179,34 @@ def run_data_checks(
     if out.empty:
         logger.info("Controles de calidad: sin alertas")
     return out[ALERT_COLUMNS]
+
+
+def _clave_alerta(df: pd.DataFrame) -> pd.Series:
+    """Identifica una alerta: mismo control, entidad y valores comparados."""
+    return (
+        df["control"].astype(str) + "|" + df["entidad"].astype(str) + "|"
+        + df["valor_anterior"].round(2).astype(str) + "|"
+        + df["valor_actual"].round(2).astype(str)
+    )
+
+
+def mark_new_alerts(
+    df_alertas: pd.DataFrame, df_previas: pd.DataFrame | None
+) -> pd.DataFrame:
+    """
+    Marca con ``nueva`` las alertas que no estaban en la corrida anterior.
+
+    ``nueva`` es False si la misma alerta (control, entidad y valores) ya
+    estaba en ``df_previas``. Un salto de tarifa se sigue detectando en cada corrida mientras el cuadro
+    vigente no cambie; con esta marca el aviso se manda una sola vez y la
+    alerta igual queda registrada en el parquet y en el dashboard.
+    """
+    out = df_alertas.copy()
+    if out.empty:
+        out["nueva"] = pd.Series(dtype=bool)
+        return out
+    if df_previas is None or df_previas.empty or not set(ALERT_COLUMNS) <= set(df_previas):
+        out["nueva"] = True
+        return out
+    out["nueva"] = ~_clave_alerta(out).isin(set(_clave_alerta(df_previas)))
+    return out

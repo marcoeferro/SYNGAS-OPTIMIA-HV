@@ -110,5 +110,5 @@ services:
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
-      - DATOS_VIEJOS_HORAS=${DATOS_VIEJOS_HORAS:-48}
+      - DATOS_VIEJOS_HORAS=${DATOS_VIEJOS_HORAS:-192}
     restart: unless-stopped

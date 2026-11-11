@@ -43,8 +43,9 @@ from dashboard.data_loader import (  # noqa: E402
 from etl.transformers.energy_finance import injection_ratio  # noqa: E402
 
 # Aviso si el ETL dejó de publicar datos (scheduler detenido, fuente caída,
-# corrida fallida). El ETL corre todos los días: 48 h son dos corridas.
-DATOS_VIEJOS_HORAS = float(os.environ.get("DATOS_VIEJOS_HORAS", "48"))
+# corrida fallida). El ETL corre una vez por semana: 192 h (8 días) son una
+# corrida perdida más un día de margen.
+DATOS_VIEJOS_HORAS = float(os.environ.get("DATOS_VIEJOS_HORAS", "192"))
 horas = horas_desde_ultima_corrida()
 if horas is not None and horas > DATOS_VIEJOS_HORAS:
     st.warning(

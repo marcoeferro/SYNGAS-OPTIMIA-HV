@@ -48,11 +48,12 @@ Se configura en `config/schedule.ini`, línea `schedule`. El formato de
 Ofelia tiene **seis campos, con los segundos primero**:
 
 ```ini
-schedule = 0 0 6 * * *     ; todos los días a las 06:00
+schedule = 0 0 6 * * 1     ; los lunes a las 06:00 (valor actual)
 ```
 
 | Ejemplo | Significado |
 |---|---|
+| `0 0 6 * * 1` | Los lunes a las 06:00 (valor actual) |
 | `0 0 6 * * *` | Todos los días a las 06:00 |
 | `0 0 */12 * * *` | Cada 12 horas |
 | `0 30 7 * * 1-5` | Lunes a viernes a las 07:30 |
@@ -62,7 +63,9 @@ La hora es la de la variable `TZ` (por defecto Buenos Aires). Después de
 cambiarlo: `docker compose restart scheduler`.
 
 Las fuentes agrícolas se actualizan pocas veces por mes y las tarifas,
-mensualmente: una corrida diaria alcanza de sobra; una semanal también.
+mensualmente: por eso el ETL corre **una vez por semana**. Una corrida
+diaria sólo repetía los mismos datos (≈ 30 min de descargas y ≈ 10 MB de
+MAGyP por corrida).
 
 ## Variables de entorno
 
@@ -77,7 +80,7 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | `NOTIFY_WEBHOOK_URL` | (vacío) | Webhook para avisos (Slack, Discord, Teams, Google Chat). Ver [avisos](#avisos) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | (vacío) | Avisos por un bot de Telegram |
 | `NOTIFY_ON_SUCCESS` | (vacío) | `1` para avisar también las corridas sin problemas |
-| `DATOS_VIEJOS_HORAS` | `48` | Horas sin datos nuevos a partir de las cuales el dashboard muestra un aviso |
+| `DATOS_VIEJOS_HORAS` | `192` | Horas sin datos nuevos a partir de las cuales el dashboard muestra un aviso |
 
 ## Avisos
 
@@ -88,6 +91,13 @@ El ETL avisa por mensaje cuando:
 | La corrida falla (fuente caída sin descarga previa, invariante rota, error de código) | 🔴 con la causa |
 | Hay alertas de calidad (salto de tarifa, cambio grande de totales) | 🟠 con la lista de alertas; en modo `--estricto` aclara que no se publicaron los datos nuevos |
 | Todo salió bien | 🟢 sólo si `NOTIFY_ON_SUCCESS=1` |
+
+Una alerta de calidad se avisa **una sola vez**: si la corrida siguiente
+vuelve a detectar la misma (mismo control, entidad y valores, p.ej. un
+salto de tarifa mientras el cuadro vigente no cambie) no se reenvía.
+Sigue registrada en `alertas_calidad.parquet` y en el dashboard, con
+`nueva = False`. En modo `--estricto` se avisan todas, porque los datos no
+se publicaron.
 
 Canales (se puede usar uno, varios o ninguno), configurados en el archivo
 `.env` junto a `docker-compose.yml`:
@@ -109,8 +119,8 @@ repositorio.
 **Si el ETL directamente no corre** (scheduler detenido, servidor
 apagado), no hay quién mande el aviso. Para eso, el dashboard muestra un
 cartel en todas las páginas cuando los datos tienen más de
-`DATOS_VIEJOS_HORAS` horas (48 por defecto: dos corridas diarias
-perdidas). El código está en `etl/notifications.py` y `dashboard/app.py`.
+`DATOS_VIEJOS_HORAS` horas (192 por defecto: una corrida semanal
+perdida más un día de margen). El código está en `etl/notifications.py` y `dashboard/app.py`.
 
 ## Recursos
 

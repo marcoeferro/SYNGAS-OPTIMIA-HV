@@ -76,6 +76,23 @@ def test_exito_sin_alertas_solo_si_se_pide(
     assert nt.notify_run_result(df_alertas=_alertas(0)) == ["webhook"]
 
 
+def test_alertas_ya_avisadas_no_se_repiten(
+    enviados: list[dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NOTIFY_WEBHOOK_URL", "https://hooks.example/abc")
+    repetidas = _alertas(2).assign(nueva=False)
+    assert nt.notify_run_result(df_alertas=repetidas) == []
+    mezcla = _alertas(2).assign(nueva=[True, False])
+    nt.notify_run_result(df_alertas=mezcla)
+    assert "1 alerta(s) de calidad nueva(s) (+1 ya avisada(s))" in enviados[0]["json"]["text"]
+    monkeypatch.setenv("NOTIFY_ON_SUCCESS", "1")
+    nt.notify_run_result(df_alertas=repetidas)
+    assert "2 alerta(s) ya avisada(s) siguen vigentes" in enviados[1]["json"]["text"]
+    # En modo estricto se avisan todas: los datos no se publicaron.
+    nt.notify_run_result(RuntimeError("estricto"), repetidas, estricto=True)
+    assert "2 alerta(s)" in enviados[2]["json"]["text"]
+
+
 def test_un_aviso_fallido_no_rompe_el_etl(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NOTIFY_WEBHOOK_URL", "https://hooks.example/abc")
 

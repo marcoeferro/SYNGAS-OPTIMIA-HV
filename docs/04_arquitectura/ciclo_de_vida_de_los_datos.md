@@ -68,8 +68,8 @@ graph LR
 
 ## Limpieza del disco
 
-Las descargas se acumulan: con el ETL diario, la de MAGyP suma unos 10 MB
-por día (≈ 3,6 GB por año). Para liberar espacio se pueden borrar las
+Las descargas se acumulan: con el ETL semanal, la de MAGyP suma unos 10 MB
+por corrida (≈ 0,5 GB por año). Para liberar espacio se pueden borrar las
 descargas viejas de `data/raw/` y los JSON de tarifas viejos, conservando
 siempre los más recientes. Por ejemplo, en Linux, borrar las descargas de
 más de 30 días:
