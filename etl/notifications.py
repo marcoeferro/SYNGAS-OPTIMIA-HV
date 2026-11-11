@@ -119,7 +119,9 @@ def notify_run_result(
 
     - Falla → error (con la causa).
     - Alertas de calidad → alerta (en modo estricto, además, los datos
-      publicados no se reemplazaron).
+      publicados no se reemplazaron). Si las alertas traen la columna
+      ``nueva``, fuera del modo estricto sólo se avisan las nuevas: las que
+      ya se avisaron en la corrida anterior no se repiten.
     - Sin problemas → sólo si ``NOTIFY_ON_SUCCESS`` está activo.
     """
     if not canales_configurados():
@@ -127,14 +129,27 @@ def notify_run_result(
     hay_alertas = df_alertas is not None and not df_alertas.empty
     if error is not None and not (estricto and hay_alertas):
         return notify("error", "la corrida falló", f"{type(error).__name__}: {error}"[:1500])
+    ya_avisadas = 0
+    if hay_alertas and not estricto and "nueva" in df_alertas:
+        assert df_alertas is not None
+        nuevas = df_alertas[df_alertas["nueva"].fillna(True).astype(bool)]
+        ya_avisadas = len(df_alertas) - len(nuevas)
+        df_alertas = nuevas
+        hay_alertas = not nuevas.empty
     if hay_alertas:
         assert df_alertas is not None
         titulo = f"{len(df_alertas)} alerta(s) de calidad"
+        if ya_avisadas:
+            titulo += f" nueva(s) (+{ya_avisadas} ya avisada(s))"
         if estricto:
             titulo += " — modo estricto: NO se publicaron los datos nuevos"
         detalle = resumen_alertas(df_alertas)
         detalle += "\nDetalle: dashboard → Auditoría de datos → Alertas de calidad."
         return notify("alerta", titulo, detalle)
     if _env_flag("NOTIFY_ON_SUCCESS"):
+        if ya_avisadas:
+            return notify(
+                "ok", f"corrida completada; {ya_avisadas} alerta(s) ya avisada(s) siguen vigentes"
+            )
         return notify("ok", "corrida completada sin alertas")
     return []

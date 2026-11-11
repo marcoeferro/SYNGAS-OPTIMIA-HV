@@ -56,7 +56,7 @@ from etl.transformers.biomass import (
     compute_biomass,
     report_exclusion_impact,
 )
-from etl.transformers.data_checks import run_data_checks
+from etl.transformers.data_checks import mark_new_alerts, run_data_checks
 from etl.transformers.energy_finance import (
     COL_BENEFICIO,
     COL_KWH_TOTALES,
@@ -414,6 +414,11 @@ def run(
     df_alertas = run_data_checks(
         tarifas_cfg, load_history(ref_dir), df_anual, df_anual_anterior
     )
+    path_alertas_prev = audit_dir / "alertas_calidad.parquet"
+    df_alertas_prev = (
+        pd.read_parquet(path_alertas_prev) if path_alertas_prev.exists() else None
+    )
+    df_alertas = mark_new_alerts(df_alertas, df_alertas_prev)
     path_alertas = save_parquet(df_alertas, audit_dir / "alertas_calidad.parquet")
     quality_gate(df_alertas, estricto, path_alertas)
 

@@ -6,7 +6,7 @@ cuánta **electricidad** podría generarse con él usando un gasificador
 pequeño (APL PP30, 22 kW a 50 Hz) y cuánto **dinero** representa esa electricidad
 a las tarifas vigentes de cada distribuidora eléctrica.
 
-Se actualiza solo todos los días con datos públicos y muestra los
+Se actualiza solo cada semana con datos públicos y muestra los
 resultados en un **dashboard web** con mapas, rankings y tablas.
 
 [![CI](https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/actions/workflows/ci.yml/badge.svg)](https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV/actions/workflows/ci.yml)

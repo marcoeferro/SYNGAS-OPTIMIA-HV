@@ -10,7 +10,7 @@ Un programa en Python (**ETL**: extraer, transformar, cargar) descarga
 datos públicos, calcula biomasa, energía y dinero, y guarda los resultados
 en archivos; un **dashboard** web (Streamlit) lee esos archivos y los
 muestra. Los dos corren en contenedores Docker y un programador de tareas
-(Ofelia) ejecuta el ETL todos los días.
+(Ofelia) ejecuta el ETL una vez por semana.
 
 ## Diagrama
 

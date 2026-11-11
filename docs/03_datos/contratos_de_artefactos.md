@@ -120,7 +120,7 @@ tarifa y dinero, **expresadas por año**, más `n_campanas_con_dato` y
 |---|---|
 | `descartados_reconciliacion.parquet` | Registros que perdieron la reconciliación: `Provincia, Departamento, Campaña, Cultivo, Superficie (Ha), Produccion (Tn), Rendimiento (Tn/Ha), fuente` |
 | `discrepancias_cba_vs_magyp.parquet` | Claves informadas por ambas fuentes: superficie y producción de cada una y `diff_rel_superficie`, `diff_rel_produccion` |
-| `alertas_calidad.parquet` | Alertas de la última corrida: `control, entidad, valor_anterior, valor_actual, variacion, umbral, detalle, fecha` (vacío si no hubo) |
+| `alertas_calidad.parquet` | Alertas de la última corrida: `control, entidad, valor_anterior, valor_actual, variacion, umbral, detalle, fecha, nueva` (vacío si no hubo; `nueva = False` si ya estaba en la corrida anterior y no se volvió a avisar) |
 | `biomasa_validos.parquet` | Copia de `data/processed/biomasa_validos.parquet` |
 
 ---

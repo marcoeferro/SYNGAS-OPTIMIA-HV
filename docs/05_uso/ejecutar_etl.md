@@ -1,7 +1,7 @@
 # Ejecutar el ETL
 
 > El ETL es el programa que descarga los datos y calcula los resultados.
-> Con Docker corre solo todos los días; esta guía explica cómo correrlo a
+> Con Docker corre solo una vez por semana; esta guía explica cómo correrlo a
 > mano, sus opciones y qué hacer con el resultado.
 
 ## Formas de correrlo

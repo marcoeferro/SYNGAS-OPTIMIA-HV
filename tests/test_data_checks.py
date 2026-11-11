@@ -10,6 +10,7 @@ import pytest
 from etl.transformers.data_checks import (
     check_energy_change,
     check_tariff_jumps,
+    mark_new_alerts,
     run_data_checks,
 )
 
@@ -79,3 +80,16 @@ def test_modo_estricto_corta_solo_con_alertas() -> None:
     quality_gate(alerta.iloc[0:0], estricto=True, path=Path("x"))
     with pytest.raises(DataQualityError):
         quality_gate(alerta, estricto=True, path=Path("x"))
+
+
+def test_alerta_repetida_no_es_nueva() -> None:
+    def alerta(entidad: str, actual: float) -> dict:
+        return {"control": "salto_tarifa", "entidad": entidad, "valor_anterior": 67.28,
+                "valor_actual": actual, "variacion": actual / 67.28 - 1, "umbral": 0.5,
+                "detalle": "", "fecha": "2026-11-10T06:30:00"}
+
+    previas = pd.DataFrame([alerta("ENERSA", 130.84)])
+    hoy = pd.DataFrame([alerta("ENERSA", 130.84), alerta("ENERSA", 150.0), alerta("EPE", 130.84)])
+    assert mark_new_alerts(hoy, previas)["nueva"].tolist() == [False, True, True]
+    assert mark_new_alerts(hoy, None)["nueva"].all()
+    assert mark_new_alerts(hoy.iloc[0:0], previas).empty
