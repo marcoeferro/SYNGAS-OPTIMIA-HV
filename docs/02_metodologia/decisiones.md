@@ -12,7 +12,7 @@
 | [POL-GEO-001](#pol-geo-001--alias-de-departamento-entre-fuentes) | Alias para nombres de departamento que difieren entre fuentes | 2026-10 |
 | [POL-PERIOD-001](#pol-period-001--período-de-referencia-anual) | Resultados por año: promedio de las 5 últimas campañas completas | 2026-10 |
 | [POL-ENERGY-001](#pol-energy-001--conversión-a-energía-apl-pp30) | Energía con la ficha del PP30: 1,0 kg MS/kWh, 22 kW a 50 Hz | 2026-10 |
-| [POL-RECOVERY-001](#pol-recovery-001--fracción-de-rastrojo-retirada) | Se retira el 50 % del rastrojo (límite superior sostenible) | 2026-10 |
+| [POL-RECOVERY-001](#pol-recovery-001--fracción-de-rastrojo-retirada) | Se retira el 40 % del rastrojo (cota superior del rango citado) | 2026-10 |
 | [POL-TARIFF-001](#pol-tariff-001--tarifa-de-compra-representativa) | Tarifa de compra: medianas/grandes demandas, baja tensión, banda Resto | 2026-10 |
 | [POL-TARIFF-002](#pol-tariff-002--tarifa-de-inyección-faltante) | Inyección faltante: compra × ratio observado | 2026-10 |
 | [POL-QA-001](#pol-qa-001--tests-y-controles-de-calidad-de-datos) | Tests en CI; controles de datos y alertas en cada corrida | 2026-10 |
@@ -126,14 +126,17 @@ MS/kWh) y 25 kW. El cambio bajó la energía un 3,2 %.
 
 ## POL-RECOVERY-001 — Fracción de rastrojo retirada
 
-**Regla**: se retira el **50 %** del rastrojo (residuo recuperable); el
-resto queda en el lote.
+**Regla**: se retira el **40 %** del rastrojo (residuo recuperable); el
+resto queda en el lote. Hasta noviembre de 2026 el valor era 50 %, que
+ninguna de las fuentes citadas respalda.
 
-**Fundamento**: es un supuesto, elegido como límite superior de lo que la
-bibliografía considera sostenible (Wilhelm et al. 2007: la materia
-orgánica del suelo exige dejar más rastrojo que el control de erosión;
-Agronomy Journal 2021: no más de 25–40 % en maíz con rendimientos altos).
-Es optimista; 30–40 % es más prudente.
+**Fundamento**: es un supuesto, igual al máximo que admite Nunes et al.
+(2021, Agronomy Journal) para maíz con rendimientos mayores de 11 t/ha;
+Wilhelm et al. (2007) muestran que la materia orgánica del suelo exige
+dejar más rastrojo que el control de erosión, y el balance WISDOM (FAO,
+2009) considera que, con siembra directa, la mayor parte no está
+disponible. Es la cota superior del rango citado; 30 % es el escenario
+prudente.
 
 **Escenario**: el dashboard permite variarlo entre 20 % y 70 %; el ETL lo
 acepta con `--fraccion-recuperable`.

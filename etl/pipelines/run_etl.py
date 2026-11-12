@@ -308,7 +308,7 @@ def run(
         n_campanas: Campañas completas del período de referencia anual.
         fraccion_recuperable: Fracción del residuo retirable del lote.
             Si None, usa ``parametros_pp30.fraccion_recuperable_default``
-            del JSON de tarifas (o 0.5).
+            del JSON de tarifas (o 0.4).
         estricto: Si True y los controles de calidad generan alertas, el
             pipeline se detiene antes de sobrescribir los datos publicados.
 

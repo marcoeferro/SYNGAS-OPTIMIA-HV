@@ -7,7 +7,7 @@
     "factor_autoconsumo_default": 0.6,
     "potencia_nominal_kw": 22.0,
     "disponibilidad": 0.8,
-    "fraccion_recuperable_default": 0.5,
+    "fraccion_recuperable_default": 0.4,
     "consumo_especifico_seco_kg_kwh": 1.0
   },
   "provincia_a_distribuidora": {

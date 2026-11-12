@@ -33,3 +33,9 @@ docker-compose.yml
 
 # --- Documentación (README se incluye: lo exige pyproject.toml) ---
 docs/
+# --- Secretos y artefactos locales (no deben entrar a la imagen) ---
+.env
+.env.*
+logs/
+.coverage
+htmlcov/

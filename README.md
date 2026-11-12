@@ -236,7 +236,7 @@ Esta sección orienta a modelos de lenguaje que lean el repositorio.
 - **Cultivos sin coeficientes** (caña de azúcar, yerba mate, cítricos)
   quedan fuera: subrepresenta al NOA y NEA.
 - **Coeficientes constantes por cultivo** (los de trigo y sorgo están en
-  revisión) y fracción recuperable única (50 %, límite superior según la
+  revisión) y fracción recuperable única (40 %, cota superior del rango citado en la
   bibliografía; ver [metodología](docs/02_metodologia/metodologia.md#2-residuo-recuperable)).
 - **Material del gasificador**: el fabricante aprueba chips de madera,
   cáscaras y marlo; el rastrojo suelto requiere triturado o pelletizado,

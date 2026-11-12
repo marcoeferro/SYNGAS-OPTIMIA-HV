@@ -90,7 +90,7 @@ def test_escenarios_de_inyeccion_solo_cambian_las_estimadas(
 ) -> None:
     sup = dl.Supuestos(autoconsumo=0.6, inyeccion=escenario,
                        consumo_especifico=1.0, fraccion_recuperable=0.5)
-    out = dl.apply_supuestos(_df_escenarios(), sup, dl.Supuestos(autoconsumo=0.5))
+    out = dl.apply_supuestos(_df_escenarios(), sup, dl.Supuestos(autoconsumo=0.5, fraccion_recuperable=0.5))
     assert out["tarifa_inyeccion_kwh"].tolist() == [80.0, iny_estimada]
     # 600 kWh × 100 + 400 kWh × inyección
     assert out[dl.COL_BENEFICIO].tolist() == pytest.approx(

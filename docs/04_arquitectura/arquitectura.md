@@ -104,7 +104,7 @@ graph TB
 |---|---|
 | Lenguaje | Python 3.11 o superior |
 | Datos | pandas, pyarrow (Parquet), DuckDB |
-| Descargas y documentos | httpx, curl_cffi, BeautifulSoup, pypdf, openpyxl, xlrd |
+| Descargas y documentos | httpx, BeautifulSoup, pypdf, openpyxl, xlrd |
 | Dashboard | Streamlit, Plotly |
 | Calidad | pytest, ruff, GitHub Actions |
 | Operación | Docker, Docker Compose, Ofelia (cron) |

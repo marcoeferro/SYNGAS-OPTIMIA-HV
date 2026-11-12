@@ -10,10 +10,13 @@
 # Arranque típico (Windows / Linux / macOS, sin Make):
 #   docker compose up -d --build
 #
-# Nota permisos (Windows/Docker Desktop):
-#   Los bind mounts de ./data y ./logs suelen no ser escribibles por
-#   el usuario no-root de la imagen (appuser uid 1000). Por eso
-#   etl_worker y etl_pipeline corren como root dentro del contenedor.
+# Nota permisos:
+#   etl_worker y etl_pipeline corren sin privilegios, con el uid/gid de
+#   ETL_UID/ETL_GID (por defecto 1000, el appuser de la imagen). En el
+#   servidor, ./data y ./logs deben pertenecer a ese usuario:
+#     sudo chown -R 1000:1000 data logs
+#   El tablero se publica solo en 127.0.0.1: se accede por el proxy
+#   inverso (Caddy) o por la red privada, no directamente desde Internet.
 # =============================================================
 
 services:
@@ -26,7 +29,7 @@ services:
       dockerfile: Dockerfile
     image: etl-biomasa:latest
     container_name: biomasa_etl_worker
-    user: "0:0"
+    user: "${ETL_UID:-1000}:${ETL_GID:-1000}"
     command: ["sleep", "infinity"]
     volumes:
       - ./data:/app/data
@@ -51,7 +54,7 @@ services:
       dockerfile: Dockerfile
     image: etl-biomasa:latest
     container_name: biomasa_etl
-    user: "0:0"
+    user: "${ETL_UID:-1000}:${ETL_GID:-1000}"
     volumes:
       - ./data:/app/data
       - ./config:/app/config:ro
@@ -72,7 +75,8 @@ services:
   # Scheduler (Ofelia): cron configurado en config/schedule.ini
   # -----------------------------------------------------------
   scheduler:
-    image: mcuadros/ofelia:latest
+    # Versión fija (0.3.22) y digest: el planificador no cambia sin aviso.
+    image: mcuadros/ofelia:0.3.22@sha256:efcbe2c5cf658a25de6443c1462d653f9cc03791d642e01fc6c638a00f97e492
     container_name: biomasa_scheduler
     depends_on:
       - etl_worker
@@ -102,7 +106,7 @@ services:
         "--browser.gatherUsageStats=false",
       ]
     ports:
-      - "${DASHBOARD_PORT:-8501}:8501"
+      - "127.0.0.1:${DASHBOARD_PORT:-8501}:8501"
     volumes:
       - ./data:/app/data:ro
       - ./dashboard:/app/dashboard:ro
