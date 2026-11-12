@@ -10,6 +10,8 @@
 # Arranque típico (Windows / Linux / macOS, sin Make):
 #   docker compose up -d --build
 #
+# Límites de RAM (mem_limit): el VPS es compartido con otros clientes.
+#
 # Nota permisos (Windows/Docker Desktop):
 #   Los bind mounts de ./data y ./logs suelen no ser escribibles por
 #   el usuario no-root de la imagen (appuser uid 1000). Por eso
@@ -40,6 +42,8 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
+    # El ETL corre acá adentro (Ofelia hace exec): el límite incluye la corrida.
+    mem_limit: 2g
     restart: unless-stopped
 
   # -----------------------------------------------------------
@@ -66,6 +70,7 @@ services:
       - NOTIFY_ON_SUCCESS=${NOTIFY_ON_SUCCESS:-}
     profiles:
       - etl
+    mem_limit: 2g
     restart: "no"
 
   # -----------------------------------------------------------
@@ -82,6 +87,7 @@ services:
     command: ["daemon", "--config=/etc/ofelia/config.ini"]
     environment:
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
+    mem_limit: 64m
     restart: unless-stopped
 
   # -----------------------------------------------------------
@@ -111,4 +117,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
       - DATOS_VIEJOS_HORAS=${DATOS_VIEJOS_HORAS:-192}
+    # Pico medido: ~1 GB (Grafana, 11/11). Si lo supera, Docker lo reinicia
+    # en vez de dejar sin memoria a los otros clientes del VPS.
+    mem_limit: 1536m
     restart: unless-stopped
