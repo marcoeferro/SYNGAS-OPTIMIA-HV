@@ -106,7 +106,8 @@ services:
         "--browser.gatherUsageStats=false",
       ]
     ports:
-      - "127.0.0.1:${DASHBOARD_PORT:-8501}:8501"
+      # DASHBOARD_PORT admite "8501" (todas las interfaces) o "127.0.0.1:8501".
+      - "${DASHBOARD_PORT:-127.0.0.1:8501}:8501"
     volumes:
       - ./data:/app/data:ro
       - ./dashboard:/app/dashboard:ro

@@ -74,7 +74,7 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | Variable | Valor por defecto | Para qué |
 |---|---|---|
 | `LOG_LEVEL` | `INFO` | Detalle de los logs (`DEBUG`, `INFO`, `WARNING`) |
-| `DASHBOARD_PORT` | `8501` | Puerto del dashboard; se publica solo en `127.0.0.1` |
+| `DASHBOARD_PORT` | `127.0.0.1:8501` | Dirección y puerto del dashboard; por defecto solo en la interfaz local |
 | `ETL_UID` / `ETL_GID` | `1000` | Usuario sin privilegios del ETL; `data/` y `logs/` deben pertenecerle (`sudo chown -R 1000:1000 data logs`) |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria del horario del ETL |
 | `EPE_API_KEY` | clave pública del sitio de EPE | Sólo si EPE cambia la clave de su API de descargas |
