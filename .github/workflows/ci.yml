@@ -7,6 +7,8 @@
 # - automerge: si tests e imagen pasan en un pull request hacia main, lo
 #   mergea (merge commit, como los PR anteriores). Se omite en borradores,
 #   en PR desde forks y en PR con la etiqueta `no-automerge`.
+# - deploy: despliega al VPS cada commit nuevo de main (push directo o PR
+#   mergeado por automerge).
 #
 # El repo es privado: Actions cobra minutos (2000 gratis por mes). Por eso
 # se instala sólo lo necesario, se cachea pip y se cancelan las corridas
@@ -96,10 +98,13 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      sha: ${{ steps.merge.outputs.sha }}
     steps:
       # --match-head-commit: no mergea si llegó un push nuevo mientras
       # corría el CI (ese push tiene su propia corrida).
       - name: Mergear el pull request
+        id: merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -107,3 +112,47 @@ jobs:
             --repo "${{ github.repository }}" \
             --merge \
             --match-head-commit "${{ github.event.pull_request.head.sha }}"
+          sha="$(gh pr view "${{ github.event.pull_request.number }}"             --repo "${{ github.repository }}" --json mergeCommit -q .mergeCommit.oid)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  # Deploy al VPS de cada commit nuevo de main: un push directo que pasa tests
+  # e imagen, o el merge que hizo automerge (el merge con GITHUB_TOKEN no
+  # dispara otro workflow, por eso se encadena acá). Entra con una clave que solo puede desplegar
+  # Optimia (vps-ops: deploy-gate → deploy-git): el VPS avanza su copia de git
+  # hasta este commit, arma la imagen y levanta los servicios. Si el dashboard
+  # no responde, vuelve al commit anterior. Si el ETL está corriendo, no
+  # despliega (reintentar con "Re-run jobs").
+  deploy:
+    needs: [tests, imagen, automerge]
+    if: >-
+      always() &&
+      needs.tests.result == 'success' && needs.imagen.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       needs.automerge.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Saltear si el deploy no está habilitado
+        if: vars.DEPLOY_ENABLED != 'true'
+        run: echo "::notice::DEPLOY_ENABLED no es true en production; no se despliega."
+
+      - name: Deploy por SSH
+        if: vars.DEPLOY_ENABLED == 'true'
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.VPS_KNOWN_HOSTS }}
+          HOST: ${{ vars.VPS_HOST }}
+          SHA: ${{ needs.automerge.outputs.sha || github.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA inválido: $SHA"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Primera línea de stdin: token de ghcr.io (vacío: no hace falta).
+          echo "" | ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+            "deploy@$HOST" "production $SHA"
