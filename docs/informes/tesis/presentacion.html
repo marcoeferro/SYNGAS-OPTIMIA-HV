@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Defensa OPTIMIA-HV</title>
+<style>
+:root{
+  --paper:#f7f6f2; --paper-2:#efede6; --ink:#0f1a2b; --ink-2:#344052; --muted:#5f6876;
+  --line:#d9d6cc; --blue:#2a78d6; --blue-soft:#e6effa; --amber:#b86a14; --amber-soft:#f8ecdc;
+  --green:#127d53; --green-soft:#e3f3ec; --red:#b3402f; --red-soft:#f9e6e2; --night:#0c1422;
+  --serif:Georgia,'Cambria','Times New Roman',serif;
+  --sans:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --mono:'Consolas','Cascadia Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#05080e;overflow:hidden;font-family:var(--sans);color:var(--ink)}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#deck{width:1600px;height:900px;position:relative;transform-origin:center center;flex:none}
+.slide{position:absolute;inset:0;background:var(--paper);padding:72px 100px 84px;opacity:0;visibility:hidden;
+  transition:opacity .5s ease, visibility .5s;overflow:hidden;display:flex;flex-direction:column}
+.slide.active{opacity:1;visibility:visible}
+.slide.dark{background:radial-gradient(1200px 700px at 85% 10%, #1b2c4d 0%, var(--night) 60%);color:#eef2f8}
+.slide.dark .muted{color:#a9b8cc}
+.rv{opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1)}
+.slide.active .rv{opacity:1;transform:none}
+.slide.active .d1{transition-delay:.1s}.slide.active .d2{transition-delay:.2s}.slide.active .d3{transition-delay:.3s}
+.slide.active .d4{transition-delay:.4s}.slide.active .d5{transition-delay:.5s}.slide.active .d6{transition-delay:.6s}
+.kicker{font-size:18px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);font-weight:600;margin-bottom:12px}
+.dark .kicker{color:#86b6f2}
+h1{font-family:var(--serif);font-weight:400;font-size:84px;line-height:1.04}
+h2{font-family:var(--serif);font-weight:400;font-size:50px;line-height:1.1;margin-bottom:28px}
+h3{font-size:25px;font-weight:600;margin-bottom:8px;color:var(--ink)}
+p,li{font-size:25px;line-height:1.45;color:var(--ink-2)}
+.dark p,.dark li{color:#d2dbe8}
+.muted{color:var(--muted)}
+strong{color:var(--ink);font-weight:600}.dark strong{color:#fff}
+code{font-family:var(--mono);font-size:.9em;background:var(--paper-2);padding:1px 7px;border-radius:5px}
+ul.clean{list-style:none}ul.clean li{padding-left:30px;position:relative;margin:9px 0}
+ul.clean li::before{content:"";position:absolute;left:4px;top:.6em;width:11px;height:11px;border-radius:2px;background:var(--blue)}
+.grid{display:grid;gap:28px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.g-7-5{grid-template-columns:7fr 5fr}.g-5-7{grid-template-columns:5fr 7fr}
+.fill{flex:1;min-height:0}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 26px}
+.card.blue{background:var(--blue-soft);border-color:#c6daf3}.card.amber{background:var(--amber-soft);border-color:#ecd2b0}
+.card.green{background:var(--green-soft);border-color:#bfe3d2}.card.red{background:var(--red-soft);border-color:#efc4bb}
+.card p,.card li{font-size:22px}
+.dark .card{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+.num{font-family:var(--serif);font-size:70px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.num small{font-size:26px;color:var(--muted);font-family:var(--sans);margin-left:6px}
+.dark .num{color:#fff}
+.lbl{font-size:21px;color:var(--muted);margin-top:8px;line-height:1.3}
+.figure{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;min-height:0;cursor:zoom-in}
+.figure img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.cap{font-size:19px;color:var(--muted);margin-top:8px;text-align:center}
+table.t{border-collapse:collapse;width:100%;font-size:24px}
+table.t th{text-align:left;font-weight:600;border-bottom:2px solid var(--ink);padding:8px 12px;color:var(--ink)}
+table.t td{border-bottom:1px solid var(--line);padding:8px 12px;color:var(--ink-2);vertical-align:top}
+table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+table.t tr.hl td{background:var(--blue-soft);font-weight:600;color:var(--ink)}
+pre{font-family:var(--mono);font-size:19px;line-height:1.5;background:#0f1a2b;color:#dbe6f5;border-radius:12px;padding:20px 24px;overflow:hidden;white-space:pre}
+pre .c{color:#93a3bb}pre .k{color:#8fc1ff}pre .s{color:#f2c58a}
+/* flujo en HTML con letra grande */
+.flow{display:flex;align-items:stretch}
+.flow .bx{flex:1;background:#fff;border:2px solid var(--blue);border-radius:12px;padding:16px 14px;text-align:center}
+.flow .bx b{display:block;font-size:24px;color:var(--ink)}.flow .bx span{display:block;font-size:19px;color:var(--muted);margin-top:4px;line-height:1.3}
+.flow .bx.g{border-color:var(--green);background:var(--green-soft)}.flow .bx.a{border-color:var(--amber);background:var(--amber-soft)}.flow .bx.m{border-color:#9aa3b0;background:#f1f2f4}
+.flow .ar{width:40px;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:30px;font-weight:700}
+.col{display:flex;flex-direction:column;gap:12px}
+.lane{border:2px dashed #b9c0cb;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.lane>.t{font-size:19px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pill{background:#fff;border:2px solid var(--blue);border-radius:10px;padding:10px 14px;font-size:21px;color:var(--ink)}
+.pill.g{border-color:var(--green)}.pill.m{border-color:#9aa3b0}.pill.a{border-color:var(--amber)}
+.pill small{display:block;font-size:17px;color:var(--muted)}
+.chain{display:flex;align-items:stretch;margin-top:8px}
+.chain .step{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 16px;text-align:center}
+.chain .step h3{font-size:25px}.chain .step .f{font-family:var(--mono);font-size:21px;color:var(--blue);margin:10px 0 6px}
+.chain .step p{font-size:20px}
+.chain .arrow{width:40px;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:30px}
+.chain .step.money{background:var(--amber-soft);border-color:#ecd2b0}.chain .step.money .f{color:var(--amber)}
+.tl{position:relative;margin-top:8px}
+.tl::before{content:"";position:absolute;left:0;right:0;top:25px;height:2px;background:var(--line)}
+.tl .ph{position:relative;padding-top:52px}
+.tl .ph::before{content:"";position:absolute;top:17px;left:0;width:18px;height:18px;border-radius:50%;background:var(--paper);border:3px solid var(--blue)}
+.tl .ph b{display:block;font-size:19px;color:var(--blue);letter-spacing:.04em}
+.tl .ph span{font-size:21px;color:var(--ink-2);line-height:1.3;display:block;margin-top:4px}
+.seq{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.seq .s{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+.seq .s .k{font-family:var(--serif);font-size:44px;color:var(--blue);line-height:1}
+.seq .s h3{margin-top:8px}.seq .s p{font-size:21px}
+.status{display:inline-block;font-size:18px;font-weight:700;padding:3px 10px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.status.ok{background:var(--green-soft);color:var(--green)}.status.pa{background:var(--amber-soft);color:var(--amber)}
+.foot{position:absolute;left:100px;right:100px;bottom:28px;display:flex;justify-content:space-between;font-size:17px;color:var(--muted)}
+.dark .foot{color:#93a3bb}
+.backup .kicker{color:var(--amber)}
+#progress{position:fixed;left:0;top:0;height:4px;background:var(--blue);transition:width .4s ease;z-index:20}
+#hint{position:fixed;right:18px;bottom:12px;color:#8a93a0;font:13px var(--sans);z-index:20;transition:opacity 1s}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:36vh;overflow:auto;background:#101827f2;color:#e7edf6;font:18px/1.55 var(--sans);
+  padding:18px 26px 22px;border-top:3px solid var(--blue);transform:translateY(100%);transition:transform .3s;z-index:30}
+#notes.on{transform:none}#notes b{color:#8fc1ff;letter-spacing:.08em;font-size:14px;text-transform:uppercase;display:block;margin-bottom:6px}
+#lightbox{position:fixed;inset:0;background:rgba(5,8,14,.92);display:none;align-items:center;justify-content:center;z-index:40;cursor:zoom-out}
+#lightbox img{max-width:94vw;max-height:92vh;background:#fff;border-radius:8px}
+#lightbox.on{display:flex}
+.title-wrap{margin-top:auto;margin-bottom:auto}
+.rule{width:120px;height:3px;background:var(--blue);margin:30px 0}
+.meta{display:grid;grid-template-columns:auto auto;gap:6px 36px;font-size:23px;color:#c3cfe0}
+.meta span:nth-child(odd){color:#93a3bb;text-transform:uppercase;letter-spacing:.12em;font-size:17px;padding-top:4px}
+.big-q{font-family:var(--serif);font-size:44px;line-height:1.3;color:#fff;max-width:1250px}
+@media print{
+  html,body{overflow:visible;background:#fff}#stage{position:static;display:block}
+  #deck{transform:none!important;width:1600px;height:auto}
+  .slide{position:relative;opacity:1;visibility:visible;page-break-after:always;height:900px}
+  .rv{opacity:1;transform:none}#progress,#hint,#notes,#lightbox{display:none}
+  @page{size:1600px 900px;margin:0}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="stage"><div id="deck">
+
+<!-- 1 -->
+<section class="slide dark" data-notes="[0:00 – 0:40] Presentación y título. El trabajo construye un sistema de información que estima, por departamento, el potencial eléctrico y el valor económico bruto del rastrojo agrícola argentino, y lo mantiene actualizado. Duración prevista: 22 minutos; demostración del tablero solo si sobra tiempo.">
+  <div class="title-wrap">
+    <div class="kicker rv">Trabajo Final de Grado · Ingeniería en Sistemas de Información</div>
+    <h1 class="rv d1">Del rastrojo<br>al kilovatio‑hora</h1>
+    <p class="rv d2" style="font-size:29px;margin-top:20px;max-width:1150px">Sistema de información para estimar el potencial eléctrico y económico de la biomasa residual agrícola de la Argentina a escala departamental</p>
+    <div class="rule rv d3"></div>
+    <div class="meta rv d4">
+      <span>Autor</span><span>Marco Ferro</span>
+      <span>Proyecto</span><span>OPTIMIA‑HV</span>
+      <span>Director</span><span>Jonathan Bosso</span>
+      <span>Institución</span><span>Universidad Nacional de Villa Mercedes (UNViMe)</span>
+      <span>Fecha</span><span>Noviembre de 2026</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide dark" data-notes="[0:40 – 1:50] El problema tiene dos partes. De dominio: cuánta energía y dinero hay en el rastrojo. De sistemas: las fuentes están dispersas, en formatos incompatibles, y cambian. Tres preguntas de investigación guían el trabajo.">
+  <div class="kicker rv">Problema y preguntas de investigación</div>
+  <p class="big-q rv d1" style="font-size:40px">¿Cuánto rastrojo deja cada departamento, cuánta electricidad podría generar y cuánto valdría esa electricidad?</p>
+  <div class="grid g3" style="margin-top:40px">
+    <div class="card rv d2"><h3 style="color:#fff">P1 · Datos</h3><p>¿Pueden obtenerse automáticamente y con trazabilidad la producción y las tarifas de las 28 distribuidoras principales?</p></div>
+    <div class="card rv d3"><h3 style="color:#fff">P2 · Magnitud</h3><p>¿Cuál es el orden del potencial técnico y cómo se distribuye en el territorio?</p></div>
+    <div class="card rv d4"><h3 style="color:#fff">P3 · Incertidumbre</h3><p>¿Qué supuestos dominan la incertidumbre del resultado?</p></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-notes="[1:50 – 4:00] Método físico estándar. WISDOM Argentina tiene resolución departamental, pero excluye la mayor parte de los rastrojos de cultivos anuales por la siembra directa (FAO 2009, p. 28): no es una referencia numérica comparable, y es un argumento a favor del escenario prudente. Ningún antecedente combina actualización automática, una tecnología concreta y valorización con tarifas reales.">
+  <div class="kicker rv">Capítulo 1 · Estado del arte</div>
+  <h2 class="rv d1">Trabajos comparables y diferencia del enfoque</h2>
+  <table class="t rv d2" style="font-size:23px">
+    <tr><th>Trabajo</th><th>Resolución</th><th>Actualización</th><th>Valorización</th></tr>
+    <tr><td>WISDOM Argentina (FAO, 2009, 2020)</td><td>Grilla y departamento</td><td>Puntual</td><td>No</td></tr>
+    <tr><td>Scarlat et al. (2010), Unión Europea</td><td>Regional</td><td>Puntual</td><td>No</td></tr>
+    <tr><td>Lopez et al. (2012), Estados Unidos</td><td>Condado</td><td>Puntual</td><td>No</td></tr>
+    <tr><td>IRENA (2023), Sudamérica</td><td>Regional (país en gráficos)</td><td>Puntual</td><td>No</td></tr>
+    <tr class="hl"><td>Este trabajo</td><td>Departamento × cultivo × campaña</td><td>Programada (periodicidad no demostrada)</td><td>Tarifas reales</td></tr>
+  </table>
+  <div class="grid g2 rv d3" style="margin-top:20px">
+    <div class="card"><h3>Método físico</h3><p>Residuo = P · (1 − IC)/IC en materia seca (Hay, 1995), con una fracción retirable.</p></div>
+    <div class="card amber"><h3>Disponibilidad discutida</h3><p>WISDOM considera no disponibles la mayoría de los rastrojos, por la siembra directa.</p></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-notes="[4:00 – 5:10] Investigación aplicada, cuantitativa; desarrollo iterativo e incremental: ocho fases, agrupadas aquí en cuatro etapas. Protocolo con cinco mecanismos de alcance explícito; el ejemplo trazable es ahora una prueba automatizada. Declaración: el 65 % de las líneas actuales se escribió con un asistente (Claude Code) con supervisión no documentada sistemáticamente; la métrica de git blame subestima su participación.">
+  <div class="kicker rv">Capítulo 2 · Metodología</div>
+  <h2 class="rv d1">Desarrollo iterativo, verificado contra las fuentes</h2>
+  <div class="grid g2 fill">
+    <div class="rv d2">
+      <h3>Protocolo de verificación</h3>
+      <ul class="clean">
+        <li>Documentos reales: 20 de 25 (los mismos usados para ajustar)</li>
+        <li>Prueba de regresión por cada error hallado</li>
+        <li>Invariantes en cada ejecución</li>
+        <li>Ejemplo trazable como prueba automatizada</li>
+        <li>Contraste de orden de magnitud</li>
+      </ul>
+    </div>
+    <div class="col rv d3">
+      <div class="card"><div class="num">203<small>commits</small></div><div class="lbl">8 fases, del 10/09 al 11/11 · 25 pull requests</div></div>
+      <div class="card amber"><h3>Desarrollo asistido por IA</h3><p>65 % de las líneas actuales escritas con un asistente; la supervisión del autor no quedó documentada de manera sistemática.</p></div>
+    </div>
+  </div>
+  <div class="tl grid g4 rv d4">
+    <div class="ph"><b>FASES 1–2 · SEP</b><span>Extractores, transformadores y tablero</span></div>
+    <div class="ph"><b>FASES 3–4 · SEP–OCT</b><span>Tarifas, validación e integración continua</span></div>
+    <div class="ph"><b>FASE 5 · OCT</b><span>Modelo del PP30 y supuestos</span></div>
+    <div class="ph"><b>FASES 6–8 · OCT–NOV</b><span>Fusión automática, despliegue revertido, ajustes</span></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-notes="[5:10 – 6:00] Tubería por lotes con tres componentes que se comunican solo por archivos. Si el ETL falla, el tablero sigue mostrando la última versión válida. La capa cruda es inmutable: permite reprocesar y auditar.">
+  <div class="kicker rv">Capítulo 3 · Arquitectura</div>
+  <h2 class="rv d1">Tres componentes que se comunican por archivos</h2>
+  <div class="grid fill rv d2" style="grid-template-columns:1fr 1.25fr 1fr 1fr;gap:20px;align-items:stretch">
+    <div class="lane"><div class="t">Fuentes públicas</div>
+      <div class="pill m">MAGyP<small>estimaciones agrícolas</small></div>
+      <div class="pill m">Bolsa de Cereales Cba.<small>planilla XLS</small></div>
+      <div class="pill m">28 distribuidoras<small>PDF · XLSX · web · API</small></div>
+      <div class="pill m">GADM 4.1<small>límites geográficos</small></div></div>
+    <div class="lane" style="border-color:var(--blue)"><div class="t" style="color:var(--blue)">ETL en Docker · 8 etapas lógicas</div>
+      <div class="pill">1 · Extracción con reintentos</div>
+      <div class="pill">2 · Limpieza y normalización</div>
+      <div class="pill">3 · Reconciliación de fuentes</div>
+      <div class="pill">4–6 · Biomasa, energía, dinero, anualización</div>
+      <div class="pill">7 · Invariantes y alertas</div>
+      <div class="pill g">8 · Persistencia Parquet</div></div>
+    <div class="lane" style="border-color:var(--green)"><div class="t" style="color:var(--green)">data/</div>
+      <div class="pill g">raw<small>descargas fechadas</small></div>
+      <div class="pill g">reference<small>coeficientes y tarifas · Git</small></div>
+      <div class="pill g">processed<small>resultados</small></div>
+      <div class="pill g">audit<small>descartes y alertas</small></div></div>
+    <div class="lane" style="border-color:var(--amber)"><div class="t" style="color:var(--amber)">Presentación y operación</div>
+      <div class="pill a">Tablero Streamlit<small>DuckDB en memoria</small></div>
+      <div class="pill a">Avisos<small>Telegram / webhook</small></div>
+      <div class="pill m">Planificador<small>Ofelia</small></div></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-notes="[6:00 – 7:10] Cada tecnología frente a sus alternativas, con un criterio explícito: casi siempre la menor complejidad de operación. Hay una medición única, de orden de magnitud: Parquet ocupa 8,3 MB frente a 46 MB en CSV y se lee unas 28 veces más rápido. Ofelia tiene un costo reconocido, el acceso al socket de Docker; un cron dentro de la imagen sería mejor y queda como mejora.">
+  <div class="kicker rv">Capítulo 3 · Decisiones tecnológicas</div>
+  <h2 class="rv d1">Cada elección, frente a sus alternativas</h2>
+  <table class="t rv d2" style="font-size:23px">
+    <tr><th style="width:16%">Decisión</th><th style="width:17%">Elegida</th><th style="width:26%">Alternativas</th><th>Criterio y evidencia</th></tr>
+    <tr><td>Almacenamiento</td><td>Parquet + DuckDB</td><td>PostgreSQL · SQLite · CSV</td><td>8,3 MB frente a 46 MB en CSV; lectura en 0,02 s frente a 0,57 s (medido solo frente a CSV)</td></tr>
+    <tr><td>Planificación</td><td>cron (Ofelia)</td><td>Airflow · Dagster · Prefect</td><td>Un flujo lineal semanal no justifica cuatro servicios con base de metadatos</td></tr>
+    <tr><td>Proxy inverso</td><td>Caddy</td><td>Nginx + Certbot · Traefik</td><td>HTTPS automático por defecto, configuración mínima</td></tr>
+    <tr><td>Tablero</td><td>Streamlit</td><td>Dash · Grafana · Superset</td><td>Mismo lenguaje y lógica que el ETL</td></tr>
+    <tr><td>Datos</td><td>raw · reference · processed · audit</td><td>Carpeta única · esquemas en BD</td><td>Reprocesar, versionar solo la referencia, separar auditoría</td></tr>
+    <tr><td>Cuadros PDF</td><td>Texto + parser por puntaje</td><td>Tabula · Camelot · pdfplumber</td><td>Un método para PDF, planillas y web</td></tr>
+  </table>
+  <p class="rv d3 muted" style="margin-top:14px;font-size:22px">Costo reconocido: Ofelia requiere el socket de Docker; un cron dentro de la imagen sería preferible.</p>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-notes="[7:10 – 8:30] Extracción agrícola: formulario del MAGyP automatizado, validación por firma binaria, reintentos con espera exponencial y respaldo en la última descarga. Extracción tarifaria: 39 % del código del ETL; registro declarativo y parser por puntaje que busca baja tensión, menos de 300 kW, banda resto, sin impuestos. 25 de 28 leídas; sin dato las que publican escaneados o enlaces rotos.">
+  <div class="kicker rv">Capítulos 4 y 5 · Extracción</div>
+  <h2 class="rv d1">Fuentes agrícolas y cuadros tarifarios</h2>
+  <div class="flow rv d2">
+    <div class="bx"><b>Descubrimiento</b><span>portal · sitio · API · JS</span></div><div class="ar">→</div>
+    <div class="bx"><b>Descarga</b><span>reintentos · SHA‑256</span></div><div class="ar">→</div>
+    <div class="bx"><b>Texto</b><span>PDF · XLSX · XLS · ZIP</span></div><div class="ar">→</div>
+    <div class="bx"><b>Parser</b><span>BT · &lt; 300 kW · resto</span></div><div class="ar">→</div>
+    <div class="bx g"><b>Validación</b><span>JSON + historial</span></div>
+  </div>
+  <div class="grid g4" style="margin-top:24px">
+    <div class="card rv d3"><h3>MAGyP y BCCBA</h3><p>Firma binaria, umbral de 5 %, espera exponencial y última descarga válida.</p></div>
+    <div class="card rv d4"><div class="num">25<small>/28</small></div><div class="lbl">distribuidoras leídas automáticamente</div></div>
+    <div class="card rv d5"><div class="num">933</div><div class="lbl">registros en el historial versionado</div></div>
+    <div class="card red rv d6"><h3>Sin dato</h3><p>Santa Cruz (enlaces rotos), Tierra del Fuego y Tucumán (escaneados).</p></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-notes="[8:30 – 9:40] Para los resultados intervienen 18 distribuidoras (16 claves); solo EDET queda sin dato: 0,7 % de la energía. Se cumple el criterio de P1. Limitaciones declaradas: vigencias de octubre de 2025 a noviembre de 2026 sin indexar; dispersión por categoría; inyección estimada en el 24 % de la energía, cuyo beneficio real podría ser entre 33 % menor y 4 % mayor; con la mediana de las categorías de cargo único (0,734), el total baja 1,8 %.">
+  <div class="kicker rv">Capítulo 5 · Auditoría de tarifas</div>
+  <h2 class="rv d1">Lo que se leyó, y sus límites</h2>
+  <div class="grid g2 fill">
+    <div class="col rv d2">
+      <div class="card green"><h3>Criterio de P1 cumplido</h3><p>18 distribuidoras intervienen; solo EDET sin dato: <strong>99,3 %</strong> de la energía con tarifa extraída.</p></div>
+      <div class="card"><h3>Trazabilidad</h3><p>Documento, SHA‑256, vigencia, fila leída y estado de cada valor.</p></div>
+    </div>
+    <div class="col rv d3">
+      <div class="card amber"><h3>Vigencias mezcladas</h3><p>De octubre de 2025 a noviembre de 2026, sin indexar.</p></div>
+      <div class="card amber"><h3>Dispersión 103–318 $/kWh</h3><p>Precios reales y categorías no homogéneas.</p></div>
+      <div class="card red"><h3>Inyección estimada (24 % de la energía)</h3><p>Beneficio real entre 33 % menor y 4 % mayor.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-notes="[9:40 – 10:50] Cadena lineal: cada supuesto es transparente y el tablero recalcula escenarios multiplicando columnas. Tc es la tarifa de compra y Ti la de inyección. Ejemplo del escenario de referencia: 10.000 t de maíz dan unos 504 millones de pesos por año de beneficio bruto; está codificado como prueba automatizada. Limpieza y reconciliación: SD no es cero; la regla de mayor producción agrega un sesgo de +2,8 %.">
+  <div class="kicker rv">Capítulo 6 · Modelo de cálculo</div>
+  <h2 class="rv d1">Una cadena lineal con supuestos declarados</h2>
+  <div class="chain">
+    <div class="step rv d1"><h3>Producción</h3><div class="f">P [t]</div><p>MAGyP · BCCBA</p></div>
+    <div class="arrow rv d1">→</div>
+    <div class="step rv d2"><h3>Biomasa</h3><div class="f">P·MS·(1−IC)/IC</div><p>t de materia seca</p></div>
+    <div class="arrow rv d2">→</div>
+    <div class="step rv d3"><h3>Recuperable</h3><div class="f">× f = 0,4</div><p>referencia (0,3–0,4)</p></div>
+    <div class="arrow rv d3">→</div>
+    <div class="step rv d4"><h3>Energía</h3><div class="f">÷ 1,0 kg/kWh</div><p>ficha del PP30</p></div>
+    <div class="arrow rv d4">→</div>
+    <div class="step money rv d5"><h3>Dinero</h3><div class="f">0,6·Tc + 0,4·Ti</div><p>Tc compra · Ti inyección</p></div>
+  </div>
+  <div class="grid g2 rv d6" style="margin-top:22px">
+    <div class="card amber"><h3>Ejemplo · 10.000 t de maíz (EDEN, f = 0,4)</h3><p>3,86 GWh/año → ≈ 25 equipos → <strong>≈ $504 millones/año</strong> brutos. Codificado como prueba.</p></div>
+    <div class="card"><h3>Datos limpios, con un sesgo declarado</h3><p>«SD» no es cero; elegir la mayor producción suma un sesgo al alza de <strong>+2,8 %</strong> (Córdoba +5,3 %, La Pampa +11,8 %).</p></div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-notes="[10:50 – 11:50] Calidad en capas: 157 casos (156 en la integración continua), cobertura medida del 75 % (98 % en el parser), invariantes que impiden publicar y alertas con avisos. La cobertura no se mide en CI y el análisis de tipos no se ejecuta. Los errores peligrosos fueron silenciosos: números verosímiles e incorrectos, como la tarifa mayorista leída como minorista (−15 %).">
+  <div class="kicker rv">Capítulo 7 · Calidad</div>
+  <h2 class="rv d1">Los errores más peligrosos fueron silenciosos</h2>
+  <div class="grid g-5-7 fill">
+    <div class="col rv d2">
+      <div class="grid g2" style="gap:16px">
+        <div class="card"><div class="num">157</div><div class="lbl">casos de prueba (156 en la CI del 11/11)</div></div>
+        <div class="card"><div class="num">75<small>%</small></div><div class="lbl">cobertura (parser: 98 %)</div></div>
+      </div>
+      <div class="card"><p>Invariantes que impiden publicar · alertas · avisos solo de alertas nuevas</p></div>
+    </div>
+    <table class="t rv d3" style="align-self:start">
+      <tr><th>Error detectado</th><th>Impacto</th></tr>
+      <tr><td>Tarifa mayorista leída como minorista</td><td>−15 % en EDEN</td></tr>
+      <tr><td>«Hasta 800 kWh» leído como precio</td><td>Tarifa ≈ 7 veces mayor</td></tr>
+      <tr><td>Consumo sobre material húmedo</td><td>Energía +3,2 %</td></tr>
+      <tr><td>Producción repetida en Córdoba</td><td>×2 o ×4 por registro</td></tr>
+      <tr><td>«SD» convertido en 0</td><td>Subestimación</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-notes="[11:50 – 13:10] Implementado y verificable: Docker Compose con cuatro servicios y Ofelia; cada corrida dura entre 28 y 44 minutos, en el entorno local; la ejecución semanal todavía no se observó. Diseño del servidor, no verificable con el material entregado: Caddy, cortafuegos y SSH. SSH: acuerdo de clave Diffie-Hellman, servidor autenticado con su clave de host, usuario autenticado con su clave Ed25519, sin contraseñas; acceso sobre Tailscale. Riesgos declarados en la configuración versionada.">
+  <div class="kicker rv">Capítulo 8 · Infraestructura y acceso seguro</div>
+  <h2 class="rv d1">Contenedores implementados; servidor no verificable</h2>
+  <div class="grid g2 fill">
+    <div class="col rv d2">
+      <div class="flow">
+        <div class="bx m"><b>Usuario</b><span>HTTPS</span></div><div class="ar">→</div>
+        <div class="bx a"><b>Caddy (diseño)</b><span>TLS automático</span></div><div class="ar">→</div>
+        <div class="bx g"><b>Tablero</b><span>Streamlit</span></div>
+      </div>
+      <div class="card blue"><h3>SSH con clave pública (contraseña de root aún habilitada; diseño no verificable)</h3><p>Diffie‑Hellman → clave de host verificada → firma Ed25519 del usuario → canal cifrado; puerto 22 aún abierto.</p></div>
+      <div class="card amber"><h3>Evidencia de operación</h3><p>Corridas de 28–44 min en entorno local; la ejecución semanal aún no se observó.</p></div>
+    </div>
+    <div class="card red rv d3">
+      <h3>Riesgos pendientes</h3>
+      <ul class="clean" style="margin-top:6px">
+                <li style="font-size:22px">Socket de Docker en el planificador</li>
+                <li style="font-size:22px">Contraseña de root habilitada; puerto 22 abierto</li>
+        <li style="font-size:22px">Configuración del servidor fuera del repositorio</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-notes="[13:10 – 14:10] El panel permite cambiar cuatro supuestos y recalcula al instante porque el modelo es lineal. El tablero abre en 40 %, el valor por defecto corregido, y muestra los mismos 64 TWh de la tesis. El rango del control va de 20 % a 70 %, pero solo hasta 40 % tiene respaldo bibliográfico. Si hay tiempo, demostrar en vivo.">
+  <div class="kicker rv">Capítulo 9 · Tablero</div>
+  <h2 class="rv d1">Supuestos ajustables, sin reejecutar el ETL</h2>
+  <table class="t rv d2" style="font-size:26px">
+    <tr><th>Supuesto</th><th>Opciones del panel</th><th>Valor por defecto</th></tr>
+    <tr><td>Autoconsumo</td><td>0 – 100 %</td><td>60 %</td></tr>
+    <tr><td>Inyección no publicada</td><td>Conservador · central · alto</td><td>Central (compra × 0,913)</td></tr>
+    <tr><td>Consumo específico</td><td>1,0 o 1,1 kg/kWh (1,3 solo en el análisis)</td><td>1,0</td></tr>
+    <tr><td>Fracción retirada</td><td>20 – 70 %</td><td>40 % (cota superior del rango citado)</td></tr>
+  </table>
+  <div class="card rv d3" style="margin-top:26px"><p>Seis páginas: inicio, resumen, energía, dinero, exploración y <strong>auditoría</strong> de descartes, discrepancias y alertas.</p></div>
+</section>
+
+<!-- 14 -->
+<section class="slide dark" data-notes="[14:10 – 15:30] El resultado es un rango que depende sobre todo de cuánto rastrojo puede retirarse. Con un retiro del 30–40 %, cuyo tope es el máximo que admite Nunes para maíz de alto rendimiento, la simulación da entre 40 y 61 TWh por año, mediana 49; no es una mejor estimación, sino el centro de un rango de escenarios. Si se incorpora la restricción por siembra directa que señala el balance oficial (10–40 %), entre 16 y 57 TWh. El valor bruto va de 4,8 a 8,8 o de 2,1 a 7,9 billones de pesos corrientes. Todo supone que el gasificador rinde con rastrojo densificado como con los combustibles aprobados. Son percentiles bajo supuestos uniformes, no intervalos de confianza. Billón es 10 a la 12.">
+  <div class="kicker rv">Capítulo 10 · Resultados</div>
+  <h2 class="rv d1" style="color:#fff">Potencial técnico anual: un rango, no una cifra</h2>
+  <table class="t rv d2" style="font-size:27px">
+    <tr><th style="color:#fff;border-color:#fff">Simulación (percentiles 5–95)</th><th class="n" style="color:#fff;border-color:#fff">Energía (TWh/año)</th><th class="n" style="color:#fff;border-color:#fff">Valor bruto (billones $/año)</th></tr>
+    <tr><td style="color:#d2dbe8">Retiro 30–40 % (tope: Nunes et al., 2021)</td><td class="n" style="color:#fff;font-weight:700">40 – 61 <span style="font-weight:400;color:#a9b8cc">(mediana 49)</span></td><td class="n" style="color:#fff;font-weight:700">4,8 – 8,8</td></tr>
+    <tr><td style="color:#d2dbe8">Retiro 10–40 % (con restricción por siembra directa)</td><td class="n" style="color:#fff;font-weight:700">16 – 57 <span style="font-weight:400;color:#a9b8cc">(mediana 35)</span></td><td class="n" style="color:#fff;font-weight:700">2,1 – 7,9</td></tr>
+    <tr><td style="color:#d2dbe8">Escenario de referencia (40 %, cota superior del rango citado)</td><td class="n" style="color:#d2dbe8">64,1</td><td class="n" style="color:#d2dbe8">9,0</td></tr>
+  </table>
+  <div class="card rv d3" style="margin-top:28px"><p>332 departamentos de 15 provincias · supone que el equipo rinde con rastrojo densificado como con combustibles aprobados · pesos corrientes, sin costos · demanda del MEM 2022: 138,8 TWh · billón = 10¹²</p></div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-notes="[15:30 – 16:20] Escenario de referencia (f = 40 %). Buenos Aires, Córdoba y Santa Fe concentran el 74,8 %; maíz, soja y trigo el 84,6 %. El orden de los departamentos es estable: en el Monte Carlo la correlación de rangos nunca bajó de 0,999 y al menos 9 de los 10 principales se mantuvieron. Con la regla de reconciliación que prefiere la fuente oficial, Río Cuarto baja de 2,33 a 1,97 pero sigue primero.">
+  <div class="kicker rv">Capítulo 10 · Distribución</div>
+  <h2 class="rv d1">Los diez departamentos principales (f = 40 %)</h2>
+  <div class="grid g2 fill">
+    <table class="t rv d2" style="align-self:start;font-size:26px">
+      <tr><th>Departamento</th><th class="n">TWh/año</th></tr>
+      <tr><td>Río Cuarto (Córdoba)</td><td class="n">2,33</td></tr>
+      <tr><td>General López (Santa Fe)</td><td class="n">1,90</td></tr>
+      <tr><td>Marcos Juárez (Córdoba)</td><td class="n">1,89</td></tr>
+      <tr><td>Unión (Córdoba)</td><td class="n">1,81</td></tr>
+      <tr><td>General Roca (Córdoba)</td><td class="n">1,68</td></tr>
+      <tr><td>San Justo (Córdoba)</td><td class="n">1,66</td></tr>
+      <tr><td>Presidente Roque Sáenz Peña (Córdoba)</td><td class="n">1,21</td></tr>
+      <tr><td>Juárez Celman (Córdoba)</td><td class="n">1,07</td></tr>
+      <tr><td>Moreno (Santiago del Estero)</td><td class="n">0,99</td></tr>
+      <tr><td>Castellanos (Santa Fe)</td><td class="n">0,98</td></tr>
+    </table>
+    <div class="col rv d3">
+      <div class="card"><div class="num">74,8<small>%</small></div><div class="lbl">Buenos Aires, Córdoba y Santa Fe</div></div>
+      <div class="card"><div class="num">84,6<small>%</small></div><div class="lbl">maíz, soja y trigo</div></div>
+      <div class="card"><p>Orden estable en el Monte Carlo (correlación de rangos ≥ 0,999, con errores independientes por cultivo) y con la regla de reconciliación alternativa (9 de los 10 principales se mantienen; Río Cuarto baja a 1,97).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-notes="[16:20 – 17:00] Un supuesto por vez. Cuatro dominan, con efectos del orden del 20–25 %: fracción retirada, índice de cosecha (asimétrico), tarifas y consumo específico; la fracción y el consumo solo pueden restar. Sin autoconsumo, el beneficio baja 9,6 %. Las combinaciones extremas van de 3,2 a 14,0 billones, y el Monte Carlo resume las combinaciones intermedias.">
+  <div class="kicker rv">Capítulo 10 · Sensibilidad</div>
+  <h2 class="rv d1">Con los rangos elegidos, cuatro supuestos dominan</h2>
+  <div class="figure rv d2 fill"><img src="img/fig_sensibilidad_diapositiva.png" alt="Tornado de sensibilidad"></div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-notes="[17:00 – 18:00] No existe una estimación nacional independiente. WISDOM no es comparable: trata la mayor parte de estos rastrojos como no disponibles por la siembra directa, lo que es el argumento externo más fuerte para el escenario prudente. El contraste de orden de magnitud con IRENA es débil: no valida, solo descarta errores groseros de escala.">
+  <div class="kicker rv">Capítulo 11 · Discusión</div>
+  <h2 class="rv d1">Validación pendiente y limitaciones</h2>
+  <div class="grid g2 fill">
+    <div class="col rv d2">
+      <div class="card amber"><h3>Sin referencia nacional comparable</h3><p>WISDOM trata la mayoría de estos rastrojos como no disponibles por la siembra directa: refuerza el escenario prudente.</p></div>
+      <div class="card"><h3>Contraste débil de orden de magnitud</h3><p>≈ 72 GJ/ha frente a 50–100 GJ/ha de IRENA (2023): descarta errores de escala, no valida.</p></div>
+    </div>
+    <div class="card rv d3">
+      <h3>Limitaciones</h3>
+      <ul class="clean" style="margin-top:4px">
+        <li style="font-size:22px">Potencial técnico y beneficio bruto</li>
+        <li style="font-size:22px">Rastrojo densificado, no aprobado por el fabricante</li>
+        <li style="font-size:22px">FR de trigo en revisión (hasta −10 %)</li>
+        <li style="font-size:22px">Autoconsumo de 60 % como escenario</li>
+        <li style="font-size:22px">NOA, NEA y zonas de riego subrepresentados</li>
+        <li style="font-size:22px">Sin cooperativas eléctricas</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 17b -->
+<section class="slide" data-notes="[18:00 – 18:50] Repaso de los objetivos y sus indicadores, antes de evaluar su cumplimiento.">
+  <div class="kicker rv">Objetivos</div>
+  <h2 class="rv d1">Objetivos e indicadores de logro</h2>
+  <table class="t rv d2">
+    <tr><th style="width:42%">Objetivo específico</th><th>Indicador</th></tr>
+    <tr><td>Extracción agrícola automática</td><td>Sin intervención manual y con respaldo ante caídas</td></tr>
+    <tr><td>Extracción tarifaria trazable</td><td>Distribuidoras leídas y energía valorizada (criterio: ≥ 90 %)</td></tr>
+    <tr><td>Modelo lineal y auditable</td><td>Cada parámetro con fuente o declarado como supuesto; sensibilidad</td></tr>
+    <tr><td>Calidad del software y los datos</td><td>Pruebas en integración continua, cobertura, invariantes</td></tr>
+    <tr><td>Infraestructura en contenedores</td><td>Ejecución periódica documentada</td></tr>
+    <tr><td>Tablero con supuestos ajustables</td><td>Recálculo de escenarios sin reejecutar el ETL</td></tr>
+    <tr><td>Estado del arte</td><td>Trabajos comparables sistematizados</td></tr>
+  </table>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-notes="[18:50 – 20:00] Grado de cumplimiento, igual que en la Sección 12.1: dos cumplidos (extracción agrícola y tablero), dos cumplidos con limitaciones (modelo y calidad) y dos cumplidos parcialmente (estado del arte y tarifas) y uno no cumplido en su indicador (infraestructura: la ejecución periódica no se observó). Tres aprendizajes: el esfuerzo está en las fuentes; lo peligroso es silencioso; la trazabilidad se diseña.">
+  <div class="kicker rv">Capítulo 12 · Conclusiones</div>
+  <h2 class="rv d1">Grado de cumplimiento y aprendizajes</h2>
+  <div class="grid g-5-7 fill">
+    <table class="t rv d2" style="align-self:start;font-size:23px">
+      <tr><th>Objetivo</th><th>Estado</th></tr>
+      <tr><td>Estado del arte</td><td><span class="status pa">Parcial (búsqueda no sistemática)</span></td></tr>
+      <tr><td>Extracción agrícola</td><td><span class="status ok">Cumplido</span></td></tr>
+      <tr><td>Extracción tarifaria</td><td><span class="status pa">Parcial (25 de 28)</span></td></tr>
+      <tr><td>Modelo de cálculo</td><td><span class="status pa">Con limitaciones</span></td></tr>
+      <tr><td>Calidad</td><td><span class="status pa">Con limitaciones</span></td></tr>
+      <tr><td>Infraestructura</td><td><span class="status pa">No cumplido (indicador)</span></td></tr>
+      <tr><td>Tablero</td><td><span class="status ok">Cumplido</span></td></tr>
+    </table>
+    <div class="col rv d3">
+      <div class="card blue"><h3>El esfuerzo está en las fuentes</h3><p>La extracción ocupa la mitad del código del ETL.</p></div>
+      <div class="card amber"><h3>Lo peligroso es silencioso</h3><p>Números verosímiles y equivocados: contrastar y convertir en prueba.</p></div>
+      <div class="card green"><h3>La trazabilidad se diseña</h3><p>Decisiones con identificador, documentos con hash, descartes visibles.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-notes="[20:00 – 21:00] Trabajo futuro en dos frentes. Dominio: evaluación económica (costo nivelado, VAN, TIR), validación externa, coeficientes regionales y disponibilidad real con siembra directa. Sistema: corregir los riesgos de operación, cron dentro de la imagen, despliegue continuo con clave restringida, reconocimiento óptico y pruebas de contrato.">
+  <div class="kicker rv">Capítulo 12 · Trabajo futuro</div>
+  <h2 class="rv d1">Del potencial técnico al económico</h2>
+  <div class="grid g2 fill" style="align-content:start">
+    <div class="card amber rv d2"><h3>Modelo de dominio</h3><ul class="clean"><li>Evaluación económica: costo nivelado, VAN y TIR</li><li>Validación externa y análisis global de incertidumbre</li><li>Disponibilidad real con siembra directa</li><li>Inyección por categoría y tarifas indexadas</li></ul></div>
+    <div class="card blue rv d3"><h3>Sistema de información</h3><ul class="clean"><li>ETL sin privilegios, puerto local, cron en la imagen</li><li>Despliegue continuo con clave restringida</li><li>Reconocimiento óptico de cuadros escaneados</li><li>Pruebas de contrato con las fuentes</li></ul></div>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide dark" data-notes="[21:00 – 22:00] Cierre: el valor no está en la precisión de una cifra nacional, que es incierta, sino en una base trazable y actualizable sobre la cual construir los estudios de factibilidad. Agradecer y abrir preguntas. Las diapositivas siguientes son de apoyo.">
+  <div class="title-wrap">
+    <div class="kicker rv">Cierre</div>
+    <p class="big-q rv d1">Un sistema de información trazable, cuyas cifras se recalculan desde el repositorio con una corrida del ETL; su operación periódica y su validación externa son los próximos pasos.</p>
+    <div class="rule rv d2"></div>
+    <h1 class="rv d3" style="font-size:72px">Muchas gracias</h1>
+    <p class="rv d4 muted" style="margin-top:14px">Preguntas · Marco Ferro · OPTIMIA‑HV</p>
+  </div>
+</section>
+
+<!-- APOYO 1 -->
+<section class="slide backup" data-notes="Apoyo para preguntas: respuestas breves y coherentes con el escrito.">
+  <div class="kicker">Apéndice · Preguntas previsibles</div>
+  <h2>Respuestas preparadas</h2>
+  <table class="t" style="font-size:23px">
+    <tr><th style="width:34%">Pregunta</th><th>Respuesta breve</th></tr>
+    <tr><td>¿Por qué 40 % y no 50 %?</td><td>Nunes et al. (2021): hasta 40 % con rendimientos de maíz mayores a 11 t/ha; con rendimientos argentinos, 40 % es la cota superior del rango citado (Nunes implica 30–35 %) y 30 % el escenario prudente; 50 % no tiene respaldo.</td></tr>
+    <tr><td>¿Cómo se validó?</td><td>Pruebas sobre documentos reales, invariantes, ejemplo trazable automatizado y orden de magnitud; sin referencia nacional comparable.</td></tr>
+    <tr><td>¿Cuánto hizo la IA?</td><td>65 % de las líneas actuales (subestimado), con supervisión no documentada sistemáticamente; supuestos, decisiones y validación del autor.</td></tr>
+    <tr><td>¿Por qué no Airflow?</td><td>Un flujo lineal semanal; Airflow suma planificador, procesador, API y base de metadatos.</td></tr>
+    <tr><td>¿Es seguro el servidor?</td><td>El acceso usa clave pública y TLS, pero la contraseña del superusuario sigue habilitada y hay otros riesgos pendientes declarados: socket de Docker en el planificador y puerto 22 abierto. ETL sin privilegios, puerto local y versión fija ya se corrigieron.</td></tr>
+    <tr><td>¿Es rentable?</td><td>No se evaluó: es beneficio bruto. La evaluación económica es el siguiente paso.</td></tr>
+  </table>
+</section>
+
+<!-- APOYO 2 -->
+<section class="slide backup" data-notes="Apoyo: integración continua y despliegue continuo evaluado y revertido.">
+  <div class="kicker">Apéndice · Integración y despliegue continuos</div>
+  <h2>Cada PR pasa las pruebas antes de fusionarse automáticamente</h2>
+  <div class="flow">
+    <div class="bx m"><b>Rama</b><span>feat · fix · docs</span></div><div class="ar">→</div>
+    <div class="bx m"><b>Pull request</b><span>hacia main</span></div><div class="ar">→</div>
+    <div class="bx"><b>tests</b><span>ruff + pytest</span></div><div class="ar">→</div>
+    <div class="bx"><b>imagen</b><span>si cambian dependencias</span></div><div class="ar">→</div>
+    <div class="bx g"><b>automerge</b><span>--match-head-commit</span></div>
+  </div>
+  <div class="grid g3" style="margin-top:28px">
+    <div class="card amber"><h3>a) SSH + registro</h3><p>Simple, pero la CI tenía una clave con acceso general.</p></div>
+    <div class="card amber"><h3>b) Dokploy · webhook</h3><p>Desplegaba aunque la CI fallara.</p></div>
+    <div class="card amber"><h3>c) Dokploy · API</h3><p>Correcto, pero una plataforma completa para pocas actualizaciones.</p></div>
+  </div>
+  <p style="margin-top:20px">Sin revisión humana obligatoria. Despliegue continuo revertido el 27/10 (commit <code>63cbb88</code>, que restablece el árbol de <code>a31c418</code>).</p>
+</section>
+
+<!-- APOYO 3 -->
+<section class="slide backup" data-notes="Apoyo: referencias principales citadas en la defensa.">
+  <div class="kicker">Apéndice · Referencias principales</div>
+  <h2>Fuentes citadas en la defensa</h2>
+  <ul class="clean" style="columns:2;column-gap:48px">
+    <li style="font-size:21px">FAO (2009). WISDOM Argentina, p. 28</li>
+    <li style="font-size:21px">Nunes et al. (2021). <em>Agronomy Journal</em>, 113(4)</li>
+    <li style="font-size:21px">Hay (1995). <em>Annals of Applied Biology</em></li>
+    <li style="font-size:21px">Wilhelm et al. (2007). <em>Agronomy Journal</em></li>
+    <li style="font-size:21px">Scarlat et al. (2010). <em>Waste Management</em></li>
+    <li style="font-size:21px">Lopez et al. (2012). NREL</li>
+    <li style="font-size:21px">IRENA (2023). Agricultural residue‑based bioenergy</li>
+    <li style="font-size:21px">Ley 27.424 (2017), arts. 4 y 12</li>
+    <li style="font-size:21px">Saltelli et al. (2008). <em>Global sensitivity analysis</em></li>
+    <li style="font-size:21px">Ylonen y Lonvick (2006). RFC 4251–4254</li>
+  </ul>
+</section>
+
+</div></div>
+<div id="notes"><b>Notas del orador</b><div id="notes-body"></div></div>
+<div id="lightbox"><img alt=""></div>
+<div id="hint">← → navegar · N notas · F pantalla completa · clic en imagen para ampliar</div>
+
+<script>
+(function(){
+  const deck=document.getElementById('deck'), slides=[...deck.querySelectorAll('.slide')];
+  const total=slides.length, main=slides.filter(s=>!s.classList.contains('backup')).length;
+  const prog=document.getElementById('progress'), notes=document.getElementById('notes'), notesBody=document.getElementById('notes-body');
+  const lb=document.getElementById('lightbox'), hint=document.getElementById('hint');
+  let i=0;
+  slides.forEach((s,k)=>{ if(k>0 && !s.querySelector('.title-wrap')){const f=document.createElement('div');f.className='foot';
+    const lab=s.classList.contains('backup')?'Apéndice':(k+1)+' / '+main;
+    f.innerHTML='<span>OPTIMIA‑HV · Del rastrojo al kilovatio‑hora</span><span>'+lab+'</span>';s.appendChild(f);} });
+  function fit(){const s=Math.min(innerWidth/1600,innerHeight/900);deck.style.transform='scale('+s+')';}
+  function go(n){
+    i=Math.max(0,Math.min(total-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    prog.style.width=(Math.min(i+1,main)/main*100)+'%';
+    notesBody.textContent=slides[i].dataset.notes||'';
+    try{history.replaceState(null,'','#'+(i+1));}catch(e){}
+  }
+  addEventListener('resize',fit); fit();
+  addEventListener('keydown',e=>{
+    if(lb.classList.contains('on')){ if(e.key==='Escape'||e.key===' ')lb.classList.remove('on'); return; }
+    if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();go(i+1);}
+    else if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();go(i-1);}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(main-1);
+    else if(e.key==='n'||e.key==='N')notes.classList.toggle('on');
+    else if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement)document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+  });
+  deck.addEventListener('click',e=>{const img=e.target.closest('.figure img'); if(img){lb.querySelector('img').src=img.src;lb.classList.add('on');}});
+  lb.addEventListener('click',()=>lb.classList.remove('on'));
+  let tx=null; addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+  addEventListener('touchend',e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(i+(d<0?1:-1));tx=null;});
+  const h=parseInt((location.hash||'').slice(1),10); go(isNaN(h)?0:h-1);
+  setTimeout(()=>{hint.style.opacity='0';},6000);
+})();
+</script>
+</body>
+</html>

@@ -182,7 +182,7 @@ PARAMETROS_PP30_DEFAULT: Final[dict[str, float]] = {
     "factor_autoconsumo_default": 0.6,
     "potencia_nominal_kw": 22.0,
     "disponibilidad": 0.8,
-    "fraccion_recuperable_default": 0.5,
+    "fraccion_recuperable_default": 0.4,  # POL-RECOVERY-001
 }
 
 # Los valores cargados a mano en versiones anteriores del proyecto (no

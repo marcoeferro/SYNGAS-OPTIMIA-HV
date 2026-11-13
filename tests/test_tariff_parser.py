@@ -309,7 +309,7 @@ def test_refsa_unidad_kw_hs() -> None:
     assert parse_tariff_text(texto)["tarifa_compra_kwh"] == 135.2848
 
 
-# ECSAPEM (Misiones) 2026-05: columnas de baja y media tensión en paralelo
+# ECSAPEM (Catamarca) 2026-05: columnas de baja y media tensión en paralelo
 # y hoja de generación distribuida con filas "energía inyectada".
 ECSAPEM = """\
 T3 | GRANDES DEMANDAS CON CONSUMOS MENORES A 300 KW | Nivel de Tensión de Suministro: | Baja Tensión | Media Tensión

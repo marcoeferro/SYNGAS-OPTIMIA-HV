@@ -1,0 +1,205 @@
+93a1b84 2026-11-11 Marco Ferro docs: tesis final y presentación de defensa
+7b51a91 2026-11-11 Marco Ferro chore(data): agregar snapshots de tarifas de octubre y noviembre
+aae81eb 2026-11-11 Marco Ferro fix: no repetir avisos de calidad y correr el ETL una vez por semana
+e70a8a6 2026-10-28 github-actions[bot] Merge pull request #21 from marcoeferro/docs/inventario-unidades
+946ed5d 2026-10-27 Marco Ferro docs: fe de erratas del informe 2 (tarifas de APE y ratio de inyección)
+a35d867 2026-10-28 github-actions[bot] Merge pull request #20 from marcoeferro/docs/inventario-unidades
+84b1ffe 2026-10-27 Marco Ferro docs: inventario de unidades de los datos
+66277f0 2026-10-28 github-actions[bot] Merge pull request #19 from marcoeferro/docs/informe-tarifas-faltantes
+e340750 2026-10-27 Marco Ferro docs: informe de tarifas faltantes y cómo se estiman
+25398da 2026-10-28 github-actions[bot] Merge pull request #18 from marcoeferro/chore/snapshots-tarifas
+a206886 2026-10-27 Marco Ferro chore(data): agregar snapshots de tarifas del 5/10
+413848f 2026-10-28 github-actions[bot] Merge pull request #17 from marcoeferro/revert/estructura-antigua
+63cbb88 2026-10-27 Marco Ferro revert: volver a la estructura de carpetas anterior (a31c418)
+319ba18 2026-10-23 github-actions[bot] Merge pull request #16 from marcoeferro/deploy/cd-api-dokploy
+12908df 2026-10-23 Marco Ferro fix(deploy): disparar Dokploy por la API en vez del webhook
+6c6bc47 2026-10-23 github-actions[bot] Merge pull request #15 from marcoeferro/deploy/dokploy-supercronic
+977ab5f 2026-10-22 Marco Ferro feat(deploy): Dokploy + cron con supercronic y tests del pipeline
+f81ffd5 2026-10-22 github-actions[bot] Merge pull request #4 from marcoeferro/solar/fase-3-incorporar-codigo
+9c19bde 2026-10-22 Marco Ferro feat(solar): incorporar el código de la tesis solar (fase 3)
+183204a 2026-10-21 github-actions[bot] Merge pull request #2 from marcoeferro/dependabot/github_actions/actions/setup-python-7
+931c587 2026-10-21 dependabot[bot] chore(deps): bump actions/setup-python from 5 to 7
+d61a8e8 2026-10-21 github-actions[bot] Merge pull request #3 from marcoeferro/dependabot/pip/pandas-gte-2.0-and-lt-4.0
+371f8e5 2026-10-21 github-actions[bot] Merge pull request #1 from marcoeferro/dependabot/github_actions/actions/checkout-7
+267fae3 2026-10-21 dependabot[bot] chore(deps): update pandas requirement from <3.0,>=2.0 to >=2.0,<4.0
+eb4099b 2026-10-21 dependabot[bot] chore(deps): bump actions/checkout from 4 to 7
+874fefa 2026-10-21 Claude Reestructurar el repo en src/optimia_hv para unificar biomasa y solar
+dae219a 2026-10-21 Claude docs: propuesta de estructura de carpetas para unificar biomasa y solar
+a31c418 2026-10-16 github-actions[bot] Merge pull request #14 from marcoeferro/claude/adoring-knuth-snwddq
+b2f94e2 2026-10-16 Claude ci: mergear automáticamente los PR hacia main cuando pasa el CI
+491736c 2026-10-16 Marco Ferro Merge pull request #13 from marcoeferro/claude/happy-cannon-nhg6eo
+57186c5 2026-10-16 Claude Agregar informe de avance 2: energía y valorización económica
+edbc638 2026-10-16 Marco Ferro Merge pull request #12 from marcoeferro/claude/vibrant-euler-0qjtbx
+c1a664f 2026-10-16 Claude Merge main en claude/vibrant-euler-0qjtbx
+e38c560 2026-10-16 Claude feat: tarifas de APE desde la Secretaría de Energía y Minería de La Pampa
+3f3d3b4 2026-10-16 Marco Ferro Merge pull request #11 from marcoeferro/claude/great-fermi-hz94pi
+ac774e9 2026-10-16 Claude Merge main en claude/great-fermi-hz94pi
+a6f647e 2026-10-16 Claude Extraer cuadros tarifarios del sitio de EDESA (Salta)
+aa4c07b 2026-10-16 Marco Ferro Merge pull request #10 from marcoeferro/claude/intelligent-fermat-s0d7re
+5dc27ea 2026-10-16 Claude feat: tarifa de inyección de EDERSA desde el cuadro UGER
+e4b5244 2026-10-05 Marco Ferro Merge pull request #9 from marcoeferro/claude/magical-archimedes-n5hea8
+db33ab1 2026-10-05 Claude docs: ficha técnica del PP30, fracción recuperable, escenarios y revisión de las guías de la cátedra
+e8f87a2 2026-10-05 Claude feat(dashboard): supuestos ajustables y escenarios de inyección
+63e96ad 2026-10-05 Claude feat: energía con la ficha técnica de APL (1,0 kg MS/kWh, 22 kW a 50 Hz)
+e584432 2026-10-05 Claude data+docs: tarifas de ESJ y EJESA, inyección real de 12 distribuidoras
+0af43c8 2026-10-05 Claude docs: fundamento de la estimación de la tarifa de inyección (POL-TARIFF-002)
+5151057 2026-10-05 Claude fix: números de expediente de 8 dígitos no son fechas (año 2015-2040)
+706e2d4 2026-10-05 Claude fix: vigencia de cuadros con columnas por mes abreviado (EJESA)
+60ebf5d 2026-10-05 Claude fix: el ratio de inyección acepta inyección igual a la compra
+34906c7 2026-10-05 Claude feat: tarifas de ESJ y EJESA; inyección de EDENOR, EDESUR y OCEBA
+f6b390f 2026-10-05 Claude data: tarifas con EPEC (compra e inyección) e historial; docs actualizados
+beb0ee1 2026-10-05 Claude feat: tarifas de EPEC (compra e inyección) desde el sitio de EPEC
+98ac168 2026-10-05 Claude feat: avisos del ETL por webhook/Telegram y cartel de datos viejos
+96740c1 2026-10-05 Marco Ferro Merge pull request #8 from marcoeferro/claude/magical-archimedes-n5hea8
+7c70743 2026-10-05 Claude docs: README principal, índice de docs y referencias para LLM
+667ebec 2026-10-05 Claude docs: guía de lectura y notas de vigencia en el reporte de cambios
+6c0e726 2026-10-05 Claude docs: tests y controles de calidad; modelo de datos con alertas
+fa8679d 2026-10-05 Claude docs: guías de uso (instalación, ETL, dashboard, solución de problemas)
+2b162dc 2026-10-05 Claude docs: arquitectura, flujo de datos, ciclo de vida y despliegue
+1ac1176 2026-10-05 Claude docs: fuentes, tarifas eléctricas y contratos de artefactos
+a79e2b4 2026-10-05 Claude docs: introducción, glosario y metodología
+718bd4c 2026-10-05 Claude docs: reorganizar docs/ en carpetas por tema
+9fbcdb7 2026-10-05 Claude Merge remote-tracking branch 'origin/main' into claude/magical-archimedes-n5hea8
+5e45227 2026-10-05 Claude feat: CI con GitHub Actions y controles de calidad de datos en el ETL
+d57d3fe 2026-10-05 Marco Ferro "cambio de lugar del informe 1"
+1727e03 2026-10-05 Marco Ferro Merge branch 'main' of https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV
+6040ae6 2026-10-05 Marco Ferro agregar los referencias al repo
+742a4ea 2026-10-05 Marco Ferro "ahroa se ven los docs temporalmente"
+e6a8d48 2026-10-05 Marco Ferro Merge pull request #7 from marcoeferro/claude/magical-archimedes-n5hea8
+f80fad6 2026-10-05 Claude perf: caché acotada, capa de dependencias estable y limpieza de imágenes
+a595343 2026-10-05 Claude fix(dashboard): datos viejos tras correr el ETL en Docker
+fb99873 2026-10-04 Marco Ferro Merge pull request #6 from marcoeferro/claude/magical-archimedes-n5hea8
+0508dea 2026-10-05 Claude fix(extraccion): reintentos ante 503/429/5xx y segunda pasada sobre fuentes caídas
+58d2a64 2026-10-04 Marco Ferro Merge pull request #5 from marcoeferro/claude/magical-archimedes-n5hea8
+fc85536 2026-10-05 Claude docs: README, diagramas y reporte actualizados; cron de Ofelia con segundos
+843d494 2026-10-05 Claude feat(dashboard): energía, dinero, mapas completos y auditoría de datos
+ff0828b 2026-10-04 Claude fix(tarifas): EPE, APE y EMSA con datos; beneficio sin inyección publicada
+126ec66 2026-10-04 Marco Ferro Merge pull request #4 from marcoeferro/claude/magical-archimedes-n5hea8
+ab176a0 2026-10-04 Claude data(tarifas): referencia y historial finales validados contra las fuentes
+ff84637 2026-10-04 Claude fix(tarifas): OCEBA usaba la tarifa mayorista a distribuidores municipales
+fb7d725 2026-10-04 Marco Ferro Merge pull request #3 from marcoeferro/claude/magical-archimedes-n5hea8
+0ab0d03 2026-10-04 Claude fix(tarifas): columnas BT/MT en paralelo y filas de inyección (ECSAPEM)
+c259334 2026-10-04 Claude fix(tarifas): reconocer carpetas AAAA/mes/ de OCEBA para respetar --desde
+d2e6bee 2026-10-04 Claude feat(tarifas): cuadros manuales y descarga de EPE Santa Fe por API
+4e3d16a 2026-10-04 Claude fix(tarifas): unidad [$/KW-Hs], inicio de rangos de vigencia, sin valores manuales
+7ff262a 2026-10-04 Claude docs(reporte): validación de extractores contra fuentes reales
+f1b32d4 2026-10-04 Claude fix(tarifas): en modo historial omitir documentos anteriores a --desde
+75873b3 2026-10-04 Claude fix(tarifas): fechas de carpetas OCEBA ctAAAAMMDD y vigencia desconocida al final
+f44e0f8 2026-10-04 Claude fix(tarifas): excluir cuadros especiales y leer hojas de inyección
+9b4cb7f 2026-10-04 Claude fix(extractores): validar contra fuentes reales y corregir parseo de tarifas y CBA
+8a97047 2026-10-04 Marco Ferro Merge pull request #2 from marcoeferro/claude/magical-archimedes-n5hea8
+676cd72 2026-10-04 Claude fix(scripts): detectar Docker apagado, iniciarlo y permitir ejecución local
+f0c74a1 2026-10-04 Marco Ferro Merge branch 'main' of https://github.com/marcoeferro/SYNGAS-OPTIMIA-HV
+9bc5b19 2026-10-04 Marco Ferro "changues:"
+0cfa419 2026-10-04 Marco Ferro Merge pull request #1 from marcoeferro/claude/magical-archimedes-n5hea8
+12ac70e 2026-10-04 Claude feat(tarifas): extraer las 28 distribuidoras del país con historial de cambios
+a34f98b 2026-10-04 Claude feat(notebook): agregar conversión de biomasa a energía y valorización económica
+01dc552 2026-10-04 Claude fix(etl): corregir errores de extracción, limpieza, reconciliación y cálculo energético
+a838baa 2026-09-30 Marco Ferro chore(requirements.txt): add bs4 to the requirements
+6422f98 2026-09-30 Marco Ferro feat(source_cleaning.py): add source cleaning tranform
+5a15866 2026-09-30 Marco Ferro feat(energy-transform.py): add energy finance transform
+e9218b3 2026-09-30 Marco Ferro refacto(run_etl.py): add extraction stage and energy and finance and energy transforms
+e84268d 2026-09-30 Marco Ferro refactor(save_processed.py): improve comments for save_processed-artifacts function
+1d271fb 2026-09-30 Marco Ferro feat(scrape_tarifas): add new scrapper to extract the energy rates
+1233411 2026-09-30 Marco Ferro refator(scrape_estimaciones_agricolas.py): change funciton name from main to run_extractor and add the usage of raw data manager
+be5b189 2026-09-30 Marco Ferro refator(scrape_bolsa_cereales_nacion.py): change funciton name from main to run_extractor and add the usage of raw data manager
+d25911f 2026-09-30 Marco Ferro refator(scrape_bolsa_cereales_cba.py): change funciton name from main to run_extractor and add the usage of raw data manager
+f2e6b6a 2026-09-30 Marco Ferro feat(io_extractors): add file to manage the creation of raw data
+bd8e683 2026-09-30 Marco Ferro feat(tarifas.json): add json reference for the energy fees
+d9b61f5 2026-09-30 Marco Ferro chore(schedule.ini): add comment mentioning the add of the straction phase
+aa057e3 2026-09-28 Marco Ferro chre(gitignore): add docs and .docs to git ignore
+76506d7 2026-09-28 Marco Ferro refactor(mian-notebook): IC data ingestion
+e9b2a29 2026-09-23 Marco Ferro refactor(makerfile): update file
+96cf6a1 2026-09-23 Marco Ferro refactor(biomass.py): update flag validity function
+a8808cb 2026-09-23 Marco Ferro refactor(run-etl.py): update logger text
+d3d0d47 2026-09-23 Marco Ferro chore(arq_diagram.md): add streamlit
+c2a5938 2026-09-23 Marco Ferro chore(arq_despliegue.md): add dashboard
+8ef00e1 2026-09-23 Marco Ferro feat(3_Auditoria.py): add dashboard exploracion page
+4bbe28e 2026-09-23 Marco Ferro feat(2_Exploracion.py): add dashboard exploracion page
+dd092fc 2026-09-23 Marco Ferro feat(1_Resumen.py): add dashboard resumen page
+6f31fad 2026-09-23 Marco Ferro feat(data_loader.py): add data laoder for dashboard
+1201230 2026-09-23 Marco Ferro feat(app.py): add main scripts para dashboard
+dc2f532 2026-09-23 Marco Ferro chore(requirements.txt) add streamlit dependencies
+ccdfae6 2026-09-23 Marco Ferro chore(__init__.py): add etl init
+cd6645c 2026-09-23 Marco Ferro chore(__init__.py): add dashboard init
+a6af549 2026-09-23 Marco Ferro chore(schedule.ini): add schedule config
+ca0fdbf 2026-09-23 Marco Ferro refactor(etl/loaders): change folder name from loader to loaders
+96ac96c 2026-09-23 Marco Ferro feat(Stop-Stack.ps1): add powershell script to stop docker
+f0ec802 2026-09-23 Marco Ferro feat(Start-Stack.ps1): add powershell script to start docker
+4f18b36 2026-09-23 Marco Ferro feat(Run-Etl.ps1): add powershell script to run etl
+1ada200 2026-09-23 Marco Ferro feat(test_biomass): add test for zero surface. test_zero_surface_not_valid()
+a5d2f39 2026-09-23 Marco Ferro feat(gadm41_ARG_2.jsnon): add geodata for departments
+93b8f3b 2026-09-23 Marco Ferro feat(gadm41_ARG_1.jsnon): add geodata for provinces
+b0fee2a 2026-09-23 Marco Ferro refactor(init.sql): remove shaper file and all its contents
+2463f46 2026-09-23 Marco Ferro feat(ic_fr.csv): add IC reference
+3eb90b9 2026-09-23 Marco Ferro chore(README): add script for start, stop and run etl, also add the streamlit dashboar explanation
+dad3a15 2026-09-23 Marco Ferro chore(pyproject.toml): add streamlit dependency
+3f90b7c 2026-09-23 Marco Ferro refactor(dockerfile): add instalation for local package
+d872385 2026-09-23 Marco Ferro feat(docker-compose): add etl_worker service (ofelia)
+7d661b2 2026-09-23 Marco Ferro chore(gitignore):add enviroment variables
+533a823 2026-09-20 Marco Ferro feat(validation): add validation transformer
+4bdbc39 2026-09-20 Marco Ferro feat(string-utils): add string transformer
+bbf594d 2026-09-20 Marco Ferro feat(reconciliation): add reconciliation transformer
+0dae1ca 2026-09-20 Marco Ferro feat(geography): add geography transformer
+d2fd8c4 2026-09-20 Marco Ferro feat(crop-consolidation): add crop transformer
+b292d5b 2026-09-20 Marco Ferro feat(biomass): add biomass transformer
+59896ce 2026-09-20 Marco Ferro feat(IC): add IC reference
+dcf7615 2026-09-19 Marco Ferro fea(run-etl): add oquestration file for the etl process
+870704e 2026-09-19 Marco Ferro add(crop-taxonomy): add crop taxonomy file
+415fba9 2026-09-19 Marco Ferro feat(save-processed): add save file to save data
+ba71c1c 2026-09-19 Marco Ferro chore(ER): add ER diagram
+b5806f8 2026-09-19 Marco Ferro chore(sequence): add sequence diagram
+91841cd 2026-09-19 Marco Ferro chore: add flowchar diagram ??
+dc39ced 2026-09-19 Marco Ferro chore(ciclo-vida): add lifecicly diagram
+003bd77 2026-09-19 Marco Ferro chore(flujo-datos): add flowchart for data ETL
+d5e62f2 2026-09-19 Marco Ferro feat(shaper-init): add sql shaper file
+aa51fb5 2026-09-19 Marco Ferro chore(etl-process-diagram):add flow diagram process
+1301cde 2026-09-19 Marco Ferro feat(decision-log): add decition files
+3c29f26 2026-09-19 Marco Ferro feat(arq-diagram): add arq diagram
+1af15e0 2026-09-19 Marco Ferro feat(arq-diagram): add deploy arq diagram
+4a1fc95 2026-09-19 Marco Ferro feat(biomass-analysis-notebook): add notebook file
+38b7259 2026-09-19 Marco Ferro feat(exploration-notebook): add notebook file
+7244ec0 2026-09-19 Marco Ferro refactor(database.sqlite): remove unnecesary files
+28e52d1 2026-09-19 Marco Ferro refactor(main):remove unnecesary files
+9098a28 2026-09-19 Marco Ferro feat(test-validation): add test file
+21e7de3 2026-09-19 Marco Ferro feat(test-string-utils): add test file
+a76fc33 2026-09-19 Marco Ferro feat(test-reconciliation): add test file
+afcd5a3 2026-09-19 Marco Ferro feat(test-geography): add test file
+59aa106 2026-09-19 Marco Ferro feat(test-crop-consolidation): add test file
+d472cd2 2026-09-19 Marco Ferro feat(test-biomass): add test file
+0331b8b 2026-09-19 Marco Ferro feat(conftest): add configuration test file
+5cccb1c 2026-09-19 Marco Ferro add(path.yml): add yml file
+377ac30 2026-09-19 Marco Ferro add(loiggin.yml): add logging yml file
+6b5adb8 2026-09-19 Marco Ferro refactor(requirements): refactor file to match requirements
+bc099ac 2026-09-19 Marco Ferro refactor(toml): refactor toml to match requirements
+06c5f1a 2026-09-19 Marco Ferro refactor(readme): change code to match requirements
+a13b74c 2026-09-19 Marco Ferro refactor(makefile): refactor makefile to match requirements
+e80feb9 2026-09-19 Marco Ferro refactor(dockerfile):add code to the file
+b54b1f9 2026-09-19 Marco Ferro refactor(docker-compose):add code to the file
+86d02d6 2026-09-19 Marco Ferro refactor(gitignore): add gitignore code
+aaec892 2026-09-19 Marco Ferro refactor(dockerignore): add dockerignore code
+d3297cf 2026-09-19 Marco Ferro refactor(extractors): change extractors folder name
+7399a9a 2026-09-19 Marco Ferro refactor(main-notebook): change main file
+c4f33a2 2026-09-18 Marco Ferro feat(main-noptebook): add pyarrow dependency
+efbbdc0 2026-09-18 Marco Ferro chore(gitignore): add audit data
+bbe13bc 2026-09-18 Marco Ferro chore(gitignore): update gitignore
+d4ffeb3 2026-09-18 Marco Ferro feat(mainNotebook): add new notebook
+7aa1199 2026-09-15 Marco Ferro feat(project-arq): add new documentation about the project arq
+c8ed3b8 2026-09-15 Marco Ferro feat(data-sources): add new documentation about the data sources
+9267887 2026-09-15 Marco Ferro feat(database): add empty database file
+97f3c86 2026-09-15 Marco Ferro feat(requirements): add empty requirements files
+0d58eb6 2026-09-15 Marco Ferro feat(magyp-raw-data): add raw data (bronce data)
+e35fad3 2026-09-15 Marco Ferro feat(bolsa-nacion-raw-data): add raw data (bronce data)
+f3d7e2a 2026-09-15 Marco Ferro feat(bolsa-cba-raw-data): add raw data (bronce data)
+3e16bfa 2026-09-15 Marco Ferro feat(notebook): add new notebook for data exploration
+7fd1765 2026-09-15 Marco Ferro feat(geo-data): add new geodata to map chart
+1d30350 2026-09-15 Marco Ferro feat(docker-compose): add empty docker compose file
+315a0c1 2026-09-15 Marco Ferro feat(gitignore): add gitignore
+97316ca 2026-09-15 Marco Ferro feat(magyp): add new extractor
+48c2a60 2026-09-15 Marco Ferro feat(bolsa-cereales-nacion): add new extractor
+668608a 2026-09-15 Marco Ferro feat(bolsa-cereales-cba): add new extractor
+c65ae7d 2026-09-15 Marco Ferro feat(database): add database
+1a87d78 2026-09-15 Marco Ferro feat(magyp): add cache provincias json file
+9a039ce 2026-09-15 Marco Ferro feat(magyp): add cache department json file
+b8dc6c7 2026-09-15 Marco Ferro refactor: move files to match new tree structure
+bd58567 2026-09-10 Marco Ferro chore: initial commit

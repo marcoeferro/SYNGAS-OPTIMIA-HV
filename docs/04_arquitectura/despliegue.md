@@ -74,7 +74,8 @@ Se definen en un archivo `.env` junto a `docker-compose.yml` (opcional).
 | Variable | Valor por defecto | Para qué |
 |---|---|---|
 | `LOG_LEVEL` | `INFO` | Detalle de los logs (`DEBUG`, `INFO`, `WARNING`) |
-| `DASHBOARD_PORT` | `8501` | Puerto del dashboard en la máquina |
+| `DASHBOARD_PORT` | `127.0.0.1:8501` | Dirección y puerto del dashboard; por defecto solo en la interfaz local |
+| `ETL_UID` / `ETL_GID` | `1000` | Usuario sin privilegios del ETL; `data/` y `logs/` deben pertenecerle (`sudo chown -R 1000:1000 data logs`) |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria del horario del ETL |
 | `EPE_API_KEY` | clave pública del sitio de EPE | Sólo si EPE cambia la clave de su API de descargas |
 | `NOTIFY_WEBHOOK_URL` | (vacío) | Webhook para avisos (Slack, Discord, Teams, Google Chat). Ver [avisos](#avisos) |
@@ -140,13 +141,15 @@ proyecto (etiqueta `project=etl-biomasa`) para que no se acumulen.
 
 - El dashboard **no tiene usuario ni contraseña**. En un servidor público,
   ponerlo detrás de un proxy con autenticación (Nginx, Caddy, Traefik) o de
-  una VPN, y no exponer el puerto 8501 directamente.
+  una VPN. El puerto 8501 se publica solo en `127.0.0.1`, porque Docker
+  publica los puertos antes que las reglas de `ufw`.
 - El `scheduler` monta el socket de Docker (`/var/run/docker.sock`) para
   ejecutar el ETL; es el mecanismo estándar de Ofelia, pero da control
   sobre Docker a ese contenedor.
-- `etl_worker` y `etl_pipeline` corren como root dentro del contenedor
-  porque en Windows/Docker Desktop las carpetas montadas no siempre son
-  escribibles por otro usuario.
+- `etl_worker` y `etl_pipeline` corren sin privilegios (`ETL_UID`, por
+  defecto 1000). Antes de actualizar un servidor donde corrían como root,
+  ejecutar `sudo chown -R 1000:1000 data logs`.
+- La imagen de Ofelia está fijada en la versión 0.3.22 por digest.
 
 ## Dominios necesarios
 

@@ -311,7 +311,7 @@ class Supuestos:
     autoconsumo: float = 0.6
     inyeccion: str = INYECCION_CENTRAL
     consumo_especifico: float = 1.0      # kg de materia seca por kWh
-    fraccion_recuperable: float = 0.5
+    fraccion_recuperable: float = 0.4    # POL-RECOVERY-001
 
 
 def supuestos_base() -> Supuestos:
@@ -324,7 +324,7 @@ def supuestos_base() -> Supuestos:
     return Supuestos(
         autoconsumo=float(p.get("factor_autoconsumo_default", 0.6)),
         consumo_especifico=float(ce or 1.0),
-        fraccion_recuperable=float(p.get("fraccion_recuperable_default", 0.5)),
+        fraccion_recuperable=float(p.get("fraccion_recuperable_default", 0.4)),
     )
 
 

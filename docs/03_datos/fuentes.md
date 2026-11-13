@@ -11,7 +11,7 @@
 | Cuadros tarifarios (28 distribuidoras) | Precio de la electricidad | **En uso** | `etl/extractors/scrape_tarifas.py` |
 | Coeficientes por cultivo (IC, FR, MS) | Rastrojo por tonelada de grano | **En uso** (tabla manual) | `data/reference/ic_fr.csv` |
 | Límites GADM 4.1 | Polígonos de provincias y departamentos para los mapas | **En uso** (archivos fijos) | `dashboard/geo/` |
-| Bolsa de Cereales de Buenos Aires | Producción por zona agroecológica | **Descartada** | `etl/extractors/scrape_bolsa_cereales_nacion.py` (no se ejecuta) |
+| Bolsa de Cereales de Buenos Aires | Producción por zona agroecológica | **Descartada** | Extractor retirado del repositorio en noviembre de 2026 (sitio con protección anti-bot) |
 
 ---
 

@@ -1,0 +1,6 @@
+# Ronda 5 — triage (37: 3 bloqueantes, 26 mayores, 8 menores). Veredicto: APROBADO CON CORRECCIONES OBLIGATORIAS
+Aceptadas y corregidas: O1 (scripts/analisis_sensibilidad.py versionado con semilla; Monte Carlo recalculado con IC independiente por cultivo: 41–74 TWh, 5,1–10,5 billones), O3 (novedad moderada; búsqueda no sistemática), O8 (valores sintéticos señalados en Tabla 8), O9 (inestabilidad del multiplicador 0,752–0,915), O13 (fechas del anexo), O19 (ranking: correlación ≥ 0,999; top 10 ≥ 9), O20 (contraste = plausibilidad del residuo total), O21 (2–5 s), O22 (Dependabot), O27 (explicación REFSA con deduplicación), O28 (alcance: 15 provincias), O29, O35 (192 h), O37.
+Rechazadas con fundamento: O25 (933 filas = 933 documentos únicos por SHA-256: «cuadros» es correcto), O26 (SSH: pedido explícito del autor), O17 f (Jenkins et al.: dos autores homónimos).
+Requieren decisión del autor sobre el sistema: O2 (valor por defecto f = 0,4 y regenerar), O10 (regla de reconciliación), O11 (403, curl_cffi), O12 (compose), O27 (regla REFSA), O14 (política de automerge).
+Requieren al autor: O15 (director, agradecimientos), O16 (referencias de coeficientes), O18 (adjuntar páginas citadas), O17 (informes de avance y acceso al repositorio).
+Parciales: O4, O5, O6, O7, O23, O24, O30–O34, O36.

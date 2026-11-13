@@ -389,7 +389,7 @@ def find_purchase_candidates(
             continue
         if not injection_document and _under_injection_header(lines, i):
             continue
-        # Un PP30 (25 kW) se conecta en baja tensión.
+        # Un PP30 (22 kW a 50 Hz) se conecta en baja tensión.
         if _voltage_level(lines, i) in {"media", "alta"}:
             continue
         score = _category_score(context)
@@ -405,7 +405,7 @@ def find_purchase_candidates(
             continue
         if RESTO.search(_label(lines, i)):
             score += 1
-        # Categorías de 300 kW o más no representan a un PP30 (25 kW).
+        # Categorías de 300 kW o más no representan a un PP30 (22 kW a 50 Hz).
         if BIG_USER.search(nearby):
             score -= 2
         cands.append(Candidate(i, score, values, line.strip()))
