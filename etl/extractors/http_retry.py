@@ -16,6 +16,8 @@ from typing import Any, Final
 
 import httpx
 
+from etl.logging_setup import bind_context, new_request_id
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES: Final[int] = 6
@@ -74,9 +76,33 @@ def request_with_retry(
             agotan los intentos.
         httpx.RequestError: Si persiste el error de red.
     """
+    # Un request_id por pedido (con todos sus reintentos): cualquier log
+    # emitido mientras dura, también el del extractor que lo llamó si
+    # falla, lleva el mismo id.
+    with bind_context(request_id=new_request_id()):
+        return _request_loop(
+            client, method, url, max_retries, initial_delay, retry_status, kwargs
+        )
+
+
+def _request_loop(
+    client: httpx.Client,
+    method: str,
+    url: str,
+    max_retries: int,
+    initial_delay: float,
+    retry_status: frozenset[int],
+    kwargs: dict[str, Any],
+) -> httpx.Response:
     delay = initial_delay
     for attempt in range(1, max_retries + 1):
         last = attempt == max_retries
+        fields: dict[str, Any] = {
+            "http_method": method.upper(),
+            "url": url,
+            "attempt": attempt,
+            "max_attempts": max_retries,
+        }
         try:
             response = client.request(method, url, **kwargs)
         except RETRYABLE_ERRORS as exc:
@@ -85,6 +111,7 @@ def request_with_retry(
             logger.warning(
                 "%s en intento %d/%d (%s). Reintento en %.0f s",
                 type(exc).__name__, attempt, max_retries, url, delay,
+                extra={**fields, "error_type": type(exc).__name__, "retry_in_s": delay},
             )
             time.sleep(delay)
             delay = min(delay * 2, MAX_RETRY_DELAY)
@@ -98,6 +125,7 @@ def request_with_retry(
         logger.warning(
             "HTTP %d en intento %d/%d (%s). Reintento en %.0f s",
             response.status_code, attempt, max_retries, url, wait,
+            extra={**fields, "status_code": response.status_code, "retry_in_s": wait},
         )
         time.sleep(wait)
         delay = min(delay * 2, MAX_RETRY_DELAY)

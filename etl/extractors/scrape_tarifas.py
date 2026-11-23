@@ -65,6 +65,7 @@ from etl.extractors.tariff_documents import (
     document_to_texts,
 )
 from etl.loaders.tariff_history import append_history
+from etl.logging_setup import bind_context
 from etl.reference.distribuidoras import (
     DEPARTAMENTO_A_DISTRIBUIDORA,
     DISTRIBUIDORAS,
@@ -681,14 +682,18 @@ def with_dead_host_guard(
             failures[host] = failures.get(host, 0) + 1
             if failures[host] >= DEAD_HOST_FAILURES:
                 dead.add(host)
-                logger.warning("[tarifas] Host bloquea las descargas (403): %s", host)
+                logger.warning(
+                    "[tarifas] Host bloquea las descargas (403): %s", host,
+                    extra={"host_name": host, "status_code": 403, "url": url},
+                )
             raise
         except (httpx.ConnectError, httpx.ConnectTimeout):
             failures[host] = failures.get(host, 0) + 1
             if failures[host] >= DEAD_HOST_FAILURES:
                 dead.add(host)
                 logger.warning(
-                    "[tarifas] Host inalcanzable, se omite en esta corrida: %s", host
+                    "[tarifas] Host inalcanzable, se omite en esta corrida: %s", host,
+                    extra={"host_name": host, "url": url},
                 )
             raise
         failures[host] = 0
@@ -1317,15 +1322,17 @@ def run_extractor(
     parsed_by_code: dict[str, dict[str, Any] | None] = {}
     records: list[dict[str, Any]] = []
     for code in selected:
-        chosen, processed = fetch_distribuidora(
-            code, now, raw_path, downloader, text_extractor,
-            months=months,
-            max_downloads=None if historial else MAX_DOWNLOADS_PER_SOURCE,
-            stop_at_first=not historial,
-            index_cache=index_cache,
-            desde=desde if historial else None,
-            manual_dir=ref_path / MANUAL_DIR_NAME,
-        )
+        # "distribuidora" viaja a todos los logs de esta distribuidora.
+        with bind_context(distribuidora=code):
+            chosen, processed = fetch_distribuidora(
+                code, now, raw_path, downloader, text_extractor,
+                months=months,
+                max_downloads=None if historial else MAX_DOWNLOADS_PER_SOURCE,
+                stop_at_first=not historial,
+                index_cache=index_cache,
+                desde=desde if historial else None,
+                manual_dir=ref_path / MANUAL_DIR_NAME,
+            )
         parsed_by_code[code] = chosen
         records.extend(history_record(code, p) for p in processed)
 

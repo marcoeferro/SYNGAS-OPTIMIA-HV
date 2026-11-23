@@ -102,10 +102,37 @@ calidad. Ver [despliegue → avisos](../04_arquitectura/despliegue.md#avisos).
 
 ## Logs
 
-- Archivo: `logs/pipeline.log` (rota a los 10 MB, guarda 5 anteriores).
-- En Docker, la salida de las corridas programadas también se ve con
-  `docker logs biomasa_scheduler`.
-- Nivel de detalle: variable `LOG_LEVEL` (`DEBUG` para ver cada pedido).
+Cada línea es un objeto JSON (`etl/logging_setup.py`):
+
+```json
+{"timestamp": "2026-11-23T06:02:16.412-03:00", "level": "warning",
+ "message": "HTTP 500 en intento 1/6 (...). Reintento en 2 s",
+ "logger": "etl.extractors.http_retry", "module": "http_retry",
+ "function": "_request_loop", "file": "etl/extractors/http_retry.py", "line": 125,
+ "service": "etl-biomasa", "version": "0.3.0", "environment": "production",
+ "host": "b9a99ee8be79", "pid": 812,
+ "trace_id": "4048b52eee7b4a1cac38be1be569a54e", "stage": "extract", "source": "magyp",
+ "request_id": "a1b2c3d4e5f60718", "http_method": "GET", "url": "https://...",
+ "status_code": 500, "attempt": 1, "max_attempts": 6, "retry_in_s": 2.0}
+```
+
+| Pregunta | Campos |
+|---|---|
+| ¿Qué pasó? | `level`, `message`, `event` (`run_started` / `run_finished`), `exception` (tipo, mensaje y traza) |
+| ¿Cuándo? | `timestamp` (ISO 8601 con zona), `duration_s` al terminar |
+| ¿Dónde? | `environment`, `host`, `service`, `version`, `logger`, `module`, `function`, `file`, `line` |
+| ¿En qué corrida y pedido? | `trace_id` (toda la corrida), `request_id` (un pedido HTTP con sus reintentos), `stage`, `source`, `distribuidora` |
+
+- Archivo: `logs/pipeline.log` (JSON, nivel DEBUG; rota a los 10 MB, guarda 5 anteriores).
+- En Docker, las corridas programadas salen en `docker logs biomasa_etl_worker`
+  línea por línea, a medida que ocurren (`LOG_STREAM=/proc/1/fd/1`). En
+  `biomasa_scheduler` queda solo el inicio y el fin de cada corrida (Ofelia).
+- En Grafana: `{container="biomasa_etl_worker"} | json | trace_id="..."`
+  muestra una corrida completa; `| json | request_id="..."`, un pedido.
+- Variables: `LOG_LEVEL` (nivel de la consola; `DEBUG` para ver cada pedido),
+  `LOG_FORMAT=text` (texto plano para leer en local), `APP_ENV` (entorno).
+- Los warnings de Python (p. ej. `FutureWarning` de pandas) salen como líneas
+  del log con `"logger": "py.warnings"`.
 
 Mensajes útiles del log:
 
