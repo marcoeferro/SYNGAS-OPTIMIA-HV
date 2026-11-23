@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import logging
 import logging.config
+import os
 import sys
 import time
 from pathlib import Path
@@ -45,6 +46,7 @@ from etl.extractors.io_utils import (
 )
 from etl.loaders.save_processed import save_parquet, save_processed_artifacts
 from etl.loaders.tariff_history import load_history
+from etl.logging_setup import bind_context, new_trace_id, set_context
 from etl.notifications import notify_run_result
 from etl.reference.load_ic import load_ic_table
 from etl.transformers.biomass import (
@@ -110,6 +112,10 @@ def setup_logging(logging_path: str | Path = DEFAULT_LOGGING_PATH) -> None:
     """
     Inicializa la configuración de logging desde YAML.
 
+    Variables de entorno (ver ``etl/logging_setup.py``): ``LOG_LEVEL``
+    fija el nivel de la consola y ``LOG_FORMAT=text`` la deja en texto
+    plano en vez de JSON.
+
     Args:
         logging_path: Ruta del archivo de configuración.
     """
@@ -121,9 +127,19 @@ def setup_logging(logging_path: str | Path = DEFAULT_LOGGING_PATH) -> None:
         for handler in cfg.get("handlers", {}).values():
             if "filename" in handler:
                 Path(handler["filename"]).parent.mkdir(parents=True, exist_ok=True)
+        console = cfg.get("handlers", {}).get("console")
+        if console is not None:
+            level = os.environ.get("LOG_LEVEL", "").strip().upper()
+            if level in logging.getLevelNamesMapping():
+                console["level"] = level
+            if os.environ.get("LOG_FORMAT", "").strip().lower() == "text":
+                console["formatter"] = "text"
         logging.config.dictConfig(cfg)
     else:
         logging.basicConfig(level=logging.INFO)
+    # Los warnings de Python (p. ej. FutureWarning de pandas) iban sueltos
+    # a stderr; así salen como una línea más del log, con su nivel.
+    logging.captureWarnings(True)
 
 
 def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict:
@@ -155,9 +171,10 @@ def run_tarifas_stage(raw_dir: Path, ref_dir: Path) -> Path | None:
         Path del JSON generado o None si falló.
     """
     try:
-        return extract_tarifas.run_extractor(
-            raw_dir=Path(raw_dir) / "tarifas", reference_dir=ref_dir
-        )
+        with bind_context(stage="tarifas"):
+            return extract_tarifas.run_extractor(
+                raw_dir=Path(raw_dir) / "tarifas", reference_dir=ref_dir
+            )
     except Exception:
         logger.exception("Extracción de tarifas falló; se usa la referencia previa")
         return None
@@ -226,13 +243,15 @@ def run_extract_stage(
     paths: dict[str, Path] = {}
     failed: list[str] = []
     for name, (module, _stem) in sources.items():
-        logger.info("Extract %s → %s", name.upper(), raw_dir)
+        logger.info("Extract %s → %s", name.upper(), raw_dir, extra={"source": name})
         try:
-            paths[name] = module.run_extractor(output_dir=raw_dir)
+            with bind_context(source=name):
+                paths[name] = module.run_extractor(output_dir=raw_dir)
         except Exception:
             logger.exception(
                 "Falló la extracción de %s; se reintentará al final de la etapa",
                 name.upper(),
+                extra={"source": name},
             )
             failed.append(name)
 
@@ -245,14 +264,19 @@ def run_extract_stage(
     for name in failed:
         module, stem = sources[name]
         try:
-            paths[name] = module.run_extractor(output_dir=raw_dir)
-            logger.info("Extract %s recuperado en la segunda pasada", name.upper())
+            with bind_context(source=name, attempt_pass=2):
+                paths[name] = module.run_extractor(output_dir=raw_dir)
+            logger.info(
+                "Extract %s recuperado en la segunda pasada", name.upper(),
+                extra={"source": name},
+            )
         except Exception:
             # Una fuente caída no debe frenar todo el pipeline: se usa el
             # raw más reciente en disco y queda registrado en el log.
             logger.exception(
                 "Falló de nuevo la extracción de %s; se usa el raw más reciente en disco",
                 name.upper(),
+                extra={"source": name},
             )
             paths[name] = find_latest_raw(raw_dir, stem)
     return paths
@@ -326,6 +350,7 @@ def run(
 
     # --- 1. Extracción ---
     extracted: dict[str, Path] | None = None
+    set_context(stage="extract")
     if skip_extract:
         logger.info("Skip extract: se usará el raw más reciente en disco")
     else:
@@ -347,6 +372,7 @@ def run(
     logger.info("Raw MAGYP: %s", raw_paths["magyp"])
 
     # --- 2. Carga + limpieza de fuentes ---
+    set_context(stage="transform")
     logger.info("Cargando y limpiando fuentes primarias")
     df_cba_raw = process_cba(load_cba_raw(raw_paths["cba"]))
     df_magyp_raw = process_magyp(load_magyp_raw(raw_paths["magyp"]))
@@ -406,6 +432,7 @@ def run(
     )
 
     # --- 9. Validación de biomasa ---
+    set_context(stage="validate")
     validar_biomasa(df_biomasa)
 
     # --- 9b. Controles de calidad contra la corrida anterior ---
@@ -423,6 +450,7 @@ def run(
     quality_gate(df_alertas, estricto, path_alertas)
 
     # --- 10. Persistencia ---
+    set_context(stage="load")
     paths = save_processed_artifacts(
         df_biomasa=df_biomasa_validos,
         df_descartado=df_descartado,
@@ -434,6 +462,7 @@ def run(
         df_anual, processed_dir / "potencial_energetico_anual.parquet"
     )
     paths["alertas_calidad"] = path_alertas
+    set_context(stage=None)
     logger.info("Pipeline completado. Artefactos: %s", paths)
     return paths
 
@@ -489,6 +518,18 @@ def main() -> int:
     args = parser.parse_args()
 
     setup_logging(args.log_config)
+    # Un trace_id por corrida: filtra en Loki todo lo de esta ejecución
+    # ({service="etl_worker"} | json | trace_id="...").
+    set_context(trace_id=new_trace_id())
+    started = time.monotonic()
+    logger.info(
+        "Inicio de la corrida del ETL",
+        extra={
+            "event": "run_started",
+            # "args" es un atributo reservado de LogRecord.
+            "cli_args": {k: v for k, v in vars(args).items() if v is not None},
+        },
+    )
 
     try:
         paths = run(
@@ -501,17 +542,34 @@ def main() -> int:
             estricto=args.estricto,
         )
     except DataQualityError as exc:
-        logger.exception("Fallo en pipeline ETL")
+        logger.exception("Fallo en pipeline ETL", extra=_run_summary(started, "failed"))
         notify_run_result(exc, exc.alertas, estricto=True)
         return 1
     except Exception as exc:
-        logger.exception("Fallo en pipeline ETL")
+        logger.exception("Fallo en pipeline ETL", extra=_run_summary(started, "failed"))
         notify_run_result(exc)
         return 1
+    set_context(stage=None)
     alertas_path = paths.get("alertas_calidad")
     df_alertas = pd.read_parquet(alertas_path) if alertas_path else None
+    logger.info(
+        "Fin de la corrida del ETL",
+        extra={
+            **_run_summary(started, "succeeded"),
+            "quality_alerts": 0 if df_alertas is None else len(df_alertas),
+        },
+    )
     notify_run_result(df_alertas=df_alertas)
     return 0
+
+
+def _run_summary(started: float, outcome: str) -> dict:
+    """Campos del evento de fin de corrida (resultado y duración)."""
+    return {
+        "event": "run_finished",
+        "outcome": outcome,
+        "duration_s": round(time.monotonic() - started, 1),
+    }
 
 
 if __name__ == "__main__":

@@ -39,6 +39,12 @@ services:
       - ./logs:/app/logs
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Logs JSON (etl/logging_setup.py). Ofelia hace exec y se queda con la
+      # salida del comando hasta que termina; escribiendo en la salida del
+      # proceso principal (PID 1) cada línea sale en "docker logs
+      # biomasa_etl_worker" en el momento, con su hora y su nivel.
+      - LOG_STREAM=/proc/1/fd/1
+      - APP_ENV=${APP_ENV:-production}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
       # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
       - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
@@ -65,6 +71,7 @@ services:
       - ./logs:/app/logs
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - APP_ENV=${APP_ENV:-production}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
       # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
       - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
