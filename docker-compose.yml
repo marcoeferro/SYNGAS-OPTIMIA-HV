@@ -44,7 +44,10 @@ services:
       # proceso principal (PID 1) cada línea sale en "docker logs
       # biomasa_etl_worker" en el momento, con su hora y su nivel.
       - LOG_STREAM=/proc/1/fd/1
-      - APP_ENV=${APP_ENV:-production}
+      # Entorno informado en cada línea de log. En el VPS va en .env
+      # (APP_ENV=production); sin definir queda "local", nunca un entorno
+      # que no es.
+      - APP_ENV=${APP_ENV:-local}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
       # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
       - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}
@@ -71,7 +74,7 @@ services:
       - ./logs:/app/logs
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - APP_ENV=${APP_ENV:-production}
+      - APP_ENV=${APP_ENV:-local}
       - TZ=${TZ:-America/Argentina/Buenos_Aires}
       # Avisos de fallas y alertas (opcionales, ver docs/04_arquitectura/despliegue.md)
       - NOTIFY_WEBHOOK_URL=${NOTIFY_WEBHOOK_URL:-}

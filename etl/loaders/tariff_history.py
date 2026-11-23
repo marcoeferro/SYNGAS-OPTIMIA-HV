@@ -71,6 +71,33 @@ def load_history(reference_dir: Path | str) -> pd.DataFrame:
     )
 
 
+def _align_empty_columns(
+    current: pd.DataFrame, new: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Da a las columnas todas vacías de ``new`` el tipo que tienen en ``current``.
+
+    Las filas nuevas suelen traer columnas sin ningún valor (p. ej. sin
+    tarifa de inyección), de tipo object. pandas 2.x las ignora al elegir
+    el tipo del ``concat`` y avisa (FutureWarning) que dejará de hacerlo:
+    entonces una columna numérica del historial pasaría a object. Con el
+    mismo tipo en los dos lados no hay nada que ignorar. Las columnas de
+    enteros pasan a ``Int64`` (admite vacíos): el CSV sigue diciendo ``10``
+    y no ``10.0``.
+    """
+    current, new = current.copy(), new.copy()
+    for col in new.columns.intersection(current.columns):
+        if not new[col].isna().all():
+            continue
+        target = current[col].dtype
+        if pd.api.types.is_integer_dtype(target):
+            target = pd.Int64Dtype()
+            current[col] = current[col].astype(target)
+        # Columna vacía del tipo pedido (astype no convierte pd.NA a float).
+        new[col] = pd.Series(index=new.index, dtype=target)
+    return current, new
+
+
 def append_history(
     records: list[dict[str, Any]],
     reference_dir: Path | str,
@@ -103,6 +130,8 @@ def append_history(
         new = new[mask]
     n_new = len(new)
     if n_new:
+        if not current.empty:
+            current, new = _align_empty_columns(current, new)
         frames = [f for f in (current, new) if not f.empty]
         out = pd.concat(frames, ignore_index=True)
         out = out.sort_values(["distribuidora", "vigencia"]).reset_index(drop=True)
